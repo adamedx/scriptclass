@@ -47,7 +47,7 @@ Describe "ClassDefinitionInterface" {
     Context "When declaring a class with __class" {
        It "succeeds when using the __class alias" {
             $result = __class ClassClass1 {}
-            $result | Should BeOfType [scriptblock]
+            $result | Should BeExactly $null
        }
 
         It "defines a class function with the name of the class" {
@@ -57,23 +57,16 @@ Describe "ClassDefinitionInterface" {
         }
 
         It "defines a class function that can be successfully executed" {
-           { . (__class ClassClass3 { }) } | Should Not Throw
-        }
-
-        It "has a class function that throws if executed more than once to define the class" {
-            $classBlock = __class ClassClass4 { }
-            (. $classBlock) | out-null
-            { . $classBlock } | Should Throw
+           { __class ClassClass3 { } } | Should Not Throw
         }
 
         It "allows the user to define a property on the class" {
             $className = 'ClassClass5'
             $propertyName = 'description'
-            .(
-                __class $className {
-                    __property $propertyName
-                }
-            )
+
+            __class $className {
+                __property $propertyName
+            }
 
             $typeData = get-class $className
 
@@ -83,17 +76,17 @@ Describe "ClassDefinitionInterface" {
         It "throws an exception if there's an attempt to redefine a property" {
             $className = 'ClassClass6'
             $propertyName = 'description'
-            { .(
+            {
                 __class $className {
                     __property $propertyName
                     __property $propertyName
                 }
-            ) } | Should Throw
+            } | Should Throw
         }
 
         It "can create a new object using new-object with the specified type" {
             $className = 'ClassClass7'
-            . ( __class $className {} )
+            __class $className {}
 
             $newInstance = new-instance $className
             $newInstance.PSTypeName | Should BeExactly $className
@@ -104,12 +97,10 @@ Describe "ClassDefinitionInterface" {
             $property1 = 'property1'
             $property2 = 'property2'
 
-            .(
-                __class $className {
-                    __property $property1
-                    __property $property2
-                }
-            )
+            __class $className {
+                __property $property1
+                __property $property2
+            }
 
             $newInstance = new-instance $className
             $newInstance.psobject.properties.match($property1) | Should BeExactly $true
@@ -122,12 +113,10 @@ Describe "ClassDefinitionInterface" {
             $property1 = 'property1'
             $property2 = 'property2'
 
-            .(
-                __class $className {
-                    __property $property1, 1
-                    __property $property2, 2
-                }
-            )
+            __class $className {
+                __property $property1, 1
+                __property $property2, 2
+            }
 
             $newInstance = new-instance $className
             $newInstance.$property1 | Should BeExactly 1
@@ -139,12 +128,10 @@ Describe "ClassDefinitionInterface" {
             $property1 = 'property1'
             $property2 = 'property2'
 
-            .(
-                __class $className {
-                    __property [int32] $property1
-                    __property [Type]  $property2
-                }
-            )
+            __class $className {
+                __property [int32] $property1
+                __property [Type]  $property2
+            }
 
             $newInstance = new-instance $className
 
@@ -161,12 +148,10 @@ Describe "ClassDefinitionInterface" {
             $value1 = 1
             $value2 = [int32]
 
-            .(
-                __class $className {
-                    __property [int32] $property1, $value1
-                    __property [Type] $property2, $value2
-                }
-            )
+            __class $className {
+                __property [int32] $property1, $value1
+                __property [Type] $property2, $value2
+            }
 
             $newInstance = new-instance $className
             $newInstance.$property1 | Should BeExactly $value1
@@ -179,16 +164,14 @@ Describe "ClassDefinitionInterface" {
             $function2 = "testFunc2"
             $function1Result = "f1output"
 
-            .(
-                __class $className {
-                    function testFunc {
-                        "f1output"
-                    }
-                    function testFunc2 ($arg1, $arg2) {
-                        $arg1 + $arg2
-                    }
+            __class $className {
+                function testFunc {
+                    "f1output"
                 }
-            )
+                function testFunc2 ($arg1, $arg2) {
+                    $arg1 + $arg2
+                }
+            }
 
             $newInstance = new-instance $className
 
@@ -203,15 +186,13 @@ Describe "ClassDefinitionInterface" {
             $className = 'ClassClass16'
             $identityResult = "me"
 
-            .(
-                __class $className {
-                    __property identity, $identityResult
+            __class $className {
+                __property identity, $identityResult
 
-                    function showme {
-                        $this.identity
-                    }
+                function showme {
+                    $this.identity
                 }
-            )
+            }
 
             $newInstance = new-instance $className
             call $newInstance.showme | should BeExactly $identityResult
@@ -221,11 +202,10 @@ Describe "ClassDefinitionInterface" {
             $className = 'ClassClass12'
             $invalidIntegerValue = 2
 
-            { .(
-                  __class $className {
-                      __property [Type] typeProperty, $invalidIntegerValue
-                  }
-              )
+            {
+                __class $className {
+                    __property [Type] typeProperty, $invalidIntegerValue
+                }
             } | Should Throw
         }
 
@@ -233,12 +213,11 @@ Describe "ClassDefinitionInterface" {
             $className = 'ClassClass13'
             $invalidIntegerValue = 2
 
-            { .(
-                  __class $className {
-                      __property validProperty
-                      __property [Type] typeProperty, $invalidIntegerValue
-                  }
-              )
+            {
+                __class $className {
+                    __property validProperty
+                    __property [Type] typeProperty, $invalidIntegerValue
+                }
             } | Should Throw
             get-typedata $className | Should BeExactly $null
         }
@@ -249,14 +228,13 @@ Describe "ClassDefinitionInterface" {
             $className = 'ClassClass25'
             $initialStateValue = 3
 
-            .(
-                __class $className {
-                    __property objectState
-                    function __initialize {
-                        $this.objectState = 3
-                    }
+            __class $className {
+                __property objectState
+                function __initialize {
+                    $this.objectState = 3
                 }
-            )
+            }
+
             $newInstance = new-instance $className
 
             $newInstance.objectState | Should BeExactly $initialStateValue
@@ -266,14 +244,13 @@ Describe "ClassDefinitionInterface" {
             $className = 'ClassClass26'
             $initialStateValue = 9
 
-            .(
-                __class $className {
-                    __property objectState
-                    function __initialize($arg1, $arg2) {
-                        $this.objectState = $arg1 + $arg2
-                    }
+            __class $className {
+                __property objectState
+                function __initialize($arg1, $arg2) {
+                    $this.objectState = $arg1 + $arg2
                 }
-            )
+            }
+
             $newInstance = new-instance $className 3 6
 
             $newInstance.objectState | Should BeExactly $initialStateValue
@@ -284,18 +261,17 @@ Describe "ClassDefinitionInterface" {
             $className = 'ClassClass27'
             $initialStateValue = 11
 
-            .(
-                __class $className {
-                    __property objectState
-                    function __initialize($arg1, $arg2) {
-                        sum $arg1 $arg2
-                    }
-
-                    function sum($first, $second) {
-                       $this.objectState = $first + $second
-                    }
+            __class $className {
+                __property objectState
+                function __initialize($arg1, $arg2) {
+                    call $this.sum $arg1 $arg2
                 }
-            )
+
+                function sum($first, $second) {
+                    $this.objectState = $first + $second
+                }
+            }
+
             $newInstance = new-instance $className 4 7
 
             $newInstance.objectState | Should BeExactly $initialStateValue
@@ -307,17 +283,15 @@ Describe "ClassDefinitionInterface" {
             $className = 'ClassClass20'
             $nestedResult = 'nested'
 
-            .(
-                __class $className {
-                    function outer {
-                        inner
-                    }
-
-                    function inner {
-                        'nested'
-                    }
+            __class $className {
+                function outer {
+                    call $this.inner
                 }
-            )
+
+                function inner {
+                    'nested'
+                }
+            }
 
             $newInstance = new-instance $className
             call $newInstance.outer | Should BeExactly 'nested'
@@ -327,18 +301,16 @@ Describe "ClassDefinitionInterface" {
             $className = 'ClassClass21'
             $nestedThisResult = 'nestedthis'
 
-            .(
-                __class $className {
-                    __property objectState,'nestedthis'
-                    function outer {
-                        inner
-                    }
-
-                    function inner {
-                        $this.objectState
-                    }
+            __class $className {
+                __property objectState,'nestedthis'
+                function outer {
+                    call $this.inner
                 }
-            )
+
+                function inner {
+                    $this.objectState
+                }
+            }
 
             $newInstance = new-instance $className
 
@@ -349,22 +321,20 @@ Describe "ClassDefinitionInterface" {
             $className = 'ClassClass22'
             $bracketResult = '[1 + (3 * 4) + 2]'
 
-            .(
-                __class $className {
-                    __property outerBracket,'['
-                    __property outerBracketRight, ']'
-                    __property innerBracket, '('
-                    __property innerBracketRight, ')'
-                    function sum($arg1, $arg2, $arg3, $arg4) {
-                        $inner = product $arg3 $arg4
-                        "$($this.outerBracket)$arg1 + $inner + $($arg2)$($this.outerBracketRight)"
-                    }
-
-                    function product($mult1, $mult2) {
-                    "$($this.innerBracket)$mult1 * $($mult2)$($this.innerBracketRight)"
-                    }
+            __class $className {
+                __property outerBracket,'['
+                __property outerBracketRight, ']'
+                __property innerBracket, '('
+                __property innerBracketRight, ')'
+                function sum($arg1, $arg2, $arg3, $arg4) {
+                    $inner = call $this.product $arg3 $arg4
+                    "$($this.outerBracket)$arg1 + $inner + $($arg2)$($this.outerBracketRight)"
                 }
-            )
+
+                function product($mult1, $mult2) {
+                    "$($this.innerBracket)$mult1 * $($mult2)$($this.innerBracketRight)"
+                }
+            }
 
             $newInstance = new-instance $className
 
@@ -374,41 +344,67 @@ Describe "ClassDefinitionInterface" {
         It "can invoke other methods in the object using the call alias with the `$this variable" {
             $className = 'ClassClass23'
 
-            .(
-                __class $className {
-                    __property mainValue,7
-                    function outer($arg1, $arg2, $arg3) {
-                        call $this.inner $arg3 ($arg1 + $arg2)
-                    }
-
-                    function inner($first, $second) {
-                        $this.mainValue + $first + $second
-                    }
+            __class $className {
+                __property mainValue,7
+                function outer($arg1, $arg2, $arg3) {
+                    call $this.inner $arg3 ($arg1 + $arg2)
                 }
-            )
+
+                function inner($first, $second) {
+                    $this.mainValue + $first + $second
+                }
+            }
 
             $newInstance = new-instance $className
             call $newInstance.outer 4 5 6 | Should BeExactly 22
         }
 
-            It "can invoke other methods in the object using the call alias with the `$this variable and passing variable arguments using @args" {
+        It "can invoke other methods in the object using the call alias with the `$this variable and passing variable arguments using @args" {
+
             $className = 'ClassClass24'
 
-            .(
-                __class $className {
-                    __property mainValue,7
-                    function outer {
-                        call $this.inner @args
-                    }
-
-                    function inner($first, $second, $third) {
-                        $this.mainValue + $first + $second + $third
-                    }
+            __class $className {
+                __property mainValue,7
+                function outer {
+                    call $this.inner @args
                 }
-            )
+
+                function inner($first, $second, $third) {
+                    $this.mainValue + $first + $second + $third
+                }
+            }
 
             $newInstance = new-instance $className
             call $newInstance.outer 4 5 6 | Should BeExactly 22
+        }
+    }
+
+    Context "When a class is composed with another class" {
+        __class Inner {
+            __property state,0
+            function __initialize($initState) {
+                $this.state = $initState
+            }
+
+            function Eval($base, $exponent) {
+                [Math]::Pow($base, $exponent) + $this.state
+            }
+        }
+
+        __class Outer {
+            __property evaluator
+            function __initialize($initialOffset) {
+                $this.evaluator = new-instance Inner $initialOffset
+            }
+
+            function getvalue($base, $exp) {
+                call $this.evaluator.Eval $base $exp
+            }
+        }
+
+        It "Should have instances that can call methods of one class fraom another class" {
+            $newInstance = new-instance Outer 5
+            call $newInstance.getvalue 2 3 | Should BeExactly 13
         }
     }
 
@@ -430,5 +426,4 @@ Describe "ClassDefinitionInterface" {
 
 
 }
-
 

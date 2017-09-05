@@ -175,7 +175,7 @@ function __add-typemember($memberType, $className, $memberName, $typeName, $init
 function __create-newclass([string] $className, [scriptblock] $scriptBlock) {
     add-class $className $scriptBlock
     $classData = __find-class $className
-    $classData['classDefinitionFunction'].scriptblock
+    (. $classData['classDefinitionFunction'].scriptblock) | out-null
 }
 
 set-alias __class __create-newclass
