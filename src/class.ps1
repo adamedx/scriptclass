@@ -14,15 +14,61 @@
 
 set-strictmode -version 2
 
-$__classTable = @{}
+class ObjectCallState {
+    $calls = @{}
+    $callIndex = 0
 
-function invoke-method($method) {
-    $thisVariable = [PSVariable]::new('this', $method.object)
-    $methodScript = $method.object.psobject.members[$method.methodName].script
-    $methodScript.invokeWithContext(@{}, $thisVariable, $args)
+    [string] PostObjectCall($object) {
+        $callId = "{0:x8}-{1}" -f $object.GetHashCode(), $this.callIndex
+        $this.callIndex += 1
+        if ( $this.calls[$callId] -ne $null ) {
+            throw "Unexpected collision in object state for id '$callId'"
+        }
+
+        $this.calls[$callId] = $object
+        return $callId
+    }
+
+    [object] RemoveObjectCall($callId) {
+        if ( $this.calls[$callId] -eq $null ) {
+            throw "Call Id '$callId' not found"
+        }
+
+        $object = $this.calls[$callId]
+        $this.calls.remove($callId) | out-null
+        return $object
+    }
 }
 
-set-alias call invoke-method
+$objectCalls = [ObjectCallState]::new()
+
+$__classTable = @{}
+
+function invoke-methodwithcontext($method) {
+    $methodScript = $method.object.psobject.members[$method.methodName].script
+    invoke-scriptwithcontext $methodScript $method.object @args
+}
+
+function invoke-scriptwithcontext($script, $objectContext) {
+    $thisVariable = [PSVariable]::new('this', $objectContext)
+    $functions = @{}
+    $objectContext.psobject.members | foreach {
+        #        if ( $_.membertype -eq 'ScriptMethod' -and $_.name -ne '__initialize') {
+        if ( $_.membertype -eq 'ScriptMethod' ) {
+            $functions[$_.name] = $_.value.script
+        }
+    }
+    $script.invokeWithContext($functions, $thisVariable, $args)
+}
+
+function methodfunction($method, $objectCallId) {
+    $object = $objectCalls.RemoveObjectCall($objectCallId)
+    invoke-methodwithcontext @{object=$object;methodName=$method} @args
+}
+
+function make-methodpropertyblock($method) {
+    [ScriptBlock]::Create("`$callId = `$script:objectCalls.PostObjectCall(`$this);[ScriptBlock]::Create(`"methodfunction '$method' `$callId @args`") ")
+}
 
 function add-class {
     param(
@@ -34,8 +80,6 @@ function add-class {
     try {
         __add-class $classData
         __add-typemember NoteProperty $className ScriptBlock $null $classBlock
-        $classInformation = __find-class $className
-        __add-classDefinitionFunction $classInformation $classBlock
     } catch {
         $typeData = get-typeData $className
 
@@ -66,7 +110,8 @@ function new-instance {
     $existingTypeData = get-typedata $className
 
     $newObject = $existingClass.prototype.psobject.copy()
-    (invoke-method @{object=$newObject;methodName='__initialize'} @args) | out-null
+
+    (invoke-methodwithcontext @{object=$newObject;methodName='__initialize'} @args) | out-null
     $newObject
 }
 
@@ -175,102 +220,107 @@ function __add-typemember($memberType, $className, $memberName, $typeName, $init
 function __create-newclass([string] $className, [scriptblock] $scriptBlock) {
     add-class $className $scriptBlock
     $classData = __find-class $className
-    $classData['classDefinitionFunction'].scriptblock
+    __define-class $classData.typedata | out-null
 }
 
 set-alias __class __create-newclass
 
-function __add-classDefinitionFunction($classData) {
-    if ( $classData['classDefinitionFunction'] -ne $null ) {
-        throw "Attempt to set a class function for class '$($classData.TypeData.TypeName)' which already has a class function"
+function __define-class($classData) {
+    $__typeName = $classData.TypeName
+    $__this =$null
+    $method = $null
+
+    $__thisClass = __find-class $__typeName
+    $methodPresent = ($method -ne $null) -and ($method.length -gt 0)
+
+    if ($__this -eq $null -and ! $methodpresent) {
+
+        if ($__thisClass.initialized) {
+            throw "Attempt to redefine class '$__typeName'"
+        }
+    } else {
+        throw "Not yet implemented"
     }
 
-    $classData['classDefinitionFunction'] = new-item "function:script:$($classData.TypeData.TypeName)" -value (__classDefinitionFunctionBlock $classData.TypeData)
-}
+    function __property ($arg1, $arg2 = $null) {
+        $propertyType = $null
+        $propertySpec = $arg2
+        $propertyName = $null
+        if ( $arg2 -eq $null ) {
+            $propertySpec = $arg1
+        } elseif ( $arg1 -match '\[\w+\]') {
+            $propertyType = iex $arg1
+        } else {
+            throw "Specified type '$arg1' was not of the form '[typename]'"
+        }
 
-function __classDefinitionFunctionBlock($classData) {
-    $__typeName = $classData.TypeName
-    $outputblock = {
-
-        $__this =$null
-        $method = $null
-
-        $__thisClass = __find-class $__typeName
-        $methodPresent = ($method -ne $null) -and ($method.length -gt 0)
-
-        if ($__this -eq $null -and ! $methodpresent) {
-
-            if ($__thisClass.initialized) {
-                throw "Attempt to redefine class '$__typeName'"
+        $propertyValue = $null
+        if ($propertySpec -is [Array]) {
+            if ($propertySpec.length -gt 2) {
+                throw "Specified property initializer for property '$($propertySpec[0])' was given $($ppropertySpec.length) values when only one is allowed"
+            }
+            $propertyName = $propertySpec[0]
+            if ($propertySpec.length -gt 1) {
+                $propertyValue = $propertySpec[1]
             }
         } else {
-            throw "Not yet implemented"
+            $propertyName = $propertySpec
         }
 
-        function __property ($arg1, $arg2 = $null) {
-            $propertyType = $null
-            $propertySpec = $arg2
-            $propertyName = $null
-            if ( $arg2 -eq $null ) {
-                $propertySpec = $arg1
-            } elseif ( $arg1 -match '\[\w+\]') {
-                $propertyType = iex $arg1
-            } else {
-                throw "Specified type '$arg1' was not of the form '[typename]'"
-            }
-
-            $propertyValue = $null
-            if ($propertySpec -is [Array]) {
-                if ($propertySpec.length -gt 2) {
-                    throw "Specified property initializer for property '$($propertySpec[0])' was given $($ppropertySpec.length) values when only one is allowed"
-                }
-                $propertyName = $propertySpec[0]
-                if ($propertySpec.length -gt 1) {
-                    $propertyValue = $propertySpec[1]
-                }
-            } else {
-                $propertyName = $propertySpec
-            }
-
-            __add-typemember NoteProperty $__thisClass.typeData.TypeName $propertyName $propertyType $propertyValue
-        }
-        function __initialize {}
-
-        $__thisClass.initialized = $true
-
-        $initialFunctions = ls function:*
-        $result = try {
-            . $__thisClass.typedata.members.ScriptBlock.value
-        } catch {
-            $badClassData = get-typedata $__typeName
-            $badClassData | remove-typedata
-            throw $_.Exception
-        }
-        $nextFunctions = ls function:*
-
-        $additionalFunctions = @()
-        $allowedInternalFunctions = @('__initialize')
-        $nextFunctions | foreach {
-
-            if ($allowedInternalFunctions -contains $_) {
-                __add-typemember ScriptMethod $__thisClass.typeData.TypeName $_.Name $null $_.scriptblock
-            } elseif ($initialFunctions -notcontains $_) {
-                $additionalFunctions += $_
-            }
-        }
-
-        $additionalFunctions | foreach {
-            $realMethod = "_$($_.Name)"
-            __add-typemember ScriptMethod $__thisClass.typeData.TypeName $realMethod $null $_.scriptblock
-            __add-typemember ScriptProperty $__thisClass.typeData.TypeName $_.Name $null ([ScriptBlock]::Create("@{object=`$this;methodName='$realMethod'}"))
-
-        }
-
-        $result
+        __add-typemember NoteProperty $__thisClass.typeData.TypeName $propertyName $propertyType $propertyValue
     }
 
-    $blockString = $outputblock.tostring()
-    $newstring = $blockstring.replace('$__typeName',$__typeName)
-    [ScriptBlock]::Create($newString)
+    $__thisClass.initialized = $true
+    function __initialize {}
+    $initialFunctions = ls function:*
+    try {
+        . $__thisClass.typedata.members.ScriptBlock.value | out-null
+    } catch {
+        $badClassData = get-typedata $__typeName
+        $badClassData | remove-typedata
+        throw $_.Exception
+    }
+
+    $nextFunctions = ls function:*
+
+    $additionalFunctions = @()
+
+    $allowedInternalFunctions = @('__initialize')
+    $nextFunctions | foreach {
+        if ( $allowedInternalFunctions -contains $_ -or $initialFunctions -notcontains $_) {
+            __add-typemember ScriptMethod $__thisClass.typeData.TypeName $_.Name $null $_.scriptblock
+        }
+    }
 }
 
+function with($context = $null, $action) {
+    $result = $null
+
+    if ($context -eq $null) {
+        throw "Invalid context -- context may not be $null"
+    }
+
+    $object = $context
+
+    if (! ($context -is [PSCustomObject])) {
+        $object = [PSCustomObject] $context
+
+        if (! ($context -is [PSCustomObject])) {
+            throw "Specified context is not compatible with [PSCustomObject]"
+        }
+    }
+
+    if ($action -is [string]) {
+        $result = __invoke-method $object $action @args
+    } elseif ($action -is [ScriptBlock]) {
+        $result = invoke-scriptwithcontext $action $object @args
+    } else {
+        throw "Invalid action type '$($action.gettype())'. Either a method name of type [string] or a scriptblock of type [ScriptBlock] must be supplied to 'with'"
+    }
+
+    $result
+}
+
+function __invoke-method($object, $method) {
+    invoke-methodwithcontext @{object=$object;methodName=$method} @args
+}
