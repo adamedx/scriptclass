@@ -45,19 +45,9 @@ Describe "ClassDefinitionInterface" {
     }
 
     Context "When declaring a class with __class" {
-       It "succeeds when using the __class alias" {
+        It "succeeds when using the __class alias" {
             $result = __class ClassClass1 {}
             $result | Should BeExactly $null
-       }
-
-        It "defines a class function with the name of the class" {
-            $className = "ClassClass2"
-            __class $className {} | out-null
-            test-path "function:script:$className" | Should BeExactly $true
-        }
-
-        It "defines a class function that can be successfully executed" {
-           { __class ClassClass3 { } } | Should Not Throw
         }
 
         It "allows the user to define a property on the class" {

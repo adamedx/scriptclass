@@ -84,8 +84,6 @@ function add-class {
     try {
         __add-class $classData
         __add-typemember NoteProperty $className ScriptBlock $null $classBlock
-        $classInformation = __find-class $className
-        __add-classDefinitionFunction $classInformation $classBlock
     } catch {
         $typeData = get-typeData $className
 
@@ -225,102 +223,86 @@ function __add-typemember($memberType, $className, $memberName, $typeName, $init
 function __create-newclass([string] $className, [scriptblock] $scriptBlock) {
     add-class $className $scriptBlock
     $classData = __find-class $className
-    (. $classData['classDefinitionFunction'].scriptblock) | out-null
+    __define-class $classData.typedata | out-null
 }
 
 set-alias __class __create-newclass
 
-function __add-classDefinitionFunction($classData) {
-    if ( $classData['classDefinitionFunction'] -ne $null ) {
-        throw "Attempt to set a class function for class '$($classData.TypeData.TypeName)' which already has a class function"
+function __define-class($classData) {
+    $__typeName = $classData.TypeName
+    $__this =$null
+    $method = $null
+
+    $__thisClass = __find-class $__typeName
+    $methodPresent = ($method -ne $null) -and ($method.length -gt 0)
+
+    if ($__this -eq $null -and ! $methodpresent) {
+
+        if ($__thisClass.initialized) {
+            throw "Attempt to redefine class '$__typeName'"
+        }
+    } else {
+        throw "Not yet implemented"
     }
 
-    $classData['classDefinitionFunction'] = new-item "function:script:$($classData.TypeData.TypeName)" -value (__classDefinitionFunctionBlock $classData.TypeData)
-}
+    function __property ($arg1, $arg2 = $null) {
+        $propertyType = $null
+        $propertySpec = $arg2
+        $propertyName = $null
+        if ( $arg2 -eq $null ) {
+            $propertySpec = $arg1
+        } elseif ( $arg1 -match '\[\w+\]') {
+            $propertyType = iex $arg1
+        } else {
+            throw "Specified type '$arg1' was not of the form '[typename]'"
+        }
 
-
-function __classDefinitionFunctionBlock($classData) {
-    $__typeName = $classData.TypeName
-    $outputblock = {
-
-        $__this =$null
-        $method = $null
-
-        $__thisClass = __find-class $__typeName
-        $methodPresent = ($method -ne $null) -and ($method.length -gt 0)
-
-        if ($__this -eq $null -and ! $methodpresent) {
-
-            if ($__thisClass.initialized) {
-                throw "Attempt to redefine class '$__typeName'"
+        $propertyValue = $null
+        if ($propertySpec -is [Array]) {
+            if ($propertySpec.length -gt 2) {
+                throw "Specified property initializer for property '$($propertySpec[0])' was given $($ppropertySpec.length) values when only one is allowed"
+            }
+            $propertyName = $propertySpec[0]
+            if ($propertySpec.length -gt 1) {
+                $propertyValue = $propertySpec[1]
             }
         } else {
-            throw "Not yet implemented"
+            $propertyName = $propertySpec
         }
 
-        function __property ($arg1, $arg2 = $null) {
-            $propertyType = $null
-            $propertySpec = $arg2
-            $propertyName = $null
-            if ( $arg2 -eq $null ) {
-                $propertySpec = $arg1
-            } elseif ( $arg1 -match '\[\w+\]') {
-                $propertyType = iex $arg1
-            } else {
-                throw "Specified type '$arg1' was not of the form '[typename]'"
-            }
+        __add-typemember NoteProperty $__thisClass.typeData.TypeName $propertyName $propertyType $propertyValue
+    }
+    function __initialize {}
 
-            $propertyValue = $null
-            if ($propertySpec -is [Array]) {
-                if ($propertySpec.length -gt 2) {
-                    throw "Specified property initializer for property '$($propertySpec[0])' was given $($ppropertySpec.length) values when only one is allowed"
-                }
-                $propertyName = $propertySpec[0]
-                if ($propertySpec.length -gt 1) {
-                    $propertyValue = $propertySpec[1]
-                }
-            } else {
-                $propertyName = $propertySpec
-            }
+    $__thisClass.initialized = $true
 
-            __add-typemember NoteProperty $__thisClass.typeData.TypeName $propertyName $propertyType $propertyValue
+    $initialFunctions = ls function:*
+    $result = try {
+        . $__thisClass.typedata.members.ScriptBlock.value
+    } catch {
+        $badClassData = get-typedata $__typeName
+        $badClassData | remove-typedata
+        throw $_.Exception
+    }
+    $nextFunctions = ls function:*
+
+    $additionalFunctions = @()
+    $allowedInternalFunctions = @('__initialize')
+    $nextFunctions | foreach {
+
+        if ($allowedInternalFunctions -contains $_) {
+            __add-typemember ScriptMethod $__thisClass.typeData.TypeName $_.Name $null $_.scriptblock
+        } elseif ($initialFunctions -notcontains $_) {
+            $additionalFunctions += $_
         }
-        function __initialize {}
-
-        $__thisClass.initialized = $true
-
-        $initialFunctions = ls function:*
-        $result = try {
-            . $__thisClass.typedata.members.ScriptBlock.value
-        } catch {
-            $badClassData = get-typedata $__typeName
-            $badClassData | remove-typedata
-            throw $_.Exception
-        }
-        $nextFunctions = ls function:*
-
-        $additionalFunctions = @()
-        $allowedInternalFunctions = @('__initialize')
-        $nextFunctions | foreach {
-
-            if ($allowedInternalFunctions -contains $_) {
-                __add-typemember ScriptMethod $__thisClass.typeData.TypeName $_.Name $null $_.scriptblock
-            } elseif ($initialFunctions -notcontains $_) {
-                $additionalFunctions += $_
-            }
-        }
-
-        $additionalFunctions | foreach {
-            $realMethod = "_$($_.Name)"
-            __add-typemember ScriptMethod $__thisClass.typeData.TypeName $realMethod $null $_.scriptblock
-            __add-typemember ScriptProperty $__thisClass.typeData.TypeName $_.Name $null (make-methodpropertyblock $realMethod)
-        }
-
-        $result
     }
 
-    $blockString = $outputblock.tostring()
-    $newstring = $blockstring.replace('$__typeName',$__typeName)
-    [ScriptBlock]::Create($newString)
+    $additionalFunctions | foreach {
+        $realMethod = "_$($_.Name)"
+        __add-typemember ScriptMethod $__thisClass.typeData.TypeName $realMethod $null $_.scriptblock
+        __add-typemember ScriptProperty $__thisClass.typeData.TypeName $_.Name $null (make-methodpropertyblock $realMethod)
+    }
+
+    $result
 }
 
