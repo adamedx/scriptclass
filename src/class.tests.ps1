@@ -223,7 +223,7 @@ Describe "ClassDefinitionInterface" {
         }
     }
 
-    Context "When new-instance is used to create a new instance of a lass" {
+    Context "When new-instance is used to create a new instance of a class" {
         It "calls the specified initializer function on the new object" {
             $className = 'ClassClass25'
             $initialStateValue = 3
@@ -264,7 +264,7 @@ Describe "ClassDefinitionInterface" {
             __class $className {
                 __property objectState
                 function __initialize($arg1, $arg2) {
-                    call $this.sum $arg1 $arg2
+                    . $this.sum $arg1 $arg2
                 }
 
                 function sum($first, $second) {
@@ -285,7 +285,7 @@ Describe "ClassDefinitionInterface" {
 
             __class $className {
                 function outer {
-                    call $this.inner
+                    . $this.inner
                 }
 
                 function inner {
@@ -294,7 +294,7 @@ Describe "ClassDefinitionInterface" {
             }
 
             $newInstance = new-instance $className
-            call $newInstance.outer | Should BeExactly 'nested'
+            ( . $newInstance.outer ) | Should BeExactly 'nested'
         }
 
         It "can invoke other methods in the object that return properties referenced from the `$this variable" {
@@ -304,7 +304,7 @@ Describe "ClassDefinitionInterface" {
             __class $className {
                 __property objectState,'nestedthis'
                 function outer {
-                    call $this.inner
+                    . $this.inner
                 }
 
                 function inner {
@@ -314,7 +314,7 @@ Describe "ClassDefinitionInterface" {
 
             $newInstance = new-instance $className
 
-            call $newInstance.outer | Should BeExactly $nestedThisResult
+            ( . $newInstance.outer ) | Should BeExactly $nestedThisResult
         }
 
         It "can take multiple arguments and invoke other methods in the object that take multiple arguments and return results using properties referenced from the `$this variable" {
@@ -402,7 +402,7 @@ Describe "ClassDefinitionInterface" {
             }
         }
 
-        It "Should have instances that can call methods of one class fraom another class" {
+        It "Should have instances that can call methods of one class from another class" {
             $newInstance = new-instance Outer 5
             call $newInstance.getvalue 2 3 | Should BeExactly 13
         }

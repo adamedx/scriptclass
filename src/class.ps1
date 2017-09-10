@@ -14,15 +14,65 @@
 
 set-strictmode -version 2
 
-$__classTable = @{}
+class ObjectCallState {
+    $calls = @{}
+    $callIndex = 0
 
-function invoke-method($method) {
-    $thisVariable = [PSVariable]::new('this', $method.object)
-    $methodScript = $method.object.psobject.members[$method.methodName].script
-    $methodScript.invokeWithContext(@{}, $thisVariable, $args)
+    [string] PostObjectCall($object) {
+        $callId = "{0:x8}-{1}" -f $object.GetHashCode(), $this.callIndex
+        $this.callIndex += 1
+        if ( $this.calls[$callId] -ne $null ) {
+            throw "Unexpected collision in object state for id '$callId'"
+        }
+
+        $this.calls[$callId] = $object
+        return $callId
+    }
+
+    [object] RemoveObjectCall($callId) {
+        if ( $this.calls[$callId] -eq $null ) {
+            throw "Call Id '$callId' not found"
+        }
+
+        $object = $this.calls[$callId]
+        $this.calls.remove($callId) | out-null
+        return $object
+    }
 }
 
-set-alias call invoke-method
+$objectCalls = [ObjectCallState]::new()
+
+$__classTable = @{}
+
+function invoke-methodwithcontext($method, $scriptContext) {
+    $thisVariable = [PSVariable]::new('this', $method.object)
+    $methodScript = $method.object.psobject.members[$method.methodName].script
+
+    $functions = @{__property={}}
+    $method.object.psobject.members | foreach {
+        if ( $_.membertype -eq 'ScriptMethod' -and $_.name -ne '__initialize') {
+            $functions[$_.name.substring(1, $_.name.length -1)] = $_.value.script
+        }
+    }
+    $methodScript.invokeWithContext($functions, $thisVariable, $args)
+}
+
+
+function __call-block($block) {
+    . $block @args
+}
+
+set-alias call __call-block
+
+function methodfunction($method, $objectCallId) {
+    $object = $objectCalls.RemoveObjectCall($objectCallId)
+    $scriptblock = $object.psobject.members['ScriptBlock'].value
+    invoke-methodwithcontext @{object=$object;methodName=$method} $scriptblock @args
+}
+
+function make-methodpropertyblock($method) {
+    [ScriptBlock]::Create("`$callId = `$script:objectCalls.PostObjectCall(`$this);[ScriptBlock]::Create(`"methodfunction '$method' `$callId @args`") ")
+}
 
 function add-class {
     param(
@@ -66,7 +116,7 @@ function new-instance {
     $existingTypeData = get-typedata $className
 
     $newObject = $existingClass.prototype.psobject.copy()
-    (invoke-method @{object=$newObject;methodName='__initialize'} @args) | out-null
+    (invoke-methodwithcontext @{object=$newObject;methodName='__initialize'} $newObject.psobject.members['ScriptBlock'] @args) | out-null
     $newObject
 }
 
@@ -188,6 +238,7 @@ function __add-classDefinitionFunction($classData) {
     $classData['classDefinitionFunction'] = new-item "function:script:$($classData.TypeData.TypeName)" -value (__classDefinitionFunctionBlock $classData.TypeData)
 }
 
+
 function __classDefinitionFunctionBlock($classData) {
     $__typeName = $classData.TypeName
     $outputblock = {
@@ -262,8 +313,7 @@ function __classDefinitionFunctionBlock($classData) {
         $additionalFunctions | foreach {
             $realMethod = "_$($_.Name)"
             __add-typemember ScriptMethod $__thisClass.typeData.TypeName $realMethod $null $_.scriptblock
-            __add-typemember ScriptProperty $__thisClass.typeData.TypeName $_.Name $null ([ScriptBlock]::Create("@{object=`$this;methodName='$realMethod'}"))
-
+            __add-typemember ScriptProperty $__thisClass.typeData.TypeName $_.Name $null (make-methodpropertyblock $realMethod)
         }
 
         $result
