@@ -44,19 +44,21 @@ $objectCalls = [ObjectCallState]::new()
 
 $__classTable = @{}
 
-function invoke-methodwithcontext($method, $scriptContext) {
-    $thisVariable = [PSVariable]::new('this', $method.object)
+function invoke-methodwithcontext($method) {
     $methodScript = $method.object.psobject.members[$method.methodName].script
+    invoke-scriptwithcontext $methodScript $method.object @args
+}
 
-    $functions = @{__property={}}
-    $method.object.psobject.members | foreach {
+function invoke-scriptwithcontext($script, $objectContext) {
+    $thisVariable = [PSVariable]::new('this', $objectContext)
+    $functions = @{}
+    $objectContext.psobject.members | foreach {
         if ( $_.membertype -eq 'ScriptMethod' -and $_.name -ne '__initialize') {
             $functions[$_.name.substring(1, $_.name.length -1)] = $_.value.script
         }
     }
-    $methodScript.invokeWithContext($functions, $thisVariable, $args)
+    $script.invokeWithContext($functions, $thisVariable, $args)
 }
-
 
 function __call-block($block) {
     . $block @args
@@ -66,8 +68,7 @@ set-alias call __call-block
 
 function methodfunction($method, $objectCallId) {
     $object = $objectCalls.RemoveObjectCall($objectCallId)
-    $scriptblock = $object.psobject.members['ScriptBlock'].value
-    invoke-methodwithcontext @{object=$object;methodName=$method} $scriptblock @args
+    invoke-methodwithcontext @{object=$object;methodName=$method} @args
 }
 
 function make-methodpropertyblock($method) {
@@ -114,7 +115,7 @@ function new-instance {
     $existingTypeData = get-typedata $className
 
     $newObject = $existingClass.prototype.psobject.copy()
-    (invoke-methodwithcontext @{object=$newObject;methodName='__initialize'} $newObject.psobject.members['ScriptBlock'] @args) | out-null
+    (invoke-methodwithcontext @{object=$newObject;methodName='__initialize'} @args) | out-null
     $newObject
 }
 
