@@ -14,34 +14,6 @@
 
 set-strictmode -version 2
 
-class ObjectCallState {
-    $calls = @{}
-    $callIndex = 0
-
-    [string] PostObjectCall($object) {
-        $callId = "{0:x8}-{1}" -f $object.GetHashCode(), $this.callIndex
-        $this.callIndex += 1
-        if ( $this.calls[$callId] -ne $null ) {
-            throw "Unexpected collision in object state for id '$callId'"
-        }
-
-        $this.calls[$callId] = $object
-        return $callId
-    }
-
-    [object] RemoveObjectCall($callId) {
-        if ( $this.calls[$callId] -eq $null ) {
-            throw "Call Id '$callId' not found"
-        }
-
-        $object = $this.calls[$callId]
-        $this.calls.remove($callId) | out-null
-        return $object
-    }
-}
-
-$objectCalls = [ObjectCallState]::new()
-
 $__classTable = @{}
 
 function invoke-methodwithcontext($method) {
@@ -59,15 +31,6 @@ function invoke-scriptwithcontext($script, $objectContext) {
         }
     }
     $script.invokeWithContext($functions, $thisVariable, $args)
-}
-
-function methodfunction($method, $objectCallId) {
-    $object = $objectCalls.RemoveObjectCall($objectCallId)
-    invoke-methodwithcontext @{object=$object;methodName=$method} @args
-}
-
-function make-methodpropertyblock($method) {
-    [ScriptBlock]::Create("`$callId = `$script:objectCalls.PostObjectCall(`$this);[ScriptBlock]::Create(`"methodfunction '$method' `$callId @args`") ")
 }
 
 function add-class {
@@ -223,7 +186,35 @@ function __create-newclass([string] $className, [scriptblock] $scriptBlock) {
     __define-class $classData.typedata | out-null
 }
 
-set-alias __class __create-newclass
+set-alias ScriptClass __create-newclass
+
+function =>($method) {
+    if ($method -eq $null) {
+        throw "A method must be specified"
+    }
+
+    $objects = @()
+
+    $input | foreach {
+       $objects += $_
+    }
+
+    if ( $objects.length -lt 1) {
+        throw "Pipeline must have at least 1 object for $($myinvocation.mycommand.name)"
+    }
+
+    $methodargs = $args
+    $results = @()
+    $objects | foreach {
+        $results += (with $_ $method @methodargs)
+    }
+
+    if ( $results.length -eq 1) {
+        $results[0]
+    } else {
+        $results
+    }
+}
 
 function __define-class($classData) {
     $__typeName = $classData.TypeName
@@ -293,7 +284,8 @@ function __define-class($classData) {
     }
 }
 
-function with($context = $null, $action) {
+function with($context = $null, $do) {
+    $action = $do
     $result = $null
 
     if ($context -eq $null) {
