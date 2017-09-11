@@ -53,23 +53,13 @@ function invoke-scriptwithcontext($script, $objectContext) {
     $thisVariable = [PSVariable]::new('this', $objectContext)
     $functions = @{}
     $objectContext.psobject.members | foreach {
-        if ( $_.membertype -eq 'ScriptMethod' -and $_.name -ne '__initialize') {
-            $startoffset = if ( $_.name.startswith('_') ) {
-                1
-            } else {
-                0
-            }
-            $functions[$_.name.substring($startoffset, $_.name.length - $startoffset)] = $_.value.script
+        #        if ( $_.membertype -eq 'ScriptMethod' -and $_.name -ne '__initialize') {
+        if ( $_.membertype -eq 'ScriptMethod' ) {
+            $functions[$_.name] = $_.value.script
         }
     }
     $script.invokeWithContext($functions, $thisVariable, $args)
 }
-
-function __call-block($block) {
-    . $block @args
-}
-
-set-alias call __call-block
 
 function methodfunction($method, $objectCallId) {
     $object = $objectCalls.RemoveObjectCall($objectCallId)
@@ -120,6 +110,7 @@ function new-instance {
     $existingTypeData = get-typedata $className
 
     $newObject = $existingClass.prototype.psobject.copy()
+
     (invoke-methodwithcontext @{object=$newObject;methodName='__initialize'} @args) | out-null
     $newObject
 }
@@ -278,38 +269,28 @@ function __define-class($classData) {
 
         __add-typemember NoteProperty $__thisClass.typeData.TypeName $propertyName $propertyType $propertyValue
     }
-    function __initialize {}
 
     $__thisClass.initialized = $true
-
+    function __initialize {}
     $initialFunctions = ls function:*
-    $result = try {
-        . $__thisClass.typedata.members.ScriptBlock.value
+    try {
+        . $__thisClass.typedata.members.ScriptBlock.value | out-null
     } catch {
         $badClassData = get-typedata $__typeName
         $badClassData | remove-typedata
         throw $_.Exception
     }
+
     $nextFunctions = ls function:*
 
     $additionalFunctions = @()
+
     $allowedInternalFunctions = @('__initialize')
     $nextFunctions | foreach {
-
-        if ($allowedInternalFunctions -contains $_) {
+        if ( $allowedInternalFunctions -contains $_ -or $initialFunctions -notcontains $_) {
             __add-typemember ScriptMethod $__thisClass.typeData.TypeName $_.Name $null $_.scriptblock
-        } elseif ($initialFunctions -notcontains $_) {
-            $additionalFunctions += $_
         }
     }
-
-    $additionalFunctions | foreach {
-        $realMethod = "_$($_.Name)"
-        __add-typemember ScriptMethod $__thisClass.typeData.TypeName $realMethod $null $_.scriptblock
-        __add-typemember ScriptProperty $__thisClass.typeData.TypeName $_.Name $null (make-methodpropertyblock $realMethod)
-    }
-
-    $result
 }
 
 function with($context = $null, $action) {
@@ -340,15 +321,6 @@ function with($context = $null, $action) {
     $result
 }
 
-function methodNameToImplementation($object, $methodName) {
-    if ($object.psobject.members['ScriptBlock'] -ne $null) {
-        "_$methodName"
-    } else {
-        $methodName
-    }
-}
-
 function __invoke-method($object, $method) {
-    $methodName = methodNameToImplementation $object $method
-    invoke-methodwithcontext @{object=$object;methodName=$methodName}  @args
+    invoke-methodwithcontext @{object=$object;methodName=$method} @args
 }

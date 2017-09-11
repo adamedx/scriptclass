@@ -167,8 +167,8 @@ Describe "ClassDefinitionInterface" {
 
             ($newInstance.psobject.members | select Name).name -contains $function1 | Should BeExactly $true
             ($newInstance.psobject.members | select Name).name -contains $function2 | Should BeExactly $true
-            call $newInstance.$function1 | Should BeExactly $function1Result
-            call $newInstance.$function2 4 5 | Should BeExactly 9
+            with $newInstance $function1 | Should BeExactly $function1Result
+            with $newInstance $function2 4 5 | Should BeExactly 9
         }
 
 
@@ -185,7 +185,7 @@ Describe "ClassDefinitionInterface" {
             }
 
             $newInstance = new-instance $className
-            call $newInstance.showme | should BeExactly $identityResult
+            with $newInstance showme | should BeExactly $identityResult
         }
 
         It "throws an exception in class definition if a typed property of the class is initialized with a value of an incompatible type" {
@@ -254,7 +254,7 @@ Describe "ClassDefinitionInterface" {
             __class $className {
                 __property objectState
                 function __initialize($arg1, $arg2) {
-                    . $this.sum $arg1 $arg2
+                    with $this sum $arg1 $arg2
                 }
 
                 function sum($first, $second) {
@@ -275,7 +275,7 @@ Describe "ClassDefinitionInterface" {
 
             __class $className {
                 function outer {
-                    . $this.inner
+                    with $this inner
                 }
 
                 function inner {
@@ -284,7 +284,7 @@ Describe "ClassDefinitionInterface" {
             }
 
             $newInstance = new-instance $className
-            ( . $newInstance.outer ) | Should BeExactly 'nested'
+             with $newInstance outer | Should BeExactly 'nested'
         }
 
         It "can invoke other methods in the object that return properties referenced from the `$this variable" {
@@ -294,7 +294,7 @@ Describe "ClassDefinitionInterface" {
             __class $className {
                 __property objectState,'nestedthis'
                 function outer {
-                    . $this.inner
+                    with $this inner
                 }
 
                 function inner {
@@ -304,7 +304,7 @@ Describe "ClassDefinitionInterface" {
 
             $newInstance = new-instance $className
 
-            ( . $newInstance.outer ) | Should BeExactly $nestedThisResult
+            with $newInstance outer | Should BeExactly $nestedThisResult
         }
 
         It "can take multiple arguments and invoke other methods in the object that take multiple arguments and return results using properties referenced from the `$this variable" {
@@ -317,7 +317,7 @@ Describe "ClassDefinitionInterface" {
                 __property innerBracket, '('
                 __property innerBracketRight, ')'
                 function sum($arg1, $arg2, $arg3, $arg4) {
-                    $inner = call $this.product $arg3 $arg4
+                    $inner = with $this product $arg3 $arg4
                     "$($this.outerBracket)$arg1 + $inner + $($arg2)$($this.outerBracketRight)"
                 }
 
@@ -328,16 +328,16 @@ Describe "ClassDefinitionInterface" {
 
             $newInstance = new-instance $className
 
-            call $newInstance.sum 1 2 3 4 | Should BeExactly $bracketResult
+            with $newInstance sum 1 2 3 4 | Should BeExactly $bracketResult
         }
 
-        It "can invoke other methods in the object using the call alias with the `$this variable" {
+        It "can invoke other methods in the object using 'with' with the `$this variable" {
             $className = 'ClassClass23'
 
             __class $className {
                 __property mainValue,7
                 function outer($arg1, $arg2, $arg3) {
-                    call $this.inner $arg3 ($arg1 + $arg2)
+                    with $this inner $arg3 ($arg1 + $arg2)
                 }
 
                 function inner($first, $second) {
@@ -346,7 +346,7 @@ Describe "ClassDefinitionInterface" {
             }
 
             $newInstance = new-instance $className
-            call $newInstance.outer 4 5 6 | Should BeExactly 22
+            with $newInstance outer 4 5 6 | Should BeExactly 22
         }
 
         It "can invoke other methods in the object using the call alias with the `$this variable and passing variable arguments using @args" {
@@ -356,7 +356,7 @@ Describe "ClassDefinitionInterface" {
             __class $className {
                 __property mainValue,7
                 function outer {
-                    call $this.inner @args
+                    with $this inner @args
                 }
 
                 function inner($first, $second, $third) {
@@ -365,7 +365,7 @@ Describe "ClassDefinitionInterface" {
             }
 
             $newInstance = new-instance $className
-            call $newInstance.outer 4 5 6 | Should BeExactly 22
+            with $newInstance outer 4 5 6 | Should BeExactly 22
         }
     }
 
@@ -388,13 +388,13 @@ Describe "ClassDefinitionInterface" {
             }
 
             function getvalue($base, $exp) {
-                call $this.evaluator.Eval $base $exp
+                with $this.evaluator Eval $base $exp
             }
         }
 
         It "Should have instances that can call methods of one class from another class" {
             $newInstance = new-instance Outer 5
-            call $newInstance.getvalue 2 3 | Should BeExactly 13
+            with $newInstance getvalue 2 3 | Should BeExactly 13
         }
     }
 
@@ -422,7 +422,7 @@ Describe "'with' function for object-based command context" {
         __class $className {
             __property mainValue,7
             function outer {
-                call $this.inner @args
+                with $this inner @args
             }
 
             function inner($first, $second, $third) {
