@@ -54,7 +54,12 @@ function invoke-scriptwithcontext($script, $objectContext) {
     $functions = @{}
     $objectContext.psobject.members | foreach {
         if ( $_.membertype -eq 'ScriptMethod' -and $_.name -ne '__initialize') {
-            $functions[$_.name.substring(1, $_.name.length -1)] = $_.value.script
+            $startoffset = if ( $_.name.startswith('_') ) {
+                1
+            } else {
+                0
+            }
+            $functions[$_.name.substring($startoffset, $_.name.length - $startoffset)] = $_.value.script
         }
     }
     $script.invokeWithContext($functions, $thisVariable, $args)
@@ -307,3 +312,43 @@ function __define-class($classData) {
     $result
 }
 
+function with($context = $null, $action) {
+    $result = $null
+
+    if ($context -eq $null) {
+        throw "Invalid context -- context may not be $null"
+    }
+
+    $object = $context
+
+    if (! ($context -is [PSCustomObject])) {
+        $object = [PSCustomObject] $context
+
+        if (! ($context -is [PSCustomObject])) {
+            throw "Specified context is not compatible with [PSCustomObject]"
+        }
+    }
+
+    if ($action -is [string]) {
+        $result = __invoke-method $object $action @args
+    } elseif ($action -is [ScriptBlock]) {
+        $result = invoke-scriptwithcontext $action $object @args
+    } else {
+        throw "Invalid action type '$($action.gettype())'. Either a method name of type [string] or a scriptblock of type [ScriptBlock] must be supplied to 'with'"
+    }
+
+    $result
+}
+
+function methodNameToImplementation($object, $methodName) {
+    if ($object.psobject.members['ScriptBlock'] -ne $null) {
+        "_$methodName"
+    } else {
+        $methodName
+    }
+}
+
+function __invoke-method($object, $method) {
+    $methodName = methodNameToImplementation $object $method
+    invoke-methodwithcontext @{object=$object;methodName=$methodName}  @args
+}

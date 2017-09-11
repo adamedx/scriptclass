@@ -413,7 +413,108 @@ Describe "ClassDefinitionInterface" {
             { get-class ClassDoesNotExist } | Should Throw
         }
     }
-
-
 }
 
+Describe "'with' function for object-based command context" {
+    Context "When invoking an object's method through with" {
+        $className = 'ClassClass32'
+
+        __class $className {
+            __property mainValue,7
+            function outer {
+                call $this.inner @args
+            }
+
+            function inner($first, $second, $third) {
+                $this.mainValue + $first + $second + $third
+            }
+
+            function singlearg($first) {
+                $this.mainValue + $first
+            }
+        }
+
+        $newInstance = new-instance $className
+
+        It "throws an exception if a null object is specified" {
+            { with $null inner } | Should Throw
+        }
+
+        It "throws an exception if a non-string or non-scriptblock type is passed as the action" {
+           { with $newInstance 3.0 } | Should Throw
+        }
+
+        It "throws an exception the context object is of a type cannot be cast as a PSCustomObject" {
+            { with 3 'tostring' } | Should Throw
+        }
+
+        It "successfully executes a method that takes no arguments" {
+            with $newInstance outer | Should BeExactly 7
+        }
+
+        It "successfully executes a method that takes 1 argument" {
+            with $newInstance singlearg 4 | Should BeExactly 11
+        }
+
+        It "successfully executes a method that takes more than one argument" {
+            with $newInstance outer 5 6 7 | Should BeExactly 25
+        }
+
+        It "throws an exception if a non-existent method for the object is specified" {
+            { with $newInstance idontexist } | Should Throw
+        }
+
+        It "successfully executes a block that takes no arguments" {
+            with $newInstance {$this.mainValue} | Should BeExactly 7
+        }
+
+        It "successfully executes a block that takes at least one argument" {
+            with $newInstance {$this.mainValue + $args[0]} 2 | Should BeExactly 9
+        }
+
+        It "successfully executes a block that uses a method like a function" {
+            with $newInstance { outer 10 20 30 } | Should BeExactly 67
+        }
+
+        It "successfully executes a block that uses a method like a function and passes arguments to it through @args" {
+            with $newInstance { outer @args } 10 20 40 | Should BeExactly 77
+        }
+    }
+
+    Context "When invoking an pscustomobject's method through with" {
+        $newInstance = [PSCustomObject]@{first=1;second=2;third=3}
+        $summethod = @{name='sum';memberType='ScriptMethod';value={$this.first + $this.second + $this.third}}
+        $addmethod = @{name='add';memberType='ScriptMethod';value={param($firstarg, $secondarg) $firstarg + $secondarg}}
+        $addtomethod = @{name='addto';memberType='ScriptMethod';value={param($firstarg) $this.sum() + $firstarg}}
+
+        $newInstance | add-member @summethod
+        $newInstance | add-member @addmethod
+        $newInstance | add-member @addtomethod
+
+        It "successfully executes a method that takes no arguments" {
+            with $newInstance { sum } | Should BeExactly 6
+        }
+
+        It "successfully executes a method that takes 1 argument" {
+            with $newInstance { addto 10 } Should Be Exactly 16
+        }
+
+        It "successfully executes a method that takes more than one argument" {
+            with $newInstance { add 5 7 } Should Be Exactly 12
+        }
+
+        It "raises an exception if a non-existent method for the object is specified" {
+            { with $newInstance { run } } | Should Throw
+        }
+
+        It "successfully executes a block that takes no arguments" {
+           with $newInstance { $this.first } | Should BeExactly 1
+        }
+
+        It "successfully executes a block that takes at least one argument" {
+            with $newInstance { add @args } 4 6 | Should BeExactly 10
+            with $newInstance { addto @args } 7 | Should BeExactly 13
+        }
+    }
+
+}
