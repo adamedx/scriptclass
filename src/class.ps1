@@ -25,7 +25,6 @@ function invoke-scriptwithcontext($script, $objectContext) {
     $thisVariable = [PSVariable]::new('this', $objectContext)
     $functions = @{}
     $objectContext.psobject.members | foreach {
-        #        if ( $_.membertype -eq 'ScriptMethod' -and $_.name -ne '__initialize') {
         if ( $_.membertype -eq 'ScriptMethod' ) {
             $functions[$_.name] = $_.value.script
         }
@@ -111,7 +110,7 @@ function __add-class([Hashtable]$classData) {
     $typeSystemData = get-typedata $classname
 
     $prototype = [PSCustomObject]@{PSTypeName=$className}
-    $__classTable[$className] = @{members=@{PSTypeName=$className};typedata=$typeSystemData;initialized=$false;prototype=$prototype}
+    $__classTable[$className] = @{typedata=$typeSystemData;initialized=$false;prototype=$prototype}
 }
 
 function __add-member($prototype, $memberName, $psMemberType, $memberValue, $memberType = $null, $memberSecondValue = $null, $force = $false) {
@@ -134,7 +133,7 @@ function __add-typemember($memberType, $className, $memberName, $typeName, $init
 
     $classData = __find-class $className
 
-    $memberExists = $classData.members.keys -contains $memberName
+    $memberExists = $classData.typedata.members.keys -contains $memberName
 
     if ($memberName -eq $null ) {
         throw 'A $null member name was specified'
@@ -144,10 +143,9 @@ function __add-typemember($memberType, $className, $memberName, $typeName, $init
         throw "Member '$memberName' already exists for type '$className'"
     }
 
-    $defaultDisplay = @(0..$classData.members.keys.count)
-    $classData.members.keys.copyto($defaultDisplay, 0)
+    $defaultDisplay = @(0..$classData.typedata.members.keys.count)
 
-    $defaultDisplay[$classData.members.keys.count] = $memberName
+    $defaultDisplay[$classData.typedata.members.keys.count - 1] = $memberName
     $aliasName = "__$($memberName)"
     $realName = $memberName
     if ($typeName -ne $null) {
@@ -176,7 +174,6 @@ function __add-typemember($memberType, $className, $memberName, $typeName, $init
 
     $typeSystemData = get-typedata $className
 
-    $classData.members[$realName] = $initialValue
     $classData.typeData = $typeSystemData
 }
 
