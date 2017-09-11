@@ -44,9 +44,9 @@ Describe "ClassDefinitionInterface" {
         }
     }
 
-    Context "When declaring a class with __class" {
-        It "succeeds when using the __class alias" {
-            $result = __class ClassClass1 {}
+    Context "When declaring a class with ScriptClass" {
+        It "succeeds when using the ScriptClass alias" {
+            $result = ScriptClass ClassClass1 {}
             $result | Should BeExactly $null
         }
 
@@ -54,7 +54,7 @@ Describe "ClassDefinitionInterface" {
             $className = 'ClassClass5'
             $propertyName = 'description'
 
-            __class $className {
+            ScriptClass $className {
                 __property $propertyName
             }
 
@@ -67,7 +67,7 @@ Describe "ClassDefinitionInterface" {
             $className = 'ClassClass6'
             $propertyName = 'description'
             {
-                __class $className {
+                ScriptClass $className {
                     __property $propertyName
                     __property $propertyName
                 }
@@ -76,7 +76,7 @@ Describe "ClassDefinitionInterface" {
 
         It "can create a new object using new-object with the specified type" {
             $className = 'ClassClass7'
-            __class $className {}
+            ScriptClass $className {}
 
             $newInstance = new-instance $className
             $newInstance.PSTypeName | Should BeExactly $className
@@ -87,7 +87,7 @@ Describe "ClassDefinitionInterface" {
             $property1 = 'property1'
             $property2 = 'property2'
 
-            __class $className {
+            ScriptClass $className {
                 __property $property1
                 __property $property2
             }
@@ -103,7 +103,7 @@ Describe "ClassDefinitionInterface" {
             $property1 = 'property1'
             $property2 = 'property2'
 
-            __class $className {
+            ScriptClass $className {
                 __property $property1, 1
                 __property $property2, 2
             }
@@ -118,7 +118,7 @@ Describe "ClassDefinitionInterface" {
             $property1 = 'property1'
             $property2 = 'property2'
 
-            __class $className {
+            ScriptClass $className {
                 __property [int32] $property1
                 __property [Type]  $property2
             }
@@ -138,7 +138,7 @@ Describe "ClassDefinitionInterface" {
             $value1 = 1
             $value2 = [int32]
 
-            __class $className {
+            ScriptClass $className {
                 __property [int32] $property1, $value1
                 __property [Type] $property2, $value2
             }
@@ -154,7 +154,7 @@ Describe "ClassDefinitionInterface" {
             $function2 = "testFunc2"
             $function1Result = "f1output"
 
-            __class $className {
+            ScriptClass $className {
                 function testFunc {
                     "f1output"
                 }
@@ -172,11 +172,11 @@ Describe "ClassDefinitionInterface" {
         }
 
 
-        It "can supply a `$this reference to methods on the class to provide access to properties defined by __class" {
+        It "can supply a `$this reference to methods on the class to provide access to properties defined by ScriptClass" {
             $className = 'ClassClass16'
             $identityResult = "me"
 
-            __class $className {
+            ScriptClass $className {
                 __property identity, $identityResult
 
                 function showme {
@@ -193,7 +193,7 @@ Describe "ClassDefinitionInterface" {
             $invalidIntegerValue = 2
 
             {
-                __class $className {
+                ScriptClass $className {
                     __property [Type] typeProperty, $invalidIntegerValue
                 }
             } | Should Throw
@@ -204,7 +204,7 @@ Describe "ClassDefinitionInterface" {
             $invalidIntegerValue = 2
 
             {
-                __class $className {
+                ScriptClass $className {
                     __property validProperty
                     __property [Type] typeProperty, $invalidIntegerValue
                 }
@@ -218,7 +218,7 @@ Describe "ClassDefinitionInterface" {
             $className = 'ClassClass25'
             $initialStateValue = 3
 
-            __class $className {
+            ScriptClass $className {
                 __property objectState
                 function __initialize {
                     $this.objectState = 3
@@ -234,7 +234,7 @@ Describe "ClassDefinitionInterface" {
             $className = 'ClassClass26'
             $initialStateValue = 9
 
-            __class $className {
+            ScriptClass $className {
                 __property objectState
                 function __initialize($arg1, $arg2) {
                     $this.objectState = $arg1 + $arg2
@@ -251,7 +251,7 @@ Describe "ClassDefinitionInterface" {
             $className = 'ClassClass27'
             $initialStateValue = 11
 
-            __class $className {
+            ScriptClass $className {
                 __property objectState
                 function __initialize($arg1, $arg2) {
                     with $this sum $arg1 $arg2
@@ -268,12 +268,12 @@ Describe "ClassDefinitionInterface" {
         }
     }
 
-    Context "When a method is invoked on an object defined with __class" {
+    Context "When a method is invoked on an object defined with ScriptClass" {
         It "can invoke other methods on the object even when the other method is defined after the calling method" {
             $className = 'ClassClass20'
             $nestedResult = 'nested'
 
-            __class $className {
+            ScriptClass $className {
                 function outer {
                     with $this inner
                 }
@@ -291,7 +291,7 @@ Describe "ClassDefinitionInterface" {
             $className = 'ClassClass21'
             $nestedThisResult = 'nestedthis'
 
-            __class $className {
+            ScriptClass $className {
                 __property objectState,'nestedthis'
                 function outer {
                     with $this inner
@@ -311,7 +311,7 @@ Describe "ClassDefinitionInterface" {
             $className = 'ClassClass22'
             $bracketResult = '[1 + (3 * 4) + 2]'
 
-            __class $className {
+            ScriptClass $className {
                 __property outerBracket,'['
                 __property outerBracketRight, ']'
                 __property innerBracket, '('
@@ -334,7 +334,7 @@ Describe "ClassDefinitionInterface" {
         It "can invoke other methods in the object using 'with' with the `$this variable" {
             $className = 'ClassClass23'
 
-            __class $className {
+            ScriptClass $className {
                 __property mainValue,7
                 function outer($arg1, $arg2, $arg3) {
                     with $this inner $arg3 ($arg1 + $arg2)
@@ -353,7 +353,7 @@ Describe "ClassDefinitionInterface" {
 
             $className = 'ClassClass24'
 
-            __class $className {
+            ScriptClass $className {
                 __property mainValue,7
                 function outer {
                     with $this inner @args
@@ -367,10 +367,68 @@ Describe "ClassDefinitionInterface" {
             $newInstance = new-instance $className
             with $newInstance outer 4 5 6 | Should BeExactly 22
         }
+
+        It "can invoke other methods in the object using 'with' without the `$this variable by implying it" {
+            $className = 'ClassClass42'
+
+            ScriptClass $className {
+                __property mainValue,7
+                function outer($arg1, $arg2, $arg3) {
+                    inner $arg3 ($arg1 + $arg2)
+                }
+
+                function inner($first, $second) {
+                    $this.mainValue + $first + $second
+                }
+            }
+
+            $newInstance = new-instance $className
+            with $newInstance outer 4 5 6 | Should BeExactly 22
+        }
+
+        It "can invoke other methods in the object using normal cmdlet call syntax against methods and implied `$this variable" {
+
+            $className = 'ClassClass41'
+
+            ScriptClass $className {
+                __property mainValue,7
+                function outer {
+                    inner @args
+                }
+
+                function inner($first, $second, $third) {
+                    $this.mainValue + $first + $second + $third
+                }
+            }
+
+            $newInstance = new-instance $className
+            with $newInstance outer 4 5 6 | Should BeExactly 22
+        }
+
+        It "can use the -do parameter to specify a method or scriptblock" {
+
+            $className = 'ClassClass44'
+
+            ScriptClass $className {
+                __property mainValue,7
+                function outer {
+                    inner @args
+                }
+
+                function inner($first, $second, $third) {
+                    $this.mainValue + $first + $second + $third
+                }
+            }
+
+            $newInstance = new-instance $className
+            with $newInstance -do outer 4 5 6 | Should BeExactly 22
+            with $newInstance -do { outer 3 2 1 } | Should BeExactly 13
+        }
+
     }
 
     Context "When a class is composed with another class" {
-        __class Inner {
+        scriptclass Inner {
             __property state,0
             function __initialize($initState) {
                 $this.state = $initState
@@ -381,7 +439,7 @@ Describe "ClassDefinitionInterface" {
             }
         }
 
-        __class Outer {
+        scriptclass Outer {
             __property evaluator
             function __initialize($initialOffset) {
                 $this.evaluator = new-instance Inner $initialOffset
@@ -419,7 +477,7 @@ Describe "'with' function for object-based command context" {
     Context "When invoking an object's method through with" {
         $className = 'ClassClass32'
 
-        __class $className {
+        scriptclass $className {
             __property mainValue,7
             function outer {
                 with $this inner @args
@@ -503,7 +561,7 @@ Describe "'with' function for object-based command context" {
             with $newInstance { add 5 7 } Should Be Exactly 12
         }
 
-        It "raises an exception if a non-existent method for the object is specified" {
+        It "throws an exception if a non-existent method for the object is specified" {
             { with $newInstance { run } } | Should Throw
         }
 
@@ -517,4 +575,61 @@ Describe "'with' function for object-based command context" {
         }
     }
 
+}
+
+Describe 'The => invocation function' {
+    Context "When a method is invoked through the => function" {
+        $initialValue = 10
+        ScriptClass ClassClass43 {
+            __property sum, $initialValue
+            function add($first, $second) {
+                $first + $second
+            }
+
+            function addto($firstarg) {
+                $this.sum += $firstarg
+                current
+            }
+
+            function current() {
+                $this.sum
+            }
+        }
+
+        $newInstance = new-instance ClassClass43
+        $newInstance2 = new-instance ClassClass43
+        $newInstance3 = new-instance ClassClass43
+
+        It "Should execute a method with no arguments" {
+            $newInstance | => current | Should BeExactly $initialValue
+        }
+
+        It "Should execute a method with two arguments" {
+            $newInstance | => add 1 3 | Should BeExactly 4
+        }
+
+        It "Should execute a method that takes an argument and incorporates object state" {
+            $newInstance | => addto 2 | Should BeExactly 12
+        }
+
+        It "Should execute the same method on two different objects" {
+            $newInstance2 |=> addto 3 | out-null
+            $results = $newInstance2, $newInstance3 |=> addto 4
+
+            $results[0] | Should BeExactly 17
+            $results[1] | Should BeExactly 14
+        }
+
+        It "Should throw an exception if nothing is piped to it" {
+            { => $newInstance current } | Should Throw
+        }
+
+        It "Should throw an exception if no method is specified" {
+            { $newInstance | => } | Should Throw
+        }
+
+        It "Should throw an exception if a non-existent method is specified" {
+           {$newInstance |=> nonexistent} | Should Throw
+        }
+    }
 }
