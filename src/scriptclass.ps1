@@ -44,15 +44,18 @@ function add-scriptclass {
         __add-typemember NoteProperty $className ScriptBlock $null $classBlock
         __define-class $classDefinition | out-null
     } catch {
-        $existingTypeData = get-typeData $className
-
-        if ($existingTypeData -ne $null) {
-            $existingTypeData | remove-typedata
-        }
-
+        __clear-typedata $className
         __remove-class $className
 
         throw $_.exception
+    }
+}
+
+function __clear-typedata($className) {
+    $existingTypeData = get-typedata $className
+
+    if ($existingTypeData -ne $null) {
+        $existingTypeData | remove-typedata
     }
 }
 
@@ -105,11 +108,7 @@ function __new-class([Hashtable]$classData) {
     }
 
     # remove existing type data
-    $existingTypeData = get-typedata $className
-
-    if ($existingTypeData -ne $null) {
-        $existingTypeData | remove-typedata
-    }
+    __clear-typedata $className
 
     Update-TypeData -force @classData
     $typeSystemData = get-typedata $classname
