@@ -38,11 +38,11 @@ function add-scriptclass {
         [scriptblock] $classBlock
     )
 
-    $memberData = @{TypeName=$className;MemberType='NoteProperty';DefaultDisplayPropertySet=@('PSTypeName');MemberName='PSTypeName';Value=$className}
+    $classData = @{TypeName=$className;MemberType='NoteProperty';DefaultDisplayPropertySet=@('PSTypeName');MemberName='PSTypeName';Value=$className}
     try {
-        $classData = __new-class $memberData
+        $classDefinition = __new-class $classData
         __add-typemember NoteProperty $className ScriptBlock $null $classBlock
-        __define-class $classData | out-null
+        __define-class $classDefinition | out-null
     } catch {
         $existingTypeData = get-typeData $className
 
@@ -97,8 +97,8 @@ function __remove-class($className) {
     $__classTable.Remove($className)
 }
 
-function __new-class([Hashtable]$memberData) {
-    $className = $memberData['Value']
+function __new-class([Hashtable]$classData) {
+    $className = $classData['Value']
 
     if ((__find-class $className) -ne $null) {
         throw "class '$className' already has a definition"
@@ -111,13 +111,13 @@ function __new-class([Hashtable]$memberData) {
         $existingTypeData | remove-typedata
     }
 
-    Update-TypeData -force @memberData
+    Update-TypeData -force @classData
     $typeSystemData = get-typedata $classname
 
     $prototype = [PSCustomObject]@{PSTypeName=$className}
-    $classData = @{typedata=$typeSystemData;initialized=$false;prototype=$prototype}
-    $__classTable[$className] = $classData
-    $classData
+    $classDefinition = @{typedata=$typeSystemData;initialized=$false;prototype=$prototype}
+    $__classTable[$className] = $classDefinition
+    $classDefinition
 }
 
 function __add-member($prototype, $memberName, $psMemberType, $memberValue, $memberType = $null, $memberSecondValue = $null, $force = $false) {
@@ -138,9 +138,9 @@ function __add-typemember($memberType, $className, $memberName, $typeName, $init
         throw "Invalid argument passed for type -- the argument must be of type [Type]"
     }
 
-    $classData = __find-class $className
+    $classDefinition = __find-class $className
 
-    $memberExists = $classData.typedata.members.keys -contains $memberName
+    $memberExists = $classDefinition.typedata.members.keys -contains $memberName
 
     if ($memberName -eq $null ) {
         throw 'A $null member name was specified'
@@ -150,9 +150,9 @@ function __add-typemember($memberType, $className, $memberName, $typeName, $init
         throw "Member '$memberName' already exists for type '$className'"
     }
 
-    $defaultDisplay = @(0..$classData.typedata.members.keys.count)
+    $defaultDisplay = @(0..$classDefinition.typedata.members.keys.count)
 
-    $defaultDisplay[$classData.typedata.members.keys.count - 1] = $memberName
+    $defaultDisplay[$classDefinition.typedata.members.keys.count - 1] = $memberName
     $aliasName = "__$($memberName)"
     $realName = $memberName
     if ($typeName -ne $null) {
@@ -162,7 +162,7 @@ function __add-typemember($memberType, $className, $memberName, $typeName, $init
 
     $nameTypeData = @{TypeName=$className;MemberType=$memberType;MemberName=$realName;Value=$initialValue;defaultdisplaypropertyset=$defaultdisplay}
 
-    __add-member $classData.prototype $realName $memberType $initialValue $typeName
+    __add-member $classDefinition.prototype $realName $memberType $initialValue $typeName
     Update-TypeData -force @nameTypeData
 
     if ($typeName -ne $null) {
@@ -181,7 +181,7 @@ function __add-typemember($memberType, $className, $memberName, $typeName, $init
 
     $typeSystemData = get-typedata $className
 
-    $classData.typeData = $typeSystemData
+    $classDefinition.typeData = $typeSystemData
 }
 
 set-alias ScriptClass add-scriptclass
@@ -214,10 +214,10 @@ function =>($method) {
     }
 }
 
-function __define-class($classData) {
-    $typeName = $classData.typedata.TypeName
+function __define-class($classDefinition) {
+    $typeName = $classDefinition.typedata.TypeName
 
-    if ($classData.initialized) {
+    if ($classDefinition.initialized) {
         throw "Attempt to redefine class '$typeName'"
     }
 
@@ -246,14 +246,14 @@ function __define-class($classData) {
             $propertyName = $propertySpec
         }
 
-        __add-typemember NoteProperty $classData.typeData.TypeName $propertyName $propertyType $propertyValue
+        __add-typemember NoteProperty $classDefinition.typeData.TypeName $propertyName $propertyType $propertyValue
     }
 
-    $classData.initialized = $true
+    $classDefinition.initialized = $true
     function __initialize {}
     $initialFunctions = ls function:*
     try {
-        . $classData.typedata.members.ScriptBlock.value | out-null
+        . $classDefinition.typedata.members.ScriptBlock.value | out-null
     } catch {
         $badClassData = get-typedata $typeName
         $badClassData | remove-typedata
@@ -267,7 +267,7 @@ function __define-class($classData) {
     $allowedInternalFunctions = @('__initialize')
     $nextFunctions | foreach {
         if ( $allowedInternalFunctions -contains $_ -or $initialFunctions -notcontains $_) {
-            __add-typemember ScriptMethod $classData.typeData.TypeName $_.Name $null $_.scriptblock
+            __add-typemember ScriptMethod $classDefinition.typeData.TypeName $_.Name $null $_.scriptblock
         }
     }
 }
