@@ -16,12 +16,12 @@ set-strictmode -version 2
 
 $__classTable = @{}
 
-function invoke-method($method, $object) {
+function invoke-methodwithcontext($object, $method) {
     $methodScript = $object.psobject.members[$method].script
-    invoke-scriptwithcontext $methodScript $object @args
+    invoke-scriptwithcontext $object $methodScript @args
 }
 
-function invoke-scriptwithcontext($script, $objectContext) {
+function invoke-scriptwithcontext($objectContext, $script) {
     $thisVariable = [PSVariable]::new('this', $objectContext)
     $functions = @{}
     $objectContext.psobject.members | foreach {
@@ -79,7 +79,7 @@ function new-scriptclassinstance {
 
     $newObject = $existingClass.prototype.psobject.copy()
 
-    (invoke-method '__initialize' $newObject @args) | out-null
+    invoke-methodwithcontext $newObject '__initialize' @args | out-null
     $newObject
 }
 
@@ -291,9 +291,9 @@ function with($context = $null, $do) {
     }
 
     if ($action -is [string]) {
-        $result = invoke-method $action $object @args
+        $result = invoke-methodwithcontext $object $action @args
     } elseif ($action -is [ScriptBlock]) {
-        $result = invoke-scriptwithcontext $action $object @args
+        $result = invoke-scriptwithcontext $object $action @args
     } else {
         throw "Invalid action type '$($action.gettype())'. Either a method name of type [string] or a scriptblock of type [ScriptBlock] must be supplied to 'with'"
     }
