@@ -119,28 +119,23 @@ function =>($method) {
     }
 }
 
-function __invoke-methodwithcontext($object, $method) {
-    $methodScript = $object.psobject.members[$method].script
-    __invoke-scriptwithcontext $object $methodScript @args
-}
+function __new-class([Hashtable]$classData) {
+    $className = $classData['Value']
 
-function __invoke-scriptwithcontext($objectContext, $script) {
-    $thisVariable = [PSVariable]::new('this', $objectContext)
-    $functions = @{}
-    $objectContext.psobject.members | foreach {
-        if ( $_.membertype -eq 'ScriptMethod' ) {
-            $functions[$_.name] = $_.value.script
-        }
+    if ((__find-class $className) -ne $null) {
+        throw "class '$className' already has a definition"
     }
-    $script.invokeWithContext($functions, $thisVariable, $args)
-}
 
-function __clear-typedata($className) {
-    $existingTypeData = get-typedata $className
+    # remove existing type data
+    __clear-typedata $className
 
-    if ($existingTypeData -ne $null) {
-        $existingTypeData | remove-typedata
-    }
+    Update-TypeData -force @classData
+    $typeSystemData = get-typedata $classname
+
+    $prototype = [PSCustomObject]@{PSTypeName=$className}
+    $classDefinition = @{typedata=$typeSystemData;initialized=$false;prototype=$prototype}
+    $__classTable[$className] = $classDefinition
+    $classDefinition
 }
 
 function __find-class($className) {
@@ -161,23 +156,28 @@ function __remove-class($className) {
     $__classTable.Remove($className)
 }
 
-function __new-class([Hashtable]$classData) {
-    $className = $classData['Value']
+function __invoke-methodwithcontext($object, $method) {
+    $methodScript = $object.psobject.members[$method].script
+    __invoke-scriptwithcontext $object $methodScript @args
+}
 
-    if ((__find-class $className) -ne $null) {
-        throw "class '$className' already has a definition"
+function __clear-typedata($className) {
+    $existingTypeData = get-typedata $className
+
+    if ($existingTypeData -ne $null) {
+        $existingTypeData | remove-typedata
     }
+}
 
-    # remove existing type data
-    __clear-typedata $className
-
-    Update-TypeData -force @classData
-    $typeSystemData = get-typedata $classname
-
-    $prototype = [PSCustomObject]@{PSTypeName=$className}
-    $classDefinition = @{typedata=$typeSystemData;initialized=$false;prototype=$prototype}
-    $__classTable[$className] = $classDefinition
-    $classDefinition
+function __invoke-scriptwithcontext($objectContext, $script) {
+    $thisVariable = [PSVariable]::new('this', $objectContext)
+    $functions = @{}
+    $objectContext.psobject.members | foreach {
+        if ( $_.membertype -eq 'ScriptMethod' ) {
+            $functions[$_.name] = $_.value.script
+        }
+    }
+    $script.invokeWithContext($functions, $thisVariable, $args)
 }
 
 function __add-member($prototype, $memberName, $psMemberType, $memberValue, $memberType = $null, $memberSecondValue = $null, $force = $false) {
