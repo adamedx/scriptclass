@@ -38,16 +38,16 @@ function add-scriptclass {
         [scriptblock] $classBlock
     )
 
-    $classData = @{TypeName=$className;MemberType='NoteProperty';DefaultDisplayPropertySet=@('PSTypeName');MemberName='PSTypeName';Value=$className}
+    $memberData = @{TypeName=$className;MemberType='NoteProperty';DefaultDisplayPropertySet=@('PSTypeName');MemberName='PSTypeName';Value=$className}
     try {
-        $classInfo = __new-class $classData
+        $classData = __new-class $memberData
         __add-typemember NoteProperty $className ScriptBlock $null $classBlock
-        __define-class $classInfo | out-null
+        __define-class $classData | out-null
     } catch {
-        $typeData = get-typeData $className
+        $existingTypeData = get-typeData $className
 
-        if ($typeData -ne $null) {
-            $typeData | remove-typedata
+        if ($existingTypeData -ne $null) {
+            $existingTypeData | remove-typedata
         }
 
         __remove-class $className
@@ -68,11 +68,10 @@ function get-scriptclass {
 
 function new-scriptclassinstance {
     param(
-        [string] $className)
+        [string] $className
+    )
 
     $existingClass = __find-existingClass $className
-
-    $existingTypeData = get-typedata $className
 
     $newObject = $existingClass.prototype.psobject.copy()
 
@@ -98,28 +97,27 @@ function __remove-class($className) {
     $__classTable.Remove($className)
 }
 
-function __new-class([Hashtable]$classData) {
-    $className = $classData['Value']
+function __new-class([Hashtable]$memberData) {
+    $className = $memberData['Value']
 
     if ((__find-class $className) -ne $null) {
-
         throw "class '$className' already has a definition"
     }
 
     # remove existing type data
-    $typeData = get-typedata $className
+    $existingTypeData = get-typedata $className
 
-    if ($typeData -ne $null) {
-        $typeData | remove-typedata
+    if ($existingTypeData -ne $null) {
+        $existingTypeData | remove-typedata
     }
 
-    Update-TypeData -force @classData
+    Update-TypeData -force @memberData
     $typeSystemData = get-typedata $classname
 
     $prototype = [PSCustomObject]@{PSTypeName=$className}
-    $classInfo = @{typedata=$typeSystemData;initialized=$false;prototype=$prototype}
-    $__classTable[$className] = $classInfo
-    $classInfo
+    $classData = @{typedata=$typeSystemData;initialized=$false;prototype=$prototype}
+    $__classTable[$className] = $classData
+    $classData
 }
 
 function __add-member($prototype, $memberName, $psMemberType, $memberValue, $memberType = $null, $memberSecondValue = $null, $force = $false) {
