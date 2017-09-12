@@ -302,32 +302,4 @@ function __define-class($classDefinition) {
     }
 }
 
-function with($context = $null, $do) {
-    $action = $do
-    $result = $null
-
-    if ($context -eq $null) {
-        throw "Invalid context -- context may not be $null"
-    }
-
-    $object = $context
-
-    if (! ($context -is [PSCustomObject])) {
-        $object = [PSCustomObject] $context
-
-        if (! ($context -is [PSCustomObject])) {
-            throw "Specified context is not compatible with [PSCustomObject]"
-        }
-    }
-
-    if ($action -is [string]) {
-        $result = __invoke-methodwithcontext $object $action @args
-    } elseif ($action -is [ScriptBlock]) {
-        $result = __invoke-scriptwithcontext $object $action @args
-    } else {
-        throw "Invalid action type '$($action.gettype())'. Either a method name of type [string] or a scriptblock of type [ScriptBlock] must be supplied to 'with'"
-    }
-
-    $result
-}
 
