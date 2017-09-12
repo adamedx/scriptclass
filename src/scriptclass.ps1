@@ -16,174 +16,80 @@ set-strictmode -version 2
 
 $__classTable = @{}
 
-function invoke-methodwithcontext($method) {
-    $methodScript = $method.object.psobject.members[$method.methodName].script
-    invoke-scriptwithcontext $methodScript $method.object @args
-}
+set-alias ScriptClass add-scriptclass
+set-alias with invoke-withcontext
 
-function invoke-scriptwithcontext($script, $objectContext) {
-    $thisVariable = [PSVariable]::new('this', $objectContext)
-    $functions = @{}
-    $objectContext.psobject.members | foreach {
-        if ( $_.membertype -eq 'ScriptMethod' ) {
-            $functions[$_.name] = $_.value.script
-        }
-    }
-    $script.invokeWithContext($functions, $thisVariable, $args)
-}
-
-function add-class {
+function add-scriptclass {
     param(
         [parameter(mandatory=$true)] [string] $className,
         [scriptblock] $classBlock
     )
 
     $classData = @{TypeName=$className;MemberType='NoteProperty';DefaultDisplayPropertySet=@('PSTypeName');MemberName='PSTypeName';Value=$className}
-    try {
-        __add-class $classData
-        __add-typemember NoteProperty $className ScriptBlock $null $classBlock
-    } catch {
-        $typeData = get-typeData $className
 
-        if ($typeData -ne $null) {
-            $typeData | remove-typedata
-        }
+    try {
+        $classDefinition = __new-class $classData
+        __add-typemember NoteProperty $className ScriptBlock $null $classBlock
+        __define-class $classDefinition | out-null
+    } catch {
+        __clear-typedata $className
+        __remove-class $className
 
         throw $_.exception
     }
 }
 
-function get-class {
-   param(
-       [parameter(mandatory=$true)] [string] $className
-   )
+function new-scriptobject {
+    param(
+        [string] $className
+    )
+
+    $existingClass = __find-existingClass $className
+
+    $newObject = $existingClass.prototype.psobject.copy()
+
+    __invoke-methodwithcontext $newObject '__initialize' @args | out-null
+    $newObject
+}
+
+function get-scriptclasstypedata {
+    param(
+        [parameter(mandatory=$true)] [string] $className
+    )
 
     $existingClass = __find-existingClass $className
 
     $existingClass.typeData
 }
 
-function new-instance {
-    param(
-        [string] $className)
+function invoke-withcontext($context = $null, $do) {
+    $action = $do
+    $result = $null
 
-    $existingClass = __find-existingClass $className
-
-    $existingTypeData = get-typedata $className
-
-    $newObject = $existingClass.prototype.psobject.copy()
-
-    (invoke-methodwithcontext @{object=$newObject;methodName='__initialize'} @args) | out-null
-    $newObject
-}
-
-function __find-class($className) {
-    $__classTable[$className]
-}
-
-function __find-existingClass($className) {
-   $existingClass = __find-class $className
-
-    if ($existingClass -eq $null) {
-        throw "class '$className' not found"
+    if ($context -eq $null) {
+        throw "Invalid context -- context may not be $null"
     }
 
-    $existingClass
-}
+    $object = $context
 
-function __add-class([Hashtable]$classData) {
-    $className = $classData['Value']
+    if (! ($context -is [PSCustomObject])) {
+        $object = [PSCustomObject] $context
 
-    if ((__find-class $className) -ne $null) {
-
-        throw "class '$className' already has a definition"
-    }
-
-    # remove existing type data
-    $typeData = get-typedata $className
-
-    if ($typeData -ne $null) {
-        $typeData | remove-typedata
-    }
-
-    Update-TypeData -force @classData
-    $typeSystemData = get-typedata $classname
-
-    $prototype = [PSCustomObject]@{PSTypeName=$className}
-    $__classTable[$className] = @{typedata=$typeSystemData;initialized=$false;prototype=$prototype}
-}
-
-function __add-member($prototype, $memberName, $psMemberType, $memberValue, $memberType = $null, $memberSecondValue = $null, $force = $false) {
-    $arguments = @{name=$memberName;memberType=$psMemberType;value=$memberValue}
-    if ($memberType -ne $null) {
-        $arguments['typeName'] = $memberType
-    }
-
-    if ($memberSecondValue -ne $null) {
-        $arguments['secondValue'] = $memberSecondValue
-    }
-
-    $newMember = ($prototype | add-member -passthru @arguments)
-}
-
-function __add-typemember($memberType, $className, $memberName, $typeName, $initialValue) {
-    if ($typeName -ne $null -and -not $typeName -is [Type]) {
-        throw "Invalid argument passed for type -- the argument must be of type [Type]"
-    }
-
-    $classData = __find-class $className
-
-    $memberExists = $classData.typedata.members.keys -contains $memberName
-
-    if ($memberName -eq $null ) {
-        throw 'A $null member name was specified'
-    }
-
-    if ($memberExists) {
-        throw "Member '$memberName' already exists for type '$className'"
-    }
-
-    $defaultDisplay = @(0..$classData.typedata.members.keys.count)
-
-    $defaultDisplay[$classData.typedata.members.keys.count - 1] = $memberName
-    $aliasName = "__$($memberName)"
-    $realName = $memberName
-    if ($typeName -ne $null) {
-        $realName = $aliasName
-        $aliasName = $memberName
-    }
-
-    $nameTypeData = @{TypeName=$className;MemberType=$memberType;MemberName=$realName;Value=$initialValue;defaultdisplaypropertyset=$defaultdisplay}
-
-    __add-member $classData.prototype $realName $memberType $initialValue $typeName
-    Update-TypeData -force @nameTypeData
-
-    if ($typeName -ne $null) {
-        # Check to make sure any initializer is compatible with the declared type
-        if ($initialValue -ne $null) {
-
-            $evalString = "param(`[$typeName] `$value)"
-            $evalBlock = [ScriptBlock]::Create($evalString)
-            (. $evalBlock $initialValue) | out-null
+        if (! ($context -is [PSCustomObject])) {
+            throw "Specified context is not compatible with [PSCustomObject]"
         }
-        $getBlock = [ScriptBlock]::Create("[$typeName] `$this.$realName")
-        $setBlock = [Scriptblock]::Create("param(`$val) `$this.$realName = [$typeName] `$val")
-        $aliasTypeData = @{TypeName=$className;MemberType='ScriptProperty';MemberName=$aliasName;Value=$getBlock;SecondValue=$setBlock}
-        Update-TypeData -force @aliasTypeData
     }
 
-    $typeSystemData = get-typedata $className
+    if ($action -is [string]) {
+        $result = __invoke-methodwithcontext $object $action @args
+    } elseif ($action -is [ScriptBlock]) {
+        $result = __invoke-scriptwithcontext $object $action @args
+    } else {
+        throw "Invalid action type '$($action.gettype())'. Either a method name of type [string] or a scriptblock of type [ScriptBlock] must be supplied to 'with'"
+    }
 
-    $classData.typeData = $typeSystemData
+    $result
 }
-
-function __create-newclass([string] $className, [scriptblock] $scriptBlock) {
-    add-class $className $scriptBlock
-    $classData = __find-class $className
-    __define-class $classData | out-null
-}
-
-set-alias ScriptClass __create-newclass
 
 function =>($method) {
     if ($method -eq $null) {
@@ -213,10 +119,135 @@ function =>($method) {
     }
 }
 
-function __define-class($classData) {
-    $typeName = $classData.typedata.TypeName
+function __new-class([Hashtable]$classData) {
+    $className = $classData['Value']
 
-    if ($classData.initialized) {
+    if ((__find-class $className) -ne $null) {
+        throw "class '$className' already has a definition"
+    }
+
+    # remove existing type data
+    __clear-typedata $className
+
+    Update-TypeData -force @classData
+    $typeSystemData = get-typedata $classname
+
+    $prototype = [PSCustomObject]@{PSTypeName=$className}
+    $classDefinition = @{typedata=$typeSystemData;initialized=$false;prototype=$prototype}
+    $__classTable[$className] = $classDefinition
+    $classDefinition
+}
+
+function __find-class($className) {
+    $__classTable[$className]
+}
+
+function __find-existingClass($className) {
+   $existingClass = __find-class $className
+
+    if ($existingClass -eq $null) {
+        throw "class '$className' not found"
+    }
+
+    $existingClass
+}
+
+function __remove-class($className) {
+    $__classTable.Remove($className)
+}
+
+function __invoke-methodwithcontext($object, $method) {
+    $methodScript = $object.psobject.members[$method].script
+    __invoke-scriptwithcontext $object $methodScript @args
+}
+
+function __clear-typedata($className) {
+    $existingTypeData = get-typedata $className
+
+    if ($existingTypeData -ne $null) {
+        $existingTypeData | remove-typedata
+    }
+}
+
+function __invoke-scriptwithcontext($objectContext, $script) {
+    $thisVariable = [PSVariable]::new('this', $objectContext)
+    $functions = @{}
+    $objectContext.psobject.members | foreach {
+        if ( $_.membertype -eq 'ScriptMethod' ) {
+            $functions[$_.name] = $_.value.script
+        }
+    }
+    $script.invokeWithContext($functions, $thisVariable, $args)
+}
+
+function __add-member($prototype, $memberName, $psMemberType, $memberValue, $memberType = $null, $memberSecondValue = $null, $force = $false) {
+    $arguments = @{name=$memberName;memberType=$psMemberType;value=$memberValue}
+    if ($memberType -ne $null) {
+        $arguments['typeName'] = $memberType
+    }
+
+    if ($memberSecondValue -ne $null) {
+        $arguments['secondValue'] = $memberSecondValue
+    }
+
+    $newMember = ($prototype | add-member -passthru @arguments)
+}
+
+function __add-typemember($memberType, $className, $memberName, $typeName, $initialValue) {
+    if ($typeName -ne $null -and -not $typeName -is [Type]) {
+        throw "Invalid argument passed for type -- the argument must be of type [Type]"
+    }
+
+    $classDefinition = __find-class $className
+
+    $memberExists = $classDefinition.typedata.members.keys -contains $memberName
+
+    if ($memberName -eq $null ) {
+        throw 'A $null member name was specified'
+    }
+
+    if ($memberExists) {
+        throw "Member '$memberName' already exists for type '$className'"
+    }
+
+    $defaultDisplay = @(0..$classDefinition.typedata.members.keys.count)
+
+    $defaultDisplay[$classDefinition.typedata.members.keys.count - 1] = $memberName
+    $aliasName = "__$($memberName)"
+    $realName = $memberName
+    if ($typeName -ne $null) {
+        $realName = $aliasName
+        $aliasName = $memberName
+    }
+
+    $nameTypeData = @{TypeName=$className;MemberType=$memberType;MemberName=$realName;Value=$initialValue;defaultdisplaypropertyset=$defaultdisplay}
+
+    __add-member $classDefinition.prototype $realName $memberType $initialValue $typeName
+    Update-TypeData -force @nameTypeData
+
+    if ($typeName -ne $null) {
+        # Check to make sure any initializer is compatible with the declared type
+        if ($initialValue -ne $null) {
+
+            $evalString = "param(`[$typeName] `$value)"
+            $evalBlock = [ScriptBlock]::Create($evalString)
+            (. $evalBlock $initialValue) | out-null
+        }
+        $getBlock = [ScriptBlock]::Create("[$typeName] `$this.$realName")
+        $setBlock = [Scriptblock]::Create("param(`$val) `$this.$realName = [$typeName] `$val")
+        $aliasTypeData = @{TypeName=$className;MemberType='ScriptProperty';MemberName=$aliasName;Value=$getBlock;SecondValue=$setBlock}
+        Update-TypeData -force @aliasTypeData
+    }
+
+    $typeSystemData = get-typedata $className
+
+    $classDefinition.typeData = $typeSystemData
+}
+
+function __define-class($classDefinition) {
+    $typeName = $classDefinition.typedata.TypeName
+
+    if ($classDefinition.initialized) {
         throw "Attempt to redefine class '$typeName'"
     }
 
@@ -245,14 +276,14 @@ function __define-class($classData) {
             $propertyName = $propertySpec
         }
 
-        __add-typemember NoteProperty $classData.typeData.TypeName $propertyName $propertyType $propertyValue
+        __add-typemember NoteProperty $classDefinition.typeData.TypeName $propertyName $propertyType $propertyValue
     }
 
-    $classData.initialized = $true
+    $classDefinition.initialized = $true
     function __initialize {}
     $initialFunctions = ls function:*
     try {
-        . $classData.typedata.members.ScriptBlock.value | out-null
+        . $classDefinition.typedata.members.ScriptBlock.value | out-null
     } catch {
         $badClassData = get-typedata $typeName
         $badClassData | remove-typedata
@@ -266,40 +297,9 @@ function __define-class($classData) {
     $allowedInternalFunctions = @('__initialize')
     $nextFunctions | foreach {
         if ( $allowedInternalFunctions -contains $_ -or $initialFunctions -notcontains $_) {
-            __add-typemember ScriptMethod $classData.typeData.TypeName $_.Name $null $_.scriptblock
+            __add-typemember ScriptMethod $classDefinition.typeData.TypeName $_.Name $null $_.scriptblock
         }
     }
 }
 
-function with($context = $null, $do) {
-    $action = $do
-    $result = $null
 
-    if ($context -eq $null) {
-        throw "Invalid context -- context may not be $null"
-    }
-
-    $object = $context
-
-    if (! ($context -is [PSCustomObject])) {
-        $object = [PSCustomObject] $context
-
-        if (! ($context -is [PSCustomObject])) {
-            throw "Specified context is not compatible with [PSCustomObject]"
-        }
-    }
-
-    if ($action -is [string]) {
-        $result = __invoke-method $object $action @args
-    } elseif ($action -is [ScriptBlock]) {
-        $result = invoke-scriptwithcontext $action $object @args
-    } else {
-        throw "Invalid action type '$($action.gettype())'. Either a method name of type [string] or a scriptblock of type [ScriptBlock] must be supplied to 'with'"
-    }
-
-    $result
-}
-
-function __invoke-method($object, $method) {
-    invoke-methodwithcontext @{object=$object;methodName=$method} @args
-}
