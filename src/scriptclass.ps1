@@ -40,14 +40,17 @@ function add-scriptclass {
 
     $classData = @{TypeName=$className;MemberType='NoteProperty';DefaultDisplayPropertySet=@('PSTypeName');MemberName='PSTypeName';Value=$className}
     try {
-        __add-class $classData
+        $classInfo = __new-class $classData
         __add-typemember NoteProperty $className ScriptBlock $null $classBlock
+        __define-class $classInfo | out-null
     } catch {
         $typeData = get-typeData $className
 
         if ($typeData -ne $null) {
             $typeData | remove-typedata
         }
+
+        __remove-class $className
 
         throw $_.exception
     }
@@ -91,7 +94,11 @@ function __find-existingClass($className) {
     $existingClass
 }
 
-function __add-class([Hashtable]$classData) {
+function __remove-class($className) {
+    $__classTable.Remove($className)
+}
+
+function __new-class([Hashtable]$classData) {
     $className = $classData['Value']
 
     if ((__find-class $className) -ne $null) {
@@ -110,7 +117,9 @@ function __add-class([Hashtable]$classData) {
     $typeSystemData = get-typedata $classname
 
     $prototype = [PSCustomObject]@{PSTypeName=$className}
-    $__classTable[$className] = @{typedata=$typeSystemData;initialized=$false;prototype=$prototype}
+    $classInfo = @{typedata=$typeSystemData;initialized=$false;prototype=$prototype}
+    $__classTable[$className] = $classInfo
+    $classInfo
 }
 
 function __add-member($prototype, $memberName, $psMemberType, $memberValue, $memberType = $null, $memberSecondValue = $null, $force = $false) {
@@ -177,13 +186,7 @@ function __add-typemember($memberType, $className, $memberName, $typeName, $init
     $classData.typeData = $typeSystemData
 }
 
-function __create-newclass([string] $className, [scriptblock] $scriptBlock) {
-    add-scriptclass $className $scriptBlock
-    $classData = __find-class $className
-    __define-class $classData | out-null
-}
-
-set-alias ScriptClass __create-newclass
+set-alias ScriptClass add-scriptclass
 
 function =>($method) {
     if ($method -eq $null) {
