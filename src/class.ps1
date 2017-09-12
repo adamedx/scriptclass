@@ -180,7 +180,7 @@ function __add-typemember($memberType, $className, $memberName, $typeName, $init
 function __create-newclass([string] $className, [scriptblock] $scriptBlock) {
     add-class $className $scriptBlock
     $classData = __find-class $className
-    __define-class $classData.typedata | out-null
+    __define-class $classData | out-null
 }
 
 set-alias ScriptClass __create-newclass
@@ -214,20 +214,10 @@ function =>($method) {
 }
 
 function __define-class($classData) {
-    $__typeName = $classData.TypeName
-    $__this =$null
-    $method = $null
+    $typeName = $classData.typedata.TypeName
 
-    $__thisClass = __find-class $__typeName
-    $methodPresent = ($method -ne $null) -and ($method.length -gt 0)
-
-    if ($__this -eq $null -and ! $methodpresent) {
-
-        if ($__thisClass.initialized) {
-            throw "Attempt to redefine class '$__typeName'"
-        }
-    } else {
-        throw "Not yet implemented"
+    if ($classData.initialized) {
+        throw "Attempt to redefine class '$typeName'"
     }
 
     function __property ($arg1, $arg2 = $null) {
@@ -255,16 +245,16 @@ function __define-class($classData) {
             $propertyName = $propertySpec
         }
 
-        __add-typemember NoteProperty $__thisClass.typeData.TypeName $propertyName $propertyType $propertyValue
+        __add-typemember NoteProperty $classData.typeData.TypeName $propertyName $propertyType $propertyValue
     }
 
-    $__thisClass.initialized = $true
+    $classData.initialized = $true
     function __initialize {}
     $initialFunctions = ls function:*
     try {
-        . $__thisClass.typedata.members.ScriptBlock.value | out-null
+        . $classData.typedata.members.ScriptBlock.value | out-null
     } catch {
-        $badClassData = get-typedata $__typeName
+        $badClassData = get-typedata $typeName
         $badClassData | remove-typedata
         throw $_.Exception
     }
@@ -276,7 +266,7 @@ function __define-class($classData) {
     $allowedInternalFunctions = @('__initialize')
     $nextFunctions | foreach {
         if ( $allowedInternalFunctions -contains $_ -or $initialFunctions -notcontains $_) {
-            __add-typemember ScriptMethod $__thisClass.typeData.TypeName $_.Name $null $_.scriptblock
+            __add-typemember ScriptMethod $classData.typeData.TypeName $_.Name $null $_.scriptblock
         }
     }
 }
