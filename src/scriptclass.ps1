@@ -16,9 +16,9 @@ set-strictmode -version 2
 
 $__classTable = @{}
 
-function invoke-methodwithcontext($method) {
-    $methodScript = $method.object.psobject.members[$method.methodName].script
-    invoke-scriptwithcontext $methodScript $method.object @args
+function invoke-method($method, $object) {
+    $methodScript = $object.psobject.members[$method].script
+    invoke-scriptwithcontext $methodScript $object @args
 }
 
 function invoke-scriptwithcontext($script, $objectContext) {
@@ -39,6 +39,7 @@ function add-scriptclass {
     )
 
     $classData = @{TypeName=$className;MemberType='NoteProperty';DefaultDisplayPropertySet=@('PSTypeName');MemberName='PSTypeName';Value=$className}
+
     try {
         $classDefinition = __new-class $classData
         __add-typemember NoteProperty $className ScriptBlock $null $classBlock
@@ -60,9 +61,9 @@ function __clear-typedata($className) {
 }
 
 function get-scriptclass {
-   param(
-       [parameter(mandatory=$true)] [string] $className
-   )
+    param(
+        [parameter(mandatory=$true)] [string] $className
+    )
 
     $existingClass = __find-existingClass $className
 
@@ -78,7 +79,7 @@ function new-scriptclassinstance {
 
     $newObject = $existingClass.prototype.psobject.copy()
 
-    (invoke-methodwithcontext @{object=$newObject;methodName='__initialize'} @args) | out-null
+    (invoke-method '__initialize' $newObject @args) | out-null
     $newObject
 }
 
@@ -290,7 +291,7 @@ function with($context = $null, $do) {
     }
 
     if ($action -is [string]) {
-        $result = __invoke-method $object $action @args
+        $result = invoke-method $action $object @args
     } elseif ($action -is [ScriptBlock]) {
         $result = invoke-scriptwithcontext $action $object @args
     } else {
@@ -300,6 +301,3 @@ function with($context = $null, $do) {
     $result
 }
 
-function __invoke-method($object, $method) {
-    invoke-methodwithcontext @{object=$object;methodName=$method} @args
-}
