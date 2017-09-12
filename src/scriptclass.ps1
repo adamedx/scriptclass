@@ -32,7 +32,7 @@ function invoke-scriptwithcontext($script, $objectContext) {
     $script.invokeWithContext($functions, $thisVariable, $args)
 }
 
-function add-class {
+function add-scriptclass {
     param(
         [parameter(mandatory=$true)] [string] $className,
         [scriptblock] $classBlock
@@ -53,7 +53,7 @@ function add-class {
     }
 }
 
-function get-class {
+function get-scriptclass {
    param(
        [parameter(mandatory=$true)] [string] $className
    )
@@ -63,7 +63,7 @@ function get-class {
     $existingClass.typeData
 }
 
-function new-instance {
+function new-scriptclassinstance {
     param(
         [string] $className)
 
@@ -178,7 +178,7 @@ function __add-typemember($memberType, $className, $memberName, $typeName, $init
 }
 
 function __create-newclass([string] $className, [scriptblock] $scriptBlock) {
-    add-class $className $scriptBlock
+    add-scriptclass $className $scriptBlock
     $classData = __find-class $className
     __define-class $classData | out-null
 }

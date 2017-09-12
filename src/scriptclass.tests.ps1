@@ -19,26 +19,26 @@ $sut = (Split-Path -Leaf $MyInvocation.MyCommand.Path) -replace '\.Tests\.', '.'
 Describe "ClassDefinitionInterface" {
     Context "When declaring a simple class" {
         It "succeeds with trivial parameters for the new-class cmdlet" {
-            $result = add-class SimpleClass1 {}
+            $result = add-scriptclass SimpleClass1 {}
 
             $result | Should BeExactly $null
         }
 
         It "throws an exception when you try to redefine a class" {
-            add-class SimpleClass3 {}
-            { add-class SimpleClass3 {} } | Should Throw
+            add-scriptclass SimpleClass3 {}
+            { add-scriptclass SimpleClass3 {} } | Should Throw
         }
 
-        It "can be found by get-class" {
+        It "can be found by get-scriptclass" {
             $className = 'SimpleClass4'
-            add-class $className {} | out-null
-            $classType = get-class $className
+            add-scriptclass $className {} | out-null
+            $classType = get-scriptclass $className
             $classType.TypeName | Should BeExactly $className
         }
 
         It "has a ScriptBlock member by default" {
-            add-class SimpleClass5 { 5 }
-            $classType = get-class SimpleClass5
+            add-scriptclass SimpleClass5 { 5 }
+            $classType = get-scriptclass SimpleClass5
             $invokeResult = invoke-command -scriptblock $classType.members.ScriptBlock.value
             $invokeResult | Should BeExactly 5
         }
@@ -58,7 +58,7 @@ Describe "ClassDefinitionInterface" {
                 __property $propertyName
             }
 
-            $typeData = get-class $className
+            $typeData = get-scriptclass $className
 
             $typeData.members.keys -contains $propertyName | Should BeExactly $true
         }
@@ -78,7 +78,7 @@ Describe "ClassDefinitionInterface" {
             $className = 'ClassClass7'
             ScriptClass $className {}
 
-            $newInstance = new-instance $className
+            $newInstance = new-scriptclassinstance $className
             $newInstance.PSTypeName | Should BeExactly $className
         }
 
@@ -92,7 +92,7 @@ Describe "ClassDefinitionInterface" {
                 __property $property2
             }
 
-            $newInstance = new-instance $className
+            $newInstance = new-scriptclassinstance $className
             $newInstance.psobject.properties.match($property1) | Should BeExactly $true
             $newInstance.psobject.properties.match($property2) | Should BeExactly $true
             $newInstance.psobject.properties.match('propdoesntexist') | Should BeExactly $null
@@ -108,7 +108,7 @@ Describe "ClassDefinitionInterface" {
                 __property $property2, 2
             }
 
-            $newInstance = new-instance $className
+            $newInstance = new-scriptclassinstance $className
             $newInstance.$property1 | Should BeExactly 1
             $newInstance.$property2 | Should BeExactly 2
         }
@@ -123,7 +123,7 @@ Describe "ClassDefinitionInterface" {
                 __property [Type]  $property2
             }
 
-            $newInstance = new-instance $className
+            $newInstance = new-scriptclassinstance $className
 
             { $newInstance.$property1 = 1 } | Should Not Throw
             { $newInstance.$property1 = new-object object } | Should Throw
@@ -143,7 +143,7 @@ Describe "ClassDefinitionInterface" {
                 __property [Type] $property2, $value2
             }
 
-            $newInstance = new-instance $className
+            $newInstance = new-scriptclassinstance $className
             $newInstance.$property1 | Should BeExactly $value1
             $newInstance.$property2 | Should BeExactly $value2
         }
@@ -163,7 +163,7 @@ Describe "ClassDefinitionInterface" {
                 }
             }
 
-            $newInstance = new-instance $className
+            $newInstance = new-scriptclassinstance $className
 
             ($newInstance.psobject.members | select Name).name -contains $function1 | Should BeExactly $true
             ($newInstance.psobject.members | select Name).name -contains $function2 | Should BeExactly $true
@@ -184,7 +184,7 @@ Describe "ClassDefinitionInterface" {
                 }
             }
 
-            $newInstance = new-instance $className
+            $newInstance = new-scriptclassinstance $className
             with $newInstance showme | should BeExactly $identityResult
         }
 
@@ -213,7 +213,7 @@ Describe "ClassDefinitionInterface" {
         }
     }
 
-    Context "When new-instance is used to create a new instance of a class" {
+    Context "When new-scriptclassinstance is used to create a new instance of a class" {
         It "calls the specified initializer function on the new object" {
             $className = 'ClassClass25'
             $initialStateValue = 3
@@ -225,7 +225,7 @@ Describe "ClassDefinitionInterface" {
                 }
             }
 
-            $newInstance = new-instance $className
+            $newInstance = new-scriptclassinstance $className
 
             $newInstance.objectState | Should BeExactly $initialStateValue
         }
@@ -241,7 +241,7 @@ Describe "ClassDefinitionInterface" {
                 }
             }
 
-            $newInstance = new-instance $className 3 6
+            $newInstance = new-scriptclassinstance $className 3 6
 
             $newInstance.objectState | Should BeExactly $initialStateValue
 
@@ -262,7 +262,7 @@ Describe "ClassDefinitionInterface" {
                 }
             }
 
-            $newInstance = new-instance $className 4 7
+            $newInstance = new-scriptclassinstance $className 4 7
 
             $newInstance.objectState | Should BeExactly $initialStateValue
         }
@@ -283,7 +283,7 @@ Describe "ClassDefinitionInterface" {
                 }
             }
 
-            $newInstance = new-instance $className
+            $newInstance = new-scriptclassinstance $className
              with $newInstance outer | Should BeExactly 'nested'
         }
 
@@ -302,7 +302,7 @@ Describe "ClassDefinitionInterface" {
                 }
             }
 
-            $newInstance = new-instance $className
+            $newInstance = new-scriptclassinstance $className
 
             with $newInstance outer | Should BeExactly $nestedThisResult
         }
@@ -326,7 +326,7 @@ Describe "ClassDefinitionInterface" {
                 }
             }
 
-            $newInstance = new-instance $className
+            $newInstance = new-scriptclassinstance $className
 
             with $newInstance sum 1 2 3 4 | Should BeExactly $bracketResult
         }
@@ -345,7 +345,7 @@ Describe "ClassDefinitionInterface" {
                 }
             }
 
-            $newInstance = new-instance $className
+            $newInstance = new-scriptclassinstance $className
             with $newInstance outer 4 5 6 | Should BeExactly 22
         }
 
@@ -364,7 +364,7 @@ Describe "ClassDefinitionInterface" {
                 }
             }
 
-            $newInstance = new-instance $className
+            $newInstance = new-scriptclassinstance $className
             with $newInstance outer 4 5 6 | Should BeExactly 22
         }
 
@@ -382,7 +382,7 @@ Describe "ClassDefinitionInterface" {
                 }
             }
 
-            $newInstance = new-instance $className
+            $newInstance = new-scriptclassinstance $className
             with $newInstance outer 4 5 6 | Should BeExactly 22
         }
 
@@ -401,7 +401,7 @@ Describe "ClassDefinitionInterface" {
                 }
             }
 
-            $newInstance = new-instance $className
+            $newInstance = new-scriptclassinstance $className
             with $newInstance outer 4 5 6 | Should BeExactly 22
         }
 
@@ -420,7 +420,7 @@ Describe "ClassDefinitionInterface" {
                 }
             }
 
-            $newInstance = new-instance $className
+            $newInstance = new-scriptclassinstance $className
             with $newInstance -do outer 4 5 6 | Should BeExactly 22
             with $newInstance -do { outer 3 2 1 } | Should BeExactly 13
         }
@@ -442,7 +442,7 @@ Describe "ClassDefinitionInterface" {
         scriptclass Outer {
             __property evaluator
             function __initialize($initialOffset) {
-                $this.evaluator = new-instance Inner $initialOffset
+                $this.evaluator = new-scriptclassinstance Inner $initialOffset
             }
 
             function getvalue($base, $exp) {
@@ -451,24 +451,24 @@ Describe "ClassDefinitionInterface" {
         }
 
         It "Should have instances that can call methods of one class from another class" {
-            $newInstance = new-instance Outer 5
+            $newInstance = new-scriptclassinstance Outer 5
             with $newInstance getvalue 2 3 | Should BeExactly 13
         }
     }
 
-    Context "When inspecting classes with get-class" {
+    Context "When inspecting classes with get-scriptclass" {
         It "successfully retrieves class data for a defined class" {
             $className = 'GetSimpleClass1'
-            add-class $className {}
+            add-scriptclass $className {}
 
-            $classType = get-class GetSimpleClass1
+            $classType = get-scriptclass GetSimpleClass1
 
             $classType | Should BeOfType [System.Management.Automation.Runspaces.TypeData]
             $classType.TypeName | Should BeExactly $className
         }
 
         It "throws an exception when a class is not found" {
-            { get-class ClassDoesNotExist } | Should Throw
+            { get-scriptclass ClassDoesNotExist } | Should Throw
         }
     }
 }
@@ -492,7 +492,7 @@ Describe "'with' function for object-based command context" {
             }
         }
 
-        $newInstance = new-instance $className
+        $newInstance = new-scriptclassinstance $className
 
         It "throws an exception if a null object is specified" {
             { with $null inner } | Should Throw
@@ -596,9 +596,9 @@ Describe 'The => invocation function' {
             }
         }
 
-        $newInstance = new-instance ClassClass43
-        $newInstance2 = new-instance ClassClass43
-        $newInstance3 = new-instance ClassClass43
+        $newInstance = new-scriptclassinstance ClassClass43
+        $newInstance2 = new-scriptclassinstance ClassClass43
+        $newInstance3 = new-scriptclassinstance ClassClass43
 
         It "Should execute a method with no arguments" {
             $newInstance | => current | Should BeExactly $initialValue
