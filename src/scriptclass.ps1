@@ -16,21 +16,8 @@ set-strictmode -version 2
 
 $__classTable = @{}
 
-function invoke-methodwithcontext($object, $method) {
-    $methodScript = $object.psobject.members[$method].script
-    invoke-scriptwithcontext $object $methodScript @args
-}
-
-function invoke-scriptwithcontext($objectContext, $script) {
-    $thisVariable = [PSVariable]::new('this', $objectContext)
-    $functions = @{}
-    $objectContext.psobject.members | foreach {
-        if ( $_.membertype -eq 'ScriptMethod' ) {
-            $functions[$_.name] = $_.value.script
-        }
-    }
-    $script.invokeWithContext($functions, $thisVariable, $args)
-}
+set-alias ScriptClass add-scriptclass
+set-alias with invoke-withcontext
 
 function add-scriptclass {
     param(
@@ -52,15 +39,20 @@ function add-scriptclass {
     }
 }
 
-function __clear-typedata($className) {
-    $existingTypeData = get-typedata $className
+function new-scriptobject {
+    param(
+        [string] $className
+    )
 
-    if ($existingTypeData -ne $null) {
-        $existingTypeData | remove-typedata
-    }
+    $existingClass = __find-existingClass $className
+
+    $newObject = $existingClass.prototype.psobject.copy()
+
+    __invoke-methodwithcontext $newObject '__initialize' @args | out-null
+    $newObject
 }
 
-function get-scriptclass {
+function get-scriptclasstypedata {
     param(
         [parameter(mandatory=$true)] [string] $className
     )
@@ -70,17 +62,85 @@ function get-scriptclass {
     $existingClass.typeData
 }
 
-function new-scriptclassinstance {
-    param(
-        [string] $className
-    )
+function invoke-withcontext($context = $null, $do) {
+    $action = $do
+    $result = $null
 
-    $existingClass = __find-existingClass $className
+    if ($context -eq $null) {
+        throw "Invalid context -- context may not be $null"
+    }
 
-    $newObject = $existingClass.prototype.psobject.copy()
+    $object = $context
 
-    invoke-methodwithcontext $newObject '__initialize' @args | out-null
-    $newObject
+    if (! ($context -is [PSCustomObject])) {
+        $object = [PSCustomObject] $context
+
+        if (! ($context -is [PSCustomObject])) {
+            throw "Specified context is not compatible with [PSCustomObject]"
+        }
+    }
+
+    if ($action -is [string]) {
+        $result = __invoke-methodwithcontext $object $action @args
+    } elseif ($action -is [ScriptBlock]) {
+        $result = __invoke-scriptwithcontext $object $action @args
+    } else {
+        throw "Invalid action type '$($action.gettype())'. Either a method name of type [string] or a scriptblock of type [ScriptBlock] must be supplied to 'with'"
+    }
+
+    $result
+}
+
+function =>($method) {
+    if ($method -eq $null) {
+        throw "A method must be specified"
+    }
+
+    $objects = @()
+
+    $input | foreach {
+       $objects += $_
+    }
+
+    if ( $objects.length -lt 1) {
+        throw "Pipeline must have at least 1 object for $($myinvocation.mycommand.name)"
+    }
+
+    $methodargs = $args
+    $results = @()
+    $objects | foreach {
+        $results += (with $_ $method @methodargs)
+    }
+
+    if ( $results.length -eq 1) {
+        $results[0]
+    } else {
+        $results
+    }
+}
+
+function __invoke-methodwithcontext($object, $method) {
+    $methodScript = $object.psobject.members[$method].script
+    __invoke-scriptwithcontext $object $methodScript @args
+}
+
+function __invoke-scriptwithcontext($objectContext, $script) {
+    $thisVariable = [PSVariable]::new('this', $objectContext)
+    $functions = @{}
+    $objectContext.psobject.members | foreach {
+        if ( $_.membertype -eq 'ScriptMethod' ) {
+            $functions[$_.name] = $_.value.script
+        }
+    }
+    $script.invokeWithContext($functions, $thisVariable, $args)
+}
+
+function __clear-typedata($className) {
+    $existingTypeData = get-typedata $className
+
+    if ($existingTypeData -ne $null) {
+        $existingTypeData | remove-typedata
+    }
 }
 
 function __find-class($className) {
@@ -184,36 +244,6 @@ function __add-typemember($memberType, $className, $memberName, $typeName, $init
     $classDefinition.typeData = $typeSystemData
 }
 
-set-alias ScriptClass add-scriptclass
-
-function =>($method) {
-    if ($method -eq $null) {
-        throw "A method must be specified"
-    }
-
-    $objects = @()
-
-    $input | foreach {
-       $objects += $_
-    }
-
-    if ( $objects.length -lt 1) {
-        throw "Pipeline must have at least 1 object for $($myinvocation.mycommand.name)"
-    }
-
-    $methodargs = $args
-    $results = @()
-    $objects | foreach {
-        $results += (with $_ $method @methodargs)
-    }
-
-    if ( $results.length -eq 1) {
-        $results[0]
-    } else {
-        $results
-    }
-}
-
 function __define-class($classDefinition) {
     $typeName = $classDefinition.typedata.TypeName
 
@@ -291,9 +321,9 @@ function with($context = $null, $do) {
     }
 
     if ($action -is [string]) {
-        $result = invoke-methodwithcontext $object $action @args
+        $result = __invoke-methodwithcontext $object $action @args
     } elseif ($action -is [ScriptBlock]) {
-        $result = invoke-scriptwithcontext $object $action @args
+        $result = __invoke-scriptwithcontext $object $action @args
     } else {
         throw "Invalid action type '$($action.gettype())'. Either a method name of type [string] or a scriptblock of type [ScriptBlock] must be supplied to 'with'"
     }
