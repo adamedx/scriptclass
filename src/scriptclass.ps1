@@ -35,7 +35,7 @@ function add-scriptclass {
         __clear-typedata $className
         __remove-class $className
 
-        throw $_.exception
+        throw $_
     }
 }
 
@@ -67,7 +67,7 @@ function invoke-withcontext($context = $null, $do) {
     $result = $null
 
     if ($context -eq $null) {
-        throw "Invalid context -- context may not be $null"
+        throw "Invalid context -- context may not be `$null"
     }
 
     $object = $context
@@ -244,6 +244,34 @@ function __add-typemember($memberType, $className, $memberName, $typeName, $init
     $classDefinition.typeData = $typeSystemData
 }
 
+function __property($arg1, $arg2) {
+    $propertyType = $null
+    $propertySpec = $arg2
+    $propertyName = $null
+    if ( $arg2 -eq $null ) {
+        $propertySpec = $arg1
+    } elseif ( $arg1 -match '\[\w+\]') {
+        $propertyType = iex $arg1
+    } else {
+        throw "Specified type '$arg1' was not of the form '[typename]'"
+    }
+
+    $propertyValue = $null
+    if ($propertySpec -is [Array]) {
+        if ($propertySpec.length -gt 2) {
+            throw "Specified property initializer for property '$($propertySpec[0])' was given $($ppropertySpec.length) values when only one is allowed"
+        }
+        $propertyName = $propertySpec[0]
+        if ($propertySpec.length -gt 1) {
+            $propertyValue = $propertySpec[1]
+        }
+    } else {
+        $propertyName = $propertySpec
+    }
+
+    __add-typemember NoteProperty $classDefinition.typeData.TypeName $propertyName $propertyType $propertyValue
+}
+
 function __define-class($classDefinition) {
     $typeName = $classDefinition.typedata.TypeName
 
@@ -251,52 +279,28 @@ function __define-class($classDefinition) {
         throw "Attempt to redefine class '$typeName'"
     }
 
-    function __property ($arg1, $arg2 = $null) {
-        $propertyType = $null
-        $propertySpec = $arg2
-        $propertyName = $null
-        if ( $arg2 -eq $null ) {
-            $propertySpec = $arg1
-        } elseif ( $arg1 -match '\[\w+\]') {
-            $propertyType = iex $arg1
-        } else {
-            throw "Specified type '$arg1' was not of the form '[typename]'"
-        }
-
-        $propertyValue = $null
-        if ($propertySpec -is [Array]) {
-            if ($propertySpec.length -gt 2) {
-                throw "Specified property initializer for property '$($propertySpec[0])' was given $($ppropertySpec.length) values when only one is allowed"
-            }
-            $propertyName = $propertySpec[0]
-            if ($propertySpec.length -gt 1) {
-                $propertyValue = $propertySpec[1]
-            }
-        } else {
-            $propertyName = $propertySpec
-        }
-
-        __add-typemember NoteProperty $classDefinition.typeData.TypeName $propertyName $propertyType $propertyValue
-    }
-
     $classDefinition.initialized = $true
-    function __initialize {}
+
     $initialFunctions = ls function:*
+    $nextFunctions = $null
+
+    function __initialize {}
+
     try {
-        . $classDefinition.typedata.members.ScriptBlock.value | out-null
+        $functionCaptureBlock = [ScriptBlock]::Create($classDefinition.typedata.members.ScriptBlock.value.tostring() + ";ls function:")
+        $nextFunctions = . $functionCaptureBlock
+        . { function __crazy {} }
     } catch {
         $badClassData = get-typedata $typeName
         $badClassData | remove-typedata
         throw $_.Exception
     }
 
-    $nextFunctions = ls function:*
-
     $additionalFunctions = @()
 
     $allowedInternalFunctions = @('__initialize')
     $nextFunctions | foreach {
-        if ( $allowedInternalFunctions -contains $_ -or $initialFunctions -notcontains $_) {
+        if ( ($_ -is [System.Management.Automation.FunctionInfo]) -and ($allowedInternalFunctions -contains $_ -or $initialFunctions -notcontains $_)) {
             __add-typemember ScriptMethod $classDefinition.typeData.TypeName $_.Name $null $_.scriptblock
         }
     }
