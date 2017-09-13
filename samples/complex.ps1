@@ -13,7 +13,7 @@
 # limitations under the License.
 
 $here = Split-Path -Parent $MyInvocation.MyCommand.Path
-import-module "$here/../stdposh.psm1" -force
+import-module "$here/../stdposh.psd1" -force
 
 ScriptClass Complex {
     __property real,0
