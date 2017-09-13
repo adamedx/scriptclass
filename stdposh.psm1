@@ -19,5 +19,4 @@ $source = join-path $here src/scriptclass.ps1
 . $source
 
 export-modulemember -alias ScriptClass,with
-export-modulemember -function add-scriptclass, new-scriptobject, get-scriptclasstypedata, invoke-withcontext, new-scriptobject, '=>', __property
-
+export-modulemember -function add-scriptclass, new-scriptobject, get-scriptclasstypedata, invoke-withcontext, new-scriptobject, '=>'
