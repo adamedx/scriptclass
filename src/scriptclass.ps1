@@ -35,7 +35,7 @@ function add-scriptclass {
         __clear-typedata $className
         __remove-class $className
 
-        throw $_.exception
+        throw $_
     }
 }
 
@@ -67,7 +67,7 @@ function invoke-withcontext($context = $null, $do) {
     $result = $null
 
     if ($context -eq $null) {
-        throw "Invalid context -- context may not be $null"
+        throw "Invalid context -- context may not be `$null"
     }
 
     $object = $context
@@ -251,7 +251,14 @@ function __define-class($classDefinition) {
         throw "Attempt to redefine class '$typeName'"
     }
 
-    function __property ($arg1, $arg2 = $null) {
+    $classDefinition.initialized = $true
+
+    $initialFunctions = ls function:*
+    $nextFunctions = $null
+
+    function __initialize {}
+
+    function __property($arg1, $arg2) {
         $propertyType = $null
         $propertySpec = $arg2
         $propertyName = $null
@@ -279,24 +286,20 @@ function __define-class($classDefinition) {
         __add-typemember NoteProperty $classDefinition.typeData.TypeName $propertyName $propertyType $propertyValue
     }
 
-    $classDefinition.initialized = $true
-    function __initialize {}
-    $initialFunctions = ls function:*
     try {
-        . $classDefinition.typedata.members.ScriptBlock.value | out-null
+        $functionCaptureBlock = [ScriptBlock]::Create($classDefinition.typedata.members.ScriptBlock.value.tostring() + ";ls function:")
+        $nextFunctions = . $functionCaptureBlock
     } catch {
         $badClassData = get-typedata $typeName
         $badClassData | remove-typedata
         throw $_.Exception
     }
 
-    $nextFunctions = ls function:*
-
     $additionalFunctions = @()
 
     $allowedInternalFunctions = @('__initialize')
     $nextFunctions | foreach {
-        if ( $allowedInternalFunctions -contains $_ -or $initialFunctions -notcontains $_) {
+        if ( ($_ -is [System.Management.Automation.FunctionInfo]) -and ($allowedInternalFunctions -contains $_ -or $initialFunctions -notcontains $_)) {
             __add-typemember ScriptMethod $classDefinition.typeData.TypeName $_.Name $null $_.scriptblock
         }
     }
