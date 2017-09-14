@@ -42,6 +42,29 @@ Describe "ClassDefinitionInterface" {
             $invokeResult = invoke-command -scriptblock $classType.members.ScriptBlock.value
             $invokeResult | Should BeExactly 5
         }
+
+        It 'should capture variables defined in the class script block as data members' {
+            Scriptclass ClassClass46 {
+                $notypenoval = $null
+                $typeimpliedbyval = 7
+                $typenullvalint = [int] $null
+                $typeandval = [double] 7
+            }
+
+            $newInstance = new-scriptobject ClassClass46
+
+            $newInstance.notypenoval | Should BeExactly $null
+            { ($newInstance.notypenoval).gettype() } | Should Throw
+
+            $newInstance.typeimpliedbyval | Should BeExactly 7
+            ($newInstance.typeimpliedbyval).gettype() | Should BeExactly 'int'
+
+            $newInstance.typenullvalint | Should BeExactly 0
+            ($newInstance.typenullvalint).gettype() | Should BeExactly 'int'
+
+            $newInstance.typeandval | Should BeExactly 7
+            ($newInstance.typeandval).gettype() | Should BeExactly 'double'
+        }
     }
 
     Context "When declaring a class with ScriptClass" {
@@ -633,3 +656,4 @@ Describe 'The => invocation function' {
         }
     }
 }
+
