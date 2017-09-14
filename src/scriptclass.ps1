@@ -254,7 +254,6 @@ function __define-class($classDefinition) {
     $classDefinition.initialized = $true
 
     $initialFunctions = ls function:*
-    $nextFunctions = $null
 
     function __initialize {}
 
@@ -286,15 +285,43 @@ function __define-class($classDefinition) {
         __add-typemember NoteProperty $classDefinition.typeData.TypeName $propertyName $propertyType $propertyValue
     }
 
-    try {
-        $functionCaptureBlock = [ScriptBlock]::Create($classDefinition.typedata.members.ScriptBlock.value.tostring() + ";ls function:")
-        $nextFunctions = . $functionCaptureBlock
+    $typeQuery = 'ls variable: | foreach { $result[$_.name]=try {(get-variable -valueonly $_.name).gettype()} catch { $null } }'
+
+    $functionCaptureBlock = $null
+    $initialVariables = @{}
+    ls variable: | foreach { $initialVariables[$_.name] = $_ }
+    $memberData = try {
+        $functionCaptureBlock = [ScriptBlock]::Create($classDefinition.typedata.members.ScriptBlock.value.tostring() + ";`$result=@{};$typeQuery;@{functions=(ls function:);variables=(ls variable:);types=`$result}")
+        . $functionCaptureBlock
     } catch {
         $badClassData = get-typedata $typeName
         $badClassData | remove-typedata
         throw $_.Exception
     }
 
+    $variables = $memberData['variables']
+
+    $variables | where { $_ -is [System.Management.Automation.PSVariable] -and (! $initialVariables.containskey($_.name)) } | foreach {
+        $varname= $_.name
+        $vartype = if ($memberData['types'].contains($_.name)) {
+            $memberData['types'][$varname]
+        } else {
+            $null
+        }
+        $varvalue = $_.value
+
+        $varArg = @($varname, $varvalue)
+        $arg1 = $varArg
+        $arg2 = $null
+
+        if ($vartype -ne $null) {
+            $arg1 = "[$vartype]"
+            $arg2 = $varArg
+        }
+        __property $arg1 $arg2
+    }
+
+    $nextFunctions = $memberData['functions']
     $additionalFunctions = @()
 
     $allowedInternalFunctions = @('__initialize')
