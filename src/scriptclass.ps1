@@ -14,6 +14,20 @@
 
 set-strictmode -version 2
 
+function getfunctions($classDefinition) {
+    $script:__propAccumulator = @{}
+    $__functions__ = ls function:
+
+    function __initialize {}
+
+    . $classDefinition | out-null
+
+    $__classfunctions__ = @{}
+    ls function: | foreach { $__classfunctions__[$_.name] = $_ }
+    $__functions__ | foreach { $__classfunctions__.remove($_.name) }
+    $__classfunctions__
+}
+
 $__classTable = @{}
 
 set-alias ScriptClass add-scriptclass
@@ -157,7 +171,11 @@ function __remove-class($className) {
 }
 
 function __invoke-methodwithcontext($object, $method) {
-    $methodScript = $object.psobject.members[$method].script
+    $methodScript = try {
+        $object.psobject.members[$method].script
+    } catch {
+        throw $_
+    }
     __invoke-scriptwithcontext $object $methodScript @args
 }
 
@@ -244,90 +262,87 @@ function __add-typemember($memberType, $className, $memberName, $typeName, $init
     $classDefinition.typeData = $typeSystemData
 }
 
-function __define-class($classDefinition) {
-    $typeName = $classDefinition.typedata.TypeName
+function _prop {
+    param(
+        [parameter(mandatory=$true, position=0)] [string] $name,
+        [parameter(position=1)] $value = $null,
+        [alias('astype')] [string] $type = $null
+    )
+    [cmdletbinding(positionalbinding=$false)]
 
+    $propTypename = $type
+    $propName = $name
+    $propVal = $value
+    $propType = $null
+
+    if ( $__propAccumulator.contains($propName) ) {
+        throw "Property '$propName' is already defined on this object"
+    }
+
+    if ( $propTypeName -ne $null -and $propTypeName -ne '') {
+        if ( $propTypeName.startswith('[') -and $propTypeName.endswith(']')) {
+            $propType = iex $propTypeName
+        } else {
+            throw "Specified type '$propTypeName' was not of the form '[typename]'"
+        }
+    }
+
+    $__propAccumulator[$propName] = @{type=$propType;value=$propVal}
+}
+
+function modulefunc {
+    param($functions, $aliases, $className, $_classDefinition)
+    $functions | foreach { new-item "function:$($_.name)" -value $_.scriptblock }
+    $aliases | foreach { set-alias $_.name $_.resolvedcommandname };
+    $__exception__ = $null
+    $__newfunctions__ = try {
+        getfunctions $_classDefinition
+    } catch {
+        $__exception__ = $_
+    }
+    export-modulemember -variable __memberResult,__newfunctions__,__exception__ -function $__newfunctions__.keys
+}
+
+function __define-class($classDefinition) {
     if ($classDefinition.initialized) {
         throw "Attempt to redefine class '$typeName'"
     }
 
     $classDefinition.initialized = $true
 
-    $initialFunctions = ls function:*
+    $aliases = @(get-item alias:with)
+    pushd function:
+    $functions = ls invoke-withcontext, '=>', __invoke-methodwithcontext, __invoke-scriptwithcontext, _prop, getfunctions
+    popd
 
-    function __initialize {}
+    $memberData = $null
+    $classDefinitionException = $null
 
-    function __property($arg1, $arg2) {
-        $propertyType = $null
-        $propertySpec = $arg2
-        $propertyName = $null
-        if ( $arg2 -eq $null ) {
-            $propertySpec = $arg1
-        } elseif ( $arg1 -match '\[\w+\]') {
-            $propertyType = iex $arg1
-        } else {
-            throw "Specified type '$arg1' was not of the form '[typename]'"
-        }
-
-        $propertyValue = $null
-        if ($propertySpec -is [Array]) {
-            if ($propertySpec.length -gt 2) {
-                throw "Specified property initializer for property '$($propertySpec[0])' was given $($ppropertySpec.length) values when only one is allowed"
-            }
-            $propertyName = $propertySpec[0]
-            if ($propertySpec.length -gt 1) {
-                $propertyValue = $propertySpec[1]
-            }
-        } else {
-            $propertyName = $propertySpec
-        }
-
-        __add-typemember NoteProperty $classDefinition.typeData.TypeName $propertyName $propertyType $propertyValue
-    }
-
-    $typeQuery = 'ls variable: | foreach { $result[$_.name]=try {(get-variable -valueonly $_.name).gettype()} catch { $null } }'
-
-    $functionCaptureBlock = $null
-    $initialVariables = @{}
-    ls variable: | foreach { $initialVariables[$_.name] = $_ }
-    $memberData = try {
-        $functionCaptureBlock = [ScriptBlock]::Create($classDefinition.typedata.members.ScriptBlock.value.tostring() + ";`$result=@{};$typeQuery;@{functions=(ls function:);variables=(ls variable:);types=`$result}")
-        . $functionCaptureBlock
+    try {
+        $memberData = new-module -ascustomobject -scriptblock (gi function:modulefunc).scriptblock -argumentlist $functions, $aliases, $classDefinition.typeData.TypeName, $classDefinition.typedata.members.ScriptBlock.value
+        $classDefinitionException = $memberData.__exception__
     } catch {
-        $badClassData = get-typedata $typeName
+        $classDefinitionException = $_
+    }
+
+    if ($classDefinitionException -ne $null) {
+        $badClassData = get-typedata $classDefinition.typeData.TypeName
         $badClassData | remove-typedata
-        throw $_.Exception
+        throw $classDefinitionException
     }
 
-    $variables = $memberData['variables']
+    $classProperties = $__propAccumulator
 
-    $variables | where { $_ -is [System.Management.Automation.PSVariable] -and (! $initialVariables.containskey($_.name)) } | foreach {
-        $varname= $_.name
-        $vartype = if ($memberData['types'].contains($_.name)) {
-            $memberData['types'][$varname]
-        } else {
-            $null
-        }
-        $varvalue = $_.value
-
-        $varArg = @($varname, $varvalue)
-        $arg1 = $varArg
-        $arg2 = $null
-
-        if ($vartype -ne $null) {
-            $arg1 = "[$vartype]"
-            $arg2 = $varArg
-        }
-        __property $arg1 $arg2
+    $classProperties.keys | foreach {
+        __add-typemember NoteProperty $classDefinition.typeData.TypeName $_ $classProperties[$_].type $classProperties[$_].value
     }
 
-    $nextFunctions = $memberData['functions']
-    $additionalFunctions = @()
+    $nextFunctions = $memberData.__newfunctions__
 
-    $allowedInternalFunctions = @('__initialize')
-    $nextFunctions | foreach {
-        if ( ($_ -is [System.Management.Automation.FunctionInfo]) -and ($allowedInternalFunctions -contains $_ -or $initialFunctions -notcontains $_)) {
-            __add-typemember ScriptMethod $classDefinition.typeData.TypeName $_.Name $null $_.scriptblock
+    $nextFunctions.keys | foreach {
+        if ($nextFunctions[$_] -is [System.Management.Automation.FunctionInfo] -and $functions -notcontains $_) {
+
+            __add-typemember ScriptMethod $classDefinition.typeData.TypeName $_ $null $nextfunctions[$_].scriptblock
         }
     }
 }
