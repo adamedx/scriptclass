@@ -14,20 +14,6 @@
 
 set-strictmode -version 2
 
-function getfunctions($classDefinition) {
-    $script:__propAccumulator = @{}
-    $__functions__ = ls function:
-
-    function __initialize {}
-
-    . $classDefinition | out-null
-
-    $__classfunctions__ = @{}
-    ls function: | foreach { $__classfunctions__[$_.name] = $_ }
-    $__functions__ | foreach { $__classfunctions__.remove($_.name) }
-    $__classfunctions__
-}
-
 $__classTable = @{}
 
 set-alias ScriptClass add-scriptclass
@@ -262,6 +248,26 @@ function __add-typemember($memberType, $className, $memberName, $typeName, $init
     $classDefinition.typeData = $typeSystemData
 }
 
+function __get-classmembers($classDefinition) {
+    $script:__propAccumulator = @{}
+    $__functions__ = ls function:
+    $__variables__ = ls variable:
+    $__classvariables__ = @{}
+
+    function __initialize {}
+
+    . $classDefinition | out-null
+
+    ls variable: | foreach { $__classvariables__[$_.name] = $_ }
+    $__variables__ | foreach { $__classvariables__.remove($_.name) }
+
+    $__classfunctions__ = @{}
+    ls function: | foreach { $__classfunctions__[$_.name] = $_ }
+    $__functions__ | foreach { $__classfunctions__.remove($_.name) }
+
+    @{functions=$__classfunctions__;variables=$__classvariables__}
+}
+
 function _prop {
     param(
         [parameter(mandatory=$true, position=0)] [string] $name,
@@ -292,15 +298,22 @@ function _prop {
 
 function modulefunc {
     param($functions, $aliases, $className, $_classDefinition)
+    set-strictmode -version 2 # necessary because strictmode gets reset when you execute in a new module
     $functions | foreach { new-item "function:$($_.name)" -value $_.scriptblock }
     $aliases | foreach { set-alias $_.name $_.resolvedcommandname };
     $__exception__ = $null
-    $__newfunctions__ = try {
-        getfunctions $_classDefinition
+    $__newfunctions__ = @{}
+    $__newvariables__ = @{}
+
+    try {
+        $__classmembers__ = __get-classmembers $_classDefinition
+        $__newfunctions__ = $__classmembers__.functions
+        $__newvariables__ = $__classmembers__.variables
     } catch {
         $__exception__ = $_
     }
-    export-modulemember -variable __memberResult,__newfunctions__,__exception__ -function $__newfunctions__.keys
+
+    export-modulemember -variable __memberResult, __newfunctions__, __newvariables__, __exception__ -function $__newfunctions__.keys
 }
 
 function __define-class($classDefinition) {
@@ -312,7 +325,7 @@ function __define-class($classDefinition) {
 
     $aliases = @(get-item alias:with)
     pushd function:
-    $functions = ls invoke-withcontext, '=>', __invoke-methodwithcontext, __invoke-scriptwithcontext, _prop, getfunctions
+    $functions = ls invoke-withcontext, '=>', __invoke-methodwithcontext, __invoke-scriptwithcontext, _prop, __get-classmembers
     popd
 
     $memberData = $null
