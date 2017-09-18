@@ -16,8 +16,8 @@ $here = Split-Path -Parent $MyInvocation.MyCommand.Path
 import-module "$here/../stdposh.psd1" -force
 
 ScriptClass Complex {
-    _prop real 0
-    _prop imaginary 0
+    $real = 0
+    $imaginary = 0
 
     function add($real, $imaginary) {
         $result = new-scriptobject Complex

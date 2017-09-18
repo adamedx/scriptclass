@@ -119,12 +119,10 @@ function =>($method) {
     }
 }
 
+new-variable -name StrictTypeCheckingTypename -value '__scriptclass_strict_value__' -Option Constant
+
 function __new-class([Hashtable]$classData) {
     $className = $classData['Value']
-
-    if ((__find-class $className) -ne $null) {
-        throw "class '$className' already has a definition"
-    }
 
     # remove existing type data
     __clear-typedata $className
@@ -249,16 +247,15 @@ function __add-typemember($memberType, $className, $memberName, $typeName, $init
 }
 
 function __get-classmembers($classDefinition) {
-    $script:__propAccumulator = @{}
     $__functions__ = ls function:
-    $__variables__ = ls variable:
+    $__variables__ = get-variable -scope 0 # must restrict to this scope or we see variables outside the module
     $__classvariables__ = @{}
 
     function __initialize {}
 
     . $classDefinition | out-null
 
-    ls variable: | foreach { $__classvariables__[$_.name] = $_ }
+    get-variable -scope 0 | foreach { $__classvariables__[$_.name] = $_ }
     $__variables__ | foreach { $__classvariables__.remove($_.name) }
 
     $__classfunctions__ = @{}
@@ -268,32 +265,53 @@ function __get-classmembers($classDefinition) {
     @{functions=$__classfunctions__;variables=$__classvariables__}
 }
 
-function _prop {
+function strict-val {
     param(
-        [parameter(mandatory=$true, position=0)] [string] $name,
-        [parameter(position=1)] $value = $null,
-        [alias('astype')] [string] $type = $null
+        [parameter(mandatory=$true)] $type,
+        $value = $null
     )
-    [cmdletbinding(positionalbinding=$false)]
 
-    $propTypename = $type
-    $propName = $name
-    $propVal = $value
-    $propType = $null
-
-    if ( $__propAccumulator.contains($propName) ) {
-        throw "Property '$propName' is already defined on this object"
+    if (! $type -is [string] -and ! $type -is [Type]) {
+        throw "The 'type' argument of type '$($type.gettype())' specified for strict-val must be of type [String] or [Type]"
     }
 
-    if ( $propTypeName -ne $null -and $propTypeName -ne '') {
-        if ( $propTypeName.startswith('[') -and $propTypeName.endswith(']')) {
-            $propType = iex $propTypeName
-        } else {
-            throw "Specified type '$propTypeName' was not of the form '[typename]'"
+    $propType = if ( $type -is [Type] ) {
+        $type
+    } elseif ( $type.startswith('[') -and $type.endswith(']')) {
+        iex $type
+    } else {
+        throw "Specified type '$propTypeName' was not of the form '[typename]'"
+    }
+
+    [PSCustomObject] @{
+        PSTypeName = $StrictTypeCheckingTypename;
+        type = $propType;
+        value = $value
+    }
+}
+
+function __get-classproperties($memberData) {
+    $classProperties = @{}
+
+    $memberData.__newvariables__.getenumerator() | foreach {
+        if ($classProperties.contains($_.name)) {
+            throw "Attempted redefinition of property '$_.name'"
         }
+
+        $propType = $null
+        $propValSpec = $_.value.value
+
+        $propVal = if ( $propValSpec -is [PSCustomObject] -and $propValSpec.psobject.typenames.contains($StrictTypeCheckingTypename) ) {
+            $propType = $_.value.value.type
+            $_.value.value.value
+        } else {
+            $_.value.value
+        }
+
+        $classProperties[$_.name] = @{type=$propType;value=$propVal}
     }
 
-    $__propAccumulator[$propName] = @{type=$propType;value=$propVal}
+    $classProperties
 }
 
 function modulefunc {
@@ -317,15 +335,9 @@ function modulefunc {
 }
 
 function __define-class($classDefinition) {
-    if ($classDefinition.initialized) {
-        throw "Attempt to redefine class '$typeName'"
-    }
-
-    $classDefinition.initialized = $true
-
     $aliases = @(get-item alias:with)
     pushd function:
-    $functions = ls invoke-withcontext, '=>', __invoke-methodwithcontext, __invoke-scriptwithcontext, _prop, __get-classmembers
+    $functions = ls invoke-withcontext, '=>', __invoke-methodwithcontext, __invoke-scriptwithcontext, __get-classmembers
     popd
 
     $memberData = $null
@@ -344,18 +356,17 @@ function __define-class($classDefinition) {
         throw $classDefinitionException
     }
 
-    $classProperties = $__propAccumulator
+    $classProperties = __get-classproperties $memberData
 
-    $classProperties.keys | foreach {
-        __add-typemember NoteProperty $classDefinition.typeData.TypeName $_ $classProperties[$_].type $classProperties[$_].value
+    $classProperties.getenumerator() | foreach {
+        __add-typemember NoteProperty $classDefinition.typeData.TypeName $_.name $_.value.type $_.value.value
     }
 
     $nextFunctions = $memberData.__newfunctions__
 
-    $nextFunctions.keys | foreach {
-        if ($nextFunctions[$_] -is [System.Management.Automation.FunctionInfo] -and $functions -notcontains $_) {
-
-            __add-typemember ScriptMethod $classDefinition.typeData.TypeName $_ $null $nextfunctions[$_].scriptblock
+    $nextFunctions.getenumerator() | foreach {
+        if ($nextFunctions[$_.name] -is [System.Management.Automation.FunctionInfo] -and $functions -notcontains $_.name) {
+            __add-typemember ScriptMethod $classDefinition.typeData.TypeName $_.name $null $_.value.scriptblock
         }
     }
 }
