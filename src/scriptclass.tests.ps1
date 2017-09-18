@@ -24,11 +24,6 @@ Describe "ClassDefinitionInterface" {
             $result | Should BeExactly $null
         }
 
-        It "throws an exception when you try to redefine a class" {
-            add-scriptclass SimpleClass3 {}
-            { add-scriptclass SimpleClass3 {} } | Should Throw
-        }
-
         It "can be found by get-scriptclasstypedata" {
             $className = 'SimpleClass4'
             add-scriptclass $className {} | out-null
@@ -43,12 +38,12 @@ Describe "ClassDefinitionInterface" {
             $invokeResult | Should BeExactly 5
         }
 
-        It 'should capture variables defined in the class script block as data members' {
+        It 'should capture variables defined by assignment in the class script block as data members' {
             Scriptclass ClassClass46 {
-                _prop notypenoval $null
-                _prop typeimpliedbyval 7
-                _prop typenullvalint $null -astype [int]
-                _prop typeandval 7 -astype [double]
+                $notypenoval = $null
+                $typeimpliedbyval = 7
+                $typenullvalint = [int] $null
+                $typeandval = [double] 7
             }
 
             $newInstance = new-scriptobject ClassClass46
@@ -78,7 +73,7 @@ Describe "ClassDefinitionInterface" {
             $propertyName = 'description'
 
             ScriptClass $className {
-                _prop description
+                $description = $null
             }
 
             $typeData = get-scriptclasstypedata $className
@@ -86,15 +81,24 @@ Describe "ClassDefinitionInterface" {
             $typeData.members.keys -contains $propertyName | Should BeExactly $true
         }
 
-        It "throws an exception if there's an attempt to redefine a property" {
-            $className = 'ClassClass6'
-            $propertyName = 'description'
+        It "throws an exception if you fail to initialize a property" {
             {
-                ScriptClass $className {
-                    _prop $propertyName
-                    _prop $propertyName
+                ScriptClass ClassClass50 {
+                    $description
                 }
             } | Should Throw
+        }
+
+        It "redefines a property with the last value if it is defined more than once" {
+            $className = 'ClassClass6'
+            $propertyName = 'description'
+            ScriptClass $className {
+                $description = 1
+                $description = 2
+            }
+
+            $newInstance = new-scriptobject $className
+            $newInstance.description | Should BeExactly 2
         }
 
         It "can create a new object using new-object with the specified type" {
@@ -111,8 +115,8 @@ Describe "ClassDefinitionInterface" {
             $prop2 = 'property2'
 
             ScriptClass $className {
-                _prop $prop1
-                _prop $prop2
+                $property1 = $null
+                $property2 = $null
             }
 
             $newInstance = new-scriptobject $className
@@ -127,8 +131,8 @@ Describe "ClassDefinitionInterface" {
             $prop2 = 'property2'
 
             ScriptClass $className {
-                _prop property1 1
-                _prop property2 2
+                $property1 = 1
+                $property2 = 2
             }
 
             $newInstance = new-scriptobject $className
@@ -136,14 +140,14 @@ Describe "ClassDefinitionInterface" {
             $newInstance.$prop2 | Should BeExactly 2
         }
 
-        It "can create a new object that defines the type of members" {
-            $className = 'ClassClass10'
+        It "can create a new object that defines the type of members with strict-val" {
+            $className = 'ClassClass48'
             $prop1 = 'property1'
             $prop2 = 'property2'
 
             ScriptClass $className {
-                _prop property1 -astype [int32]
-                _prop property2 -astype [Type]
+                $property1 = strict-val [int32]
+                $property2 = strict-val [Type]
             }
 
             $newInstance = new-scriptobject $className
@@ -154,16 +158,16 @@ Describe "ClassDefinitionInterface" {
             { $newInstance.$prop2 = '2' } | Should Throw
         }
 
-        It "can create a new object that includes additional typed properties set to default values" {
-            $className = 'ClassClass11'
+        It "can create a new object that includes additional typed properties set to default values with strict-val" {
+            $className = 'ClassClass49'
             $prop1 = 'property1'
             $prop2 = 'property2'
             $value1 = 1
             $value2 = [int32]
 
             ScriptClass $className {
-                _prop property1 $value1 -astype [int32]
-                _prop property2 $value2 -astype [Type]
+                $property1 = strict-val [int32] $value1
+                $property2 = strict-val [Type] $value2
             }
 
             $newInstance = new-scriptobject $className
@@ -200,7 +204,7 @@ Describe "ClassDefinitionInterface" {
             $identityResult = "me"
 
             ScriptClass $className {
-                _prop identity $identityResult
+                $identity = $identityResult
 
                 function showme {
                     $this.identity
@@ -217,7 +221,7 @@ Describe "ClassDefinitionInterface" {
 
             {
                 ScriptClass $className {
-                    _prop typeProperty $invalidIntegerValue -astype [Type]
+                    $typeProperty = strict-val [Type] $invalidIntegerValue
                 }
             } | Should Throw
         }
@@ -228,8 +232,8 @@ Describe "ClassDefinitionInterface" {
 
             {
                 ScriptClass $className {
-                    _prop validProperty
-                    _prop typeProperty $invalidIntegerValue -astype [Type]
+                    $validProperty = $null
+                    $typeProperty = strict-val [Type] $invalidIntegerValue
                 }
             } | Should Throw
             get-typedata $className | Should BeExactly $null
@@ -242,7 +246,7 @@ Describe "ClassDefinitionInterface" {
             $initialStateValue = 3
 
             ScriptClass $className {
-                _prop objectState
+                $objectState = $null
                 function __initialize {
                     $this.objectState = 3
                 }
@@ -258,7 +262,7 @@ Describe "ClassDefinitionInterface" {
             $initialStateValue = 9
 
             ScriptClass $className {
-                _prop objectState
+                $objectState = $null
                 function __initialize($arg1, $arg2) {
                     $this.objectState = $arg1 + $arg2
                 }
@@ -275,7 +279,7 @@ Describe "ClassDefinitionInterface" {
             $initialStateValue = 11
 
             ScriptClass $className {
-                _prop objectState
+                $objectState = $null
                 function __initialize($arg1, $arg2) {
                     with $this sum $arg1 $arg2
                 }
@@ -315,7 +319,7 @@ Describe "ClassDefinitionInterface" {
             $nestedThisResult = 'nestedthis'
 
             ScriptClass $className {
-                _prop objectState 'nestedthis'
+                $objectState = 'nestedthis'
                 function outer {
                     with $this inner
                 }
@@ -335,10 +339,10 @@ Describe "ClassDefinitionInterface" {
             $bracketResult = '[1 + (3 * 4) + 2]'
 
             ScriptClass $className {
-                _prop outerBracket '['
-                _prop outerBracketRight ']'
-                _prop innerBracket '('
-                _prop innerBracketRight ')'
+                $outerBracket = '['
+                $outerBracketRight = ']'
+                $innerBracket = '('
+                $innerBracketRight = ')'
                 function sum($arg1, $arg2, $arg3, $arg4) {
                     $inner = with $this product $arg3 $arg4
                     "$($this.outerBracket)$arg1 + $inner + $($arg2)$($this.outerBracketRight)"
@@ -358,7 +362,7 @@ Describe "ClassDefinitionInterface" {
             $className = 'ClassClass23'
 
             ScriptClass $className {
-                _prop mainValue 7
+                $mainValue = 7
                 function outer($arg1, $arg2, $arg3) {
                     with $this inner $arg3 ($arg1 + $arg2)
                 }
@@ -377,7 +381,7 @@ Describe "ClassDefinitionInterface" {
             $className = 'ClassClass24'
 
             ScriptClass $className {
-                _prop mainValue 7
+                $mainValue = 7
                 function outer {
                     with $this inner @args
                 }
@@ -395,7 +399,7 @@ Describe "ClassDefinitionInterface" {
             $className = 'ClassClass42'
 
             ScriptClass $className {
-                _prop mainValue  7
+                $mainValue = 7
                 function outer($arg1, $arg2, $arg3) {
                     inner $arg3 ($arg1 + $arg2)
                 }
@@ -414,7 +418,7 @@ Describe "ClassDefinitionInterface" {
             $className = 'ClassClass41'
 
             ScriptClass $className {
-                _prop mainValue 7
+                $mainValue = 7
                 function outer {
                     inner @args
                 }
@@ -433,7 +437,7 @@ Describe "ClassDefinitionInterface" {
             $className = 'ClassClass44'
 
             ScriptClass $className {
-                _prop mainValue 7
+                $mainValue = 7
                 function outer {
                     inner @args
                 }
@@ -452,7 +456,7 @@ Describe "ClassDefinitionInterface" {
 
     Context "When a class is composed with another class" {
         ScriptClass Inner {
-            _prop state 0
+            $state = 0
             function __initialize($initState) {
                 $this.state = $initState
             }
@@ -463,7 +467,7 @@ Describe "ClassDefinitionInterface" {
         }
 
         ScriptClass Outer {
-            _prop evaluator $null
+            $evaluator = $null
             function __initialize($initialOffset) {
                 $this.evaluator = new-scriptobject Inner $initialOffset
             }
@@ -479,7 +483,50 @@ Describe "ClassDefinitionInterface" {
         }
     }
 
-    Context "When inspecting classes with get-scriptclasstypedata" {
+    Context "when redefining a class" {
+        It "doesn't throw an exception when the class is defined the same way twice" {
+            ScriptClass SimpleClass3 {}
+            { ScriptClass SimpleClass3 {} } | Should Not Throw
+        }
+
+        It "redefines an existing class if it already exists" {
+            ScriptClass ClassClass51 {
+                $prop1 = 1
+                $prop2 = 2
+                $prop3 = strict-val [int] 3
+                function method1 { $this.prop1 }
+                function method2 { $this.prop2 }
+                function method3 { $this.prop3 }
+            }
+
+            ScriptClass ClassClass51 {
+                $prop2 = 21
+                $prop3 = strict-val [string] '31'
+                $prop4 = 4
+                $prop5 = $null
+                function method2 { $this.prop4 }
+                function method4 { $this.prop3 }
+                function method5 { $this.prop5 }
+                function __initialize { $this.prop5 = 5 }
+            }
+
+            $newInstance = new-scriptobject ClassClass51
+
+            { $newInstance.prop1 | out-null } | Should Throw
+            $newInstance.prop2 | Should BeExactly 21
+            $newInstance.prop3 | Should BeExactly '31'
+            $newInstance.prop4 | Should BeExactly 4
+            $newInstance.prop5 | Should BeExactly 5
+
+            { $newInstance |=> method1 | out-null } | Should Throw
+            $newInstance |=> method2 | Should BeExactly 4
+            { $newInstance |=> method3 | out-null } | Should Throw
+            $newInstance |=> method4 | Should BeExactly '31'
+            $newInstance |=> method5 | Should BeExactly 5
+        }
+    }
+
+    Context "when inspecting classes with get-scriptclasstypedata" {
         It "successfully retrieves class data for a defined class" {
             $className = 'GetSimpleClass1'
             add-scriptclass $className {}
@@ -501,7 +548,7 @@ Describe "'with' function for object-based command context" {
         $className = 'ClassClass32'
 
         ScriptClass $className {
-            _prop mainValue 7
+            $mainValue = 7
             function outer {
                 with $this inner @args
             }
@@ -603,7 +650,7 @@ Describe 'The => invocation function' {
     Context "When a method is invoked through the => function" {
         $initialValue = 10
         ScriptClass ClassClass43 {
-            _prop sum $initialValue
+            $sum = $initialValue
             function add($first, $second) {
                 $first + $second
             }
