@@ -19,6 +19,21 @@ $__classTable = @{}
 set-alias ScriptClass add-scriptclass
 set-alias with invoke-withcontext
 
+new-variable -name StrictTypeCheckingTypename -value '__scriptclass_strict_value__' -Option Constant
+new-variable -name ScriptClassTypeName -value 'ScriptClassType' -option Constant
+
+$:: = [PSCustomObject] @{}
+
+function __clear-typedata($className) {
+    $existingTypeData = get-typedata $className
+
+    if ($existingTypeData -ne $null) {
+        $existingTypeData | remove-typedata
+    }
+}
+
+__clear-typedata $scriptClassTypeName
+
 function add-scriptclass {
     param(
         [parameter(mandatory=$true)] [string] $className,
@@ -30,11 +45,14 @@ function add-scriptclass {
     try {
         $classDefinition = __new-class $classData
         __add-typemember NoteProperty $className ScriptBlock $null $classBlock
+        __add-classmember $className $classDefinition
         __define-class $classDefinition | out-null
+        __remove-publishedclass $className
+        $:: | add-member -name $className -memberType 'ScriptProperty' -value ([ScriptBlock]::Create("get-class '$className'"))
     } catch {
+        __remove-publishedclass $className
         __clear-typedata $className
         __remove-class $className
-
         throw $_
     }
 }
@@ -62,7 +80,31 @@ function get-scriptclasstypedata {
     $existingClass.typeData
 }
 
-function invoke-withcontext($context = $null, $do) {
+function get-class([string] $className) {
+    $existingClass = __find-existingClass $className
+    $existingClass.prototype.scriptclass
+}
+
+function is-class {
+    param(
+        [parameter(valuefrompipeline=$true)][PSCustomObject] $instance,
+        $class = $null)
+    $isClass = $instance.psobject.typenames.contains($ScriptClassTypeName)
+
+    if ($isClass -and $class -ne $null) {
+        if ($class -is [string]) {
+            $isClass = $instance.psobject.typenames.contains($class.name)
+        } elseif ( $class -is [PSCustomObject] ) {
+            $isClass = $class.psobject.typenames.contains($ScriptClassTypeName) -and $instance.psobject.typenames.contains($class.name)
+        } else {
+            throw "Class must be specified as type [string] or type [PSCustomObject]"
+        }
+    }
+
+    $isClass
+}
+
+function invoke-withcontext($context, $do) {
     $action = $do
     $result = $null
 
@@ -119,7 +161,18 @@ function =>($method) {
     }
 }
 
-new-variable -name StrictTypeCheckingTypename -value '__scriptclass_strict_value__' -Option Constant
+function ::> {
+    param(
+        [parameter(valuefrompipeline=$true)] [string] $classSpec,
+        [parameter(position=0)] $method,
+        [parameter(valuefromremainingarguments=$true)] $remaining
+    )
+    [cmdletbinding(positionalbinding=$false)]
+
+    $classObject = get-class $classSpec
+
+    $classObject |=> $method @remaining
+}
 
 function __new-class([Hashtable]$classData) {
     $className = $classData['Value']
@@ -131,7 +184,7 @@ function __new-class([Hashtable]$classData) {
     $typeSystemData = get-typedata $classname
 
     $prototype = [PSCustomObject]@{PSTypeName=$className}
-    $classDefinition = @{typedata=$typeSystemData;initialized=$false;prototype=$prototype}
+    $classDefinition = @{typedata=$typeSystemData;prototype=$prototype}
     $__classTable[$className] = $classDefinition
     $classDefinition
 }
@@ -150,25 +203,38 @@ function __find-existingClass($className) {
     $existingClass
 }
 
+function __remove-publishedclass($className) {
+    try {
+        $::.psobject.members.remove($className)
+    } catch {
+    }
+}
+
 function __remove-class($className) {
     $__classTable.Remove($className)
+}
+
+function __to-class($className) {
+    [PSCustomObject] @{
+        PSTypeName = $ScriptClassTypeName
+        className = $className
+        scriptclass = $null
+    }
+}
+
+function __add-classmember($className, $classDefinition) {
+    $classMember = __to-class $className
+
+    __add-typemember NoteProperty $className 'scriptclass' $null $classMember
 }
 
 function __invoke-methodwithcontext($object, $method) {
     $methodScript = try {
         $object.psobject.members[$method].script
     } catch {
-        throw $_
+        throw [Exception]::new("Failed to invoke method '$method' on object of type $($object.gettype())", $_.exception)
     }
     __invoke-scriptwithcontext $object $methodScript @args
-}
-
-function __clear-typedata($className) {
-    $existingTypeData = get-typedata $className
-
-    if ($existingTypeData -ne $null) {
-        $existingTypeData | remove-typedata
-    }
 }
 
 function __invoke-scriptwithcontext($objectContext, $script) {
@@ -181,6 +247,7 @@ function __invoke-scriptwithcontext($objectContext, $script) {
     }
     $script.invokeWithContext($functions, $thisVariable, $args)
 }
+
 
 function __add-member($prototype, $memberName, $psMemberType, $memberValue, $memberType = $null, $memberSecondValue = $null, $force = $false) {
     $arguments = @{name=$memberName;memberType=$psMemberType;value=$memberValue}
@@ -195,7 +262,7 @@ function __add-member($prototype, $memberName, $psMemberType, $memberValue, $mem
     $newMember = ($prototype | add-member -passthru @arguments)
 }
 
-function __add-typemember($memberType, $className, $memberName, $typeName, $initialValue) {
+function __add-typemember($memberType, $className, $memberName, $typeName, $initialValue, $hidden = $false) {
     if ($typeName -ne $null -and -not $typeName -is [Type]) {
         throw "Invalid argument passed for type -- the argument must be of type [Type]"
     }
@@ -214,7 +281,10 @@ function __add-typemember($memberType, $className, $memberName, $typeName, $init
 
     $defaultDisplay = @(0..$classDefinition.typedata.members.keys.count)
 
-    $defaultDisplay[$classDefinition.typedata.members.keys.count - 1] = $memberName
+    if ( ! $hidden ) {
+        $defaultDisplay[$classDefinition.typedata.members.keys.count - 1] = $memberName
+    }
+
     $aliasName = "__$($memberName)"
     $realName = $memberName
     if ($typeName -ne $null) {
@@ -253,6 +323,7 @@ function __get-classmembers($classDefinition) {
 
     function __initialize {}
 
+    $script:__statics__ = @{}
     . $classDefinition | out-null
 
     get-variable -scope 0 | foreach { $__classvariables__[$_.name] = $_ }
@@ -314,6 +385,29 @@ function __get-classproperties($memberData) {
     $classProperties
 }
 
+function static([ScriptBlock] $staticBlock) {
+    $snapshot1 = ls function:
+    . $staticBlock
+    $snapshot2 = ls function:
+    $delta = @{}
+    $snapshot2 | foreach { $delta[$_.name] = $_ }
+    $snapshot1 | foreach {
+        # For any function that exists in both snapshots, only remove if the
+        # actual scriptblocks are the same. If they aren't, it just means
+        # that a static function was defined with the same name as a non-static function,
+        # and that's ok, since the static is essentially defined on the class and not the
+        # object
+        if ($delta[$_.name].scriptblock -eq $_.scriptblock) {
+            $delta.remove($_.name)
+        }
+    }
+
+    $delta.getenumerator() | foreach {
+        $statics = $script:__statics__
+        $statics[$_.name] = $_.value
+    }
+}
+
 function modulefunc {
     param($functions, $aliases, $className, $_classDefinition)
     set-strictmode -version 2 # necessary because strictmode gets reset when you execute in a new module
@@ -337,7 +431,7 @@ function modulefunc {
 function __define-class($classDefinition) {
     $aliases = @(get-item alias:with)
     pushd function:
-    $functions = ls invoke-withcontext, '=>', __invoke-methodwithcontext, __invoke-scriptwithcontext, __get-classmembers
+    $functions = ls invoke-withcontext, '=>', __invoke-methodwithcontext, __invoke-scriptwithcontext, __get-classmembers, static
     popd
 
     $memberData = $null
@@ -368,6 +462,10 @@ function __define-class($classDefinition) {
         if ($nextFunctions[$_.name] -is [System.Management.Automation.FunctionInfo] -and $functions -notcontains $_.name) {
             __add-typemember ScriptMethod $classDefinition.typeData.TypeName $_.name $null $_.value.scriptblock
         }
+    }
+
+    $script:__statics__.getenumerator() | foreach {
+        __add-member $classDefinition.prototype.scriptclass $_.name ScriptMethod $_.value.scriptblock
     }
 }
 

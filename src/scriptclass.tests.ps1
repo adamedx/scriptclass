@@ -100,6 +100,10 @@ Describe "ClassDefinitionInterface" {
             $newInstance = new-scriptobject $className
             $newInstance.description | Should BeExactly 2
         }
+    }
+
+    Context "when creating an object from a class declared with ScriptClass" {
+        ScriptClass ClassClass53 {}
 
         It "can create a new object using new-object with the specified type" {
             $className = 'ClassClass7'
@@ -107,6 +111,27 @@ Describe "ClassDefinitionInterface" {
 
             $newInstance = new-scriptobject $className
             $newInstance.PSTypeName | Should BeExactly $className
+        }
+
+        It "has a 'scriptclass' member that has a className member equal to the class name" {
+            $newInstance = new-scriptobject ClassClass53
+
+            $newInstance.scriptclass.classname  | Should BeExactly 'ClassClass53'
+        }
+
+        It "has a 'scriptclass' member that has a className member equal to the class name" {
+            $newInstance = new-scriptobject ClassClass53
+            $newInstance.scriptclass | Should Not Be $null
+        }
+
+        It "has a 'scriptclass' member that has a null scriptclass  member" {
+            $newInstance = new-scriptobject ClassClass53
+            $newInstance.scriptclass.scriptclass | Should BeExactly $null
+        }
+
+        It "has a 'scriptclass' member that has exactly two properties" {
+            $newInstance = new-scriptobject ClassClass53
+            ($newInstance.scriptclass | gm -membertype noteproperty).count | Should BeExactly 2
         }
 
         It "can create a new object that includes additional properties to the default properties" {
@@ -543,6 +568,47 @@ Describe "ClassDefinitionInterface" {
     }
 }
 
+Describe "The get-class cmdlet" {
+    ScriptClass ClassClass59 {
+    }
+
+    Context "when getting information about a class" {
+        It "should return an object equal to the class's scriptclass property" {
+            $newInstance = new-scriptobject ClassClass59
+            (get-class ClassClass59) | Should BeExactly $newInstance.scriptclass
+        }
+
+        It "should return an object with a null scriptclass" {
+            (get-class ClassClass59).scriptclass | Should BeExactly $null
+        }
+
+        It "should throw an exception if the class does not exist" {
+            { get-class idontexist } | Should Throw
+        }
+    }
+}
+
+Describe 'The $:: collection' {
+    ScriptClass ClassClass60 {}
+    ScriptClass ClassClass60a {}
+    ScriptClass ClassClass60b {}
+
+    Context 'when accessing the $:: collection' {
+        It "should return a class object when the name of the class is specified on it after '.'" {
+            $result1 = $::.ClassClass60
+            $result1 | Should BeExactly (get-class ClassClass60)
+            $result2 = $::.ClassClass60a
+            $result2 | Should BeExactly (get-class ClassClass60a)
+            $result3 = $::.ClassClass60b
+            $result3 | Should BeExactly (get-class ClassClass60b)
+        }
+
+        It "should throw an exception when a non-existent class name is specified after '.'" {
+            { $::.idontexist } | Should Throw
+        }
+    }
+}
+
 Describe "'with' function for object-based command context" {
     Context "When invoking an object's method through with" {
         $className = 'ClassClass32'
@@ -663,6 +729,11 @@ Describe 'The => invocation function' {
             function current() {
                 $this.sum
             }
+
+            static {
+                function staticmethod {
+                }
+            }
         }
 
         $newInstance = new-scriptobject ClassClass43
@@ -690,7 +761,7 @@ Describe 'The => invocation function' {
         }
 
         It "Should throw an exception if nothing is piped to it" {
-            { => $newInstance current } | Should Throw
+            { => somemethod current } | Should Throw
         }
 
         It "Should throw an exception if no method is specified" {
@@ -699,6 +770,182 @@ Describe 'The => invocation function' {
 
         It "Should throw an exception if a non-existent method is specified" {
            {$newInstance |=> nonexistent} | Should Throw
+        }
+
+        It "Should throw an exception if a static method is specified" {
+            {$newInstance |=> staticmethod} | Should Throw
+        }
+
+        It "Should invoke static methods when used on an instance's scriptclass property" {
+            $newInstance.scriptclass |=> staticmethod 25 31 Should BeExactly 56
+        }
+    }
+}
+
+Describe 'Static function' {
+    ScriptClass ClassClass52 {
+        static {
+            function staticmethod($arg1, $arg2) {
+                $arg1 + $arg2
+            }
+        }
+
+        function instancemethod {}
+    }
+
+    Context "when a static method is invoked through ::>" {
+        ScriptClass ClassClass52 {
+            static {
+                function staticmethod($arg1, $arg2) {
+                    $arg1 + $arg2
+                }
+            }
+        }
+
+        It 'Should accept the name of the class as a string as the class on which to call the method' {
+            'ClassClass52' |::> staticmethod 8 5 | Should BeExactly 13
+        }
+
+        It "should accept the scriptclass property of an instance as a way to invoke the static method" {
+            $newInstance = new-scriptobject ClassClass52
+            with $newInstance.scriptclass staticmethod 20 50 Should BeExactly 70
+        }
+
+        It "should throw an exception if the type piped to ::> is not a string" {
+            { $::.ClassClass52 |::> instancemethod } | Should Throw
+        }
+
+        It "should throw an exception if the class piped to ::> does not exist" {
+            { 'idontexist' |::> instancemethod } | Should Throw
+        }
+
+        It "should throw an exception if the method passed to ::> does not exist" {
+            { 'ClassClass52' |::> idontexist } | Should Throw
+        }
+
+
+        It "Should throw an exception if the operator is used to call an instance method" {
+            { 'ClassClass52' |::> instancemethod } | Should Throw
+        }
+    }
+
+    Context "when a static method is invoked through invoke-methodwithcontext or with or =>" {
+        It 'Should accept the result of get-class as the class on which to call the method for invoke-methodwithcontext' {
+            invoke-withcontext (get-class ClassClass52) staticmethod 2 3 | Should BeExactly 5
+        }
+
+        It 'Should accept the result of get-class as the class on which to call the method for "with"' {
+            with (get-class ClassClass52) staticmethod 2 3 | Should BeExactly 5
+        }
+
+        It 'Should allow invocation of the static method by supplying "with" with a block' {
+            with (get-class ClassClass52) { staticmethod 10 40 } Should BeExactly 50
+        }
+
+        It 'Should allow invocation of the static method by supplying scriptclass method as the object' {
+            $newInstance = new-scriptobject ClassClass52
+            with $newInstance.scriptclass staticmethod 20 50 Should BeExactly 70
+        }
+
+        It "Should accept the `$:: variable's property named by the class as the class on which to call the method using =>" {
+            $::.ClassClass52 |=> staticmethod 10 4 | Should BeExactly 14
+        }
+
+        It 'Should accept the result of get-class as the class on which to call the method using =>' {
+            (get-class ClassClass52) |=> staticmethod 2 3 | Should BeExactly 5
+        }
+    }
+
+    Context "When defining static methods" {
+        It "Should allow an instance method and a static method to have the same name" {
+            {
+                ScriptClass ClassClass55 {
+                    function bothtypes {}
+                    static { function bothtypes {} }
+                }
+            } | Should Not Throw
+        }
+
+        Context "when static and instance methods have the same name and the instance method is defined first" {
+            ScriptClass ClassClass56 {
+                function bothtypes {
+                    7
+                }
+
+                static {
+                    function bothtypes {
+                        5
+                    }
+                }
+            }
+
+            It "Should invoke the static method when the ::> method is used" {
+                'ClassClass56' |::> bothtypes | Should BeExactly 5
+            }
+
+            It "Should invoke the instance method when the => function is used" {
+                $newInstance = new-scriptobject ClassClass56
+                $newInstance |=> bothtypes | Should BeExactly 7
+            }
+
+            It "Should invoke the static method when the => function is supplied with an instance's scriptclass property" {
+                $newInstance = new-scriptobject ClassClass56
+                $newInstance.scriptclass |=> bothtypes | Should BeExactly 5
+            }
+        }
+
+        Context "when static and instance methods have the same name and the static method is defined first" {
+            ScriptClass ClassClass57 {
+                static {
+                    function bothtypes {
+                        5
+                    }
+                }
+
+                function bothtypes {
+                    7
+                }
+            }
+
+            It "Should invoke the static method when the ::> method is used" {
+                'ClassClass57' |::> bothtypes | Should BeExactly 5
+            }
+
+            It "Should invoke the instance method when the => function is used" {
+                $newInstance = new-scriptobject ClassClass57
+                $newInstance |=> bothtypes | Should BeExactly 7
+            }
+
+            It "Should invoke the static method when the => function is supplied with an instance's scriptclass property" {
+                $newInstance = new-scriptobject ClassClass57
+                $newInstance.scriptclass |=> bothtypes | Should BeExactly 5
+            }
+        }
+
+        Context "when the static method is defined twice" {
+            ScriptClass ClassClass58 {
+                static {
+                    function bothtypes {
+                        5
+                    }
+                    function bothtypes {
+                        6
+                    }
+                }
+
+                function bothtypes {
+                    7
+                }
+            }
+
+            It "Should invoke the last static method defined when the ::> method is used" {
+                'ClassClass58' |::> bothtypes | Should BeExactly 6
+            }
+
+            It "Should invoke the instance method when the => function is used" {
+                $newInstance = new-scriptobject ClassClass58
+                $newInstance |=> bothtypes | Should BeExactly 7
+            }
         }
     }
 }

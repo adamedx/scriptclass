@@ -36,6 +36,19 @@ ScriptClass Complex {
         "$($this.real) + $($this.imaginary)i"
     }
 
+    static {
+        function Compare([PSTypeName('Complex')] $first, [PSTypeName('Complex')] $second) {
+            $delta = ($first |=> magnitude) - ($second |=> magnitude)
+
+            if ([Math]::abs($delta) -lt .00000000000001) {
+                0
+            } elseif ($delta -gt 0) {
+                1
+            } else {
+                -1
+            }
+        }
+    }
 }
 
 $complex = new-scriptobject Complex
@@ -47,4 +60,5 @@ write-host ("Now set to: {0}, Magnitude = {1}" -f ($resultcomplex |=> showstring
 $resultComplex2 = $resultcomplex |=> add 0 4
 write-host ("Now set to: {0}, Magnitude = {1}" -f ($resultcomplex2 |=> showstring), ($resultcomplex2 |=> magnitude))
 
+write-host ("{0} {2} {1}" -f ($resultcomplex |=> showstring), ($resultcomplex2 |=> showstring), @{-1='<';0='=';1='>'}[($::.Complex |=> Compare $resultComplex $resultComplex2)])
 
