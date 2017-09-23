@@ -75,19 +75,38 @@ function get-class([string] $className) {
     $existingClass.prototype.scriptclass
 }
 
-function is-class {
+function is-scriptobject {
     param(
-        [parameter(valuefrompipeline=$true)][PSCustomObject] $instance,
-        $class = $null)
-    $isClass = $instance.psobject.typenames.contains($ScriptClassTypeName)
+        [parameter(valuefrompipeline=$true, mandatory=$true)] $Object,
+        $ScriptClass = $null
+    )
 
-    if ($isClass -and $class -ne $null) {
-        if ($class -is [string]) {
-            $isClass = $instance.psobject.typenames.contains($class.name)
-        } elseif ( $class -is [PSCustomObject] ) {
-            $isClass = $class.psobject.typenames.contains($ScriptClassTypeName) -and $instance.psobject.typenames.contains($class.name)
-        } else {
-            throw "Class must be specified as type [string] or type [PSCustomObject]"
+    $isClass = $false
+
+    if ( $Object -is [PSCustomObject] ) {
+        $objectClassName = try {
+            $Object.scriptclass.classname
+        } catch {
+            $null
+        }
+
+        # Does the object's scriptclass object specify a valid type name and does its
+        # PSTypeName match?
+        $isClass = (__find-existingclass $objectClassName) -ne $null -and $Object.psobject.typenames.contains($objectClassName)
+
+        if ($isClass -and $ScriptClass -ne $null) {
+            # Now find the target type if it was specified -- map any string to
+            # a class object
+            $targetClass = if ( $ScriptClass -is [PSCustomObject] ) {
+                $ScriptClass
+            } elseif ($ScriptClass -is [string]) {
+                get-class $ScriptClass
+            } else {
+                throw "Class must be specified as type [string] or type [PSCustomObject]"
+            }
+
+            # Now see if the type of the object's class matches the target class
+            $isClass = $Object.psobject.typenames.contains($targetClass.ClassName)
         }
     }
 
