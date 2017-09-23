@@ -16,26 +16,12 @@ $here = Split-Path -Parent $MyInvocation.MyCommand.Path
 $sut = (Split-Path -Leaf $MyInvocation.MyCommand.Path) -replace '\.Tests\.', '.'
 . "$here\$sut"
 
-Describe "ClassDefinitionInterface" {
+Describe "The class definition interface" {
     Context "When declaring a simple class" {
         It "succeeds with trivial parameters for the new-class cmdlet" {
             $result = add-scriptclass SimpleClass1 {}
 
             $result | Should BeExactly $null
-        }
-
-        It "can be found by get-scriptclasstypedata" {
-            $className = 'SimpleClass4'
-            add-scriptclass $className {} | out-null
-            $classType = get-scriptclasstypedata $className
-            $classType.TypeName | Should BeExactly $className
-        }
-
-        It "has a ScriptBlock member by default" {
-            add-scriptclass SimpleClass5 { 5 }
-            $classType = get-scriptclasstypedata SimpleClass5
-            $invokeResult = invoke-command -scriptblock $classType.members.ScriptBlock.value
-            $invokeResult | Should BeExactly 5
         }
 
         It 'should capture variables defined by assignment in the class script block as data members' {
@@ -69,16 +55,12 @@ Describe "ClassDefinitionInterface" {
         }
 
         It "allows the user to define a property on the class" {
-            $className = 'ClassClass5'
-            $propertyName = 'description'
-
-            ScriptClass $className {
-                $description = $null
+            ScriptClass ClassClass63 {
+                $mydescription = $null
             }
 
-            $typeData = get-scriptclasstypedata $className
-
-            $typeData.members.keys -contains $propertyName | Should BeExactly $true
+            $typeData = $::.ClassClass63.PSTypedata
+            $typeData.members.keys -contains 'mydescription' | Should BeExactly $true
         }
 
         It "throws an exception if you fail to initialize a property" {
@@ -129,9 +111,10 @@ Describe "ClassDefinitionInterface" {
             $newInstance.scriptclass.scriptclass | Should BeExactly $null
         }
 
-        It "has a 'scriptclass' member that has exactly two properties" {
+        It "has a 'scriptclass' member that has exactly two noteproperty properties and one scriptproperty property" {
             $newInstance = new-scriptobject ClassClass53
             ($newInstance.scriptclass | gm -membertype noteproperty).count | Should BeExactly 2
+            ($newInstance.scriptclass | gm -membertype scriptproperty) -is [Microsoft.PowerShell.Commands.MemberDefinition] | Should BeExactly $true
         }
 
         It "can create a new object that includes additional properties to the default properties" {
@@ -262,6 +245,25 @@ Describe "ClassDefinitionInterface" {
                 }
             } | Should Throw
             get-typedata $className | Should BeExactly $null
+        }
+
+        Context 'when passing a scriptclass as an argument to a function' {
+            ScriptClass ClassClass62 {}
+            It "should throw an exception on an attempt to pass it to a function that expects a PSCustomObject with a different PSTypeName" {
+                {
+                    function typedfunc([PSTypeName('somethertype')] $arg1) {}
+                    typedfunc $::.ClassClass62
+                } | Should Throw
+            }
+
+            It "should not throw an exception on an attempt to pass it to a function that expects a PSCustomObject with PSTypeName identical to the class name" {
+                . {
+                    function typedfunc([PSTypeName('ClassClass62')] $arg1) {
+                        $arg1.scriptclass.classname
+                    }
+                    typedfunc (new-scriptobject ClassClass62)
+                } | Should BeExactly 'ClassClass62'
+            }
         }
     }
 
@@ -508,7 +510,7 @@ Describe "ClassDefinitionInterface" {
         }
     }
 
-    Context "when redefining a class" {
+    Context "When redefining a class" {
         It "doesn't throw an exception when the class is defined the same way twice" {
             ScriptClass SimpleClass3 {}
             { ScriptClass SimpleClass3 {} } | Should Not Throw
@@ -550,29 +552,13 @@ Describe "ClassDefinitionInterface" {
             $newInstance |=> method5 | Should BeExactly 5
         }
     }
-
-    Context "when inspecting classes with get-scriptclasstypedata" {
-        It "successfully retrieves class data for a defined class" {
-            $className = 'GetSimpleClass1'
-            add-scriptclass $className {}
-
-            $classType = get-scriptclasstypedata GetSimpleClass1
-
-            $classType | Should BeOfType [System.Management.Automation.Runspaces.TypeData]
-            $classType.TypeName | Should BeExactly $className
-        }
-
-        It "throws an exception when a class is not found" {
-            { get-scriptclasstypedata ClassDoesNotExist } | Should Throw
-        }
-    }
 }
 
 Describe "The get-class cmdlet" {
     ScriptClass ClassClass59 {
     }
 
-    Context "when getting information about a class" {
+    Context "When getting information about a class" {
         It "should return an object equal to the class's scriptclass property" {
             $newInstance = new-scriptobject ClassClass59
             (get-class ClassClass59) | Should BeExactly $newInstance.scriptclass
@@ -593,7 +579,7 @@ Describe 'The $:: collection' {
     ScriptClass ClassClass60a {}
     ScriptClass ClassClass60b {}
 
-    Context 'when accessing the $:: collection' {
+    Context 'When accessing the $:: collection' {
         It "should return a class object when the name of the class is specified on it after '.'" {
             $result1 = $::.ClassClass60
             $result1 | Should BeExactly (get-class ClassClass60)
@@ -605,6 +591,25 @@ Describe 'The $:: collection' {
 
         It "should throw an exception when a non-existent class name is specified after '.'" {
             { $::.idontexist } | Should Throw
+        }
+
+        It "should return a class object that has a pstypedata property" {
+            $::.ClassClass60.pstypedata | Should Not Be $null
+        }
+
+        It "should return a class object that has a ScriptBlock member by default" {
+            add-scriptclass ClassClass62 { 62 }
+            $classType = $::.ClassClass62.pstypedata
+            $invokeResult = invoke-command -scriptblock $classType.members.ScriptBlock.value
+            $invokeResult | Should BeExactly 62
+        }
+
+        It "should return a class object that has a $null scriptclass property" {
+            $::.ClassClass60.scriptclass | Should Be $null
+        }
+
+        It "should throw an exception on an attempt to access a nonexistent property of the class object " {
+            { $::.ClassClass60.idontexist } | Should Throw
         }
     }
 }
@@ -782,7 +787,7 @@ Describe 'The => invocation function' {
     }
 }
 
-Describe 'Static function' {
+Describe 'Static functions' {
     ScriptClass ClassClass52 {
         static {
             function staticmethod($arg1, $arg2) {
@@ -793,7 +798,7 @@ Describe 'Static function' {
         function instancemethod {}
     }
 
-    Context "when a static method is invoked through ::>" {
+    Context "When a static method is invoked through ::>" {
         ScriptClass ClassClass52 {
             static {
                 function staticmethod($arg1, $arg2) {
@@ -829,7 +834,7 @@ Describe 'Static function' {
         }
     }
 
-    Context "when a static method is invoked through invoke-methodwithcontext or with or =>" {
+    Context "When a static method is invoked through invoke-methodwithcontext or with or =>" {
         It 'Should accept the result of get-class as the class on which to call the method for invoke-methodwithcontext' {
             invoke-withcontext (get-class ClassClass52) staticmethod 2 3 | Should BeExactly 5
         }
@@ -949,4 +954,3 @@ Describe 'Static function' {
         }
     }
 }
-

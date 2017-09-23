@@ -70,16 +70,6 @@ function new-scriptobject {
     $newObject
 }
 
-function get-scriptclasstypedata {
-    param(
-        [parameter(mandatory=$true)] [string] $className
-    )
-
-    $existingClass = __find-existingClass $className
-
-    $existingClass.typeData
-}
-
 function get-class([string] $className) {
     $existingClass = __find-existingClass $className
     $existingClass.prototype.scriptclass
@@ -214,17 +204,14 @@ function __remove-class($className) {
     $__classTable.Remove($className)
 }
 
-function __to-class($className) {
-    [PSCustomObject] @{
-        PSTypeName = $ScriptClassTypeName
-        className = $className
-        scriptclass = $null
-    }
-}
-
 function __add-classmember($className, $classDefinition) {
-    $classMember = __to-class $className
+    $classMember = [PSCustomObject] @{
+        PSTypeName = $ScriptClassTypeName
+        ClassName = $className
+        ScriptClass = $null
+    }
 
+    __add-member $classMember PSTypeData ScriptProperty ([ScriptBlock]::Create("(__find-existingclass '$className').typedata"))
     __add-typemember NoteProperty $className 'scriptclass' $null $classMember
 }
 
