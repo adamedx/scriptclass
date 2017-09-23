@@ -954,3 +954,58 @@ Describe 'Static functions' {
         }
     }
 }
+
+Describe 'The is-scriptobject cmdlet' {
+    ScriptClass ClassClass64 {}
+    ScriptClass ClassClass65 {}
+    $newInstance = new-scriptobject ClassClass64
+    It 'Should return $true if only a scriptclass object instance is specified by position' {
+        is-scriptobject $newInstance | Should BeExactly $true
+    }
+
+    It 'Should return $true if a scriptclass object instance is specified through the pipeline' {
+        $newInstance | is-scriptobject | Should BeExactly $true
+    }
+
+    It 'Should return $true if a scriptclass object is specified with its script class type name' {
+        is-scriptobject $newInstance ClassClass64 | Should BeExactly $true
+    }
+
+    It 'Should return $true if a scriptclass object is specified with its scriptclass class object' {
+        is-scriptobject $newInstance $::.ClassClass64 | Should BeExactly $true
+    }
+
+    It 'Should return $false if a scriptclass object is specified with a valid scriptclass class name of a different scriptclass than the instance' {
+        is-scriptobject $newInstance 'ClassClass65' | Should BeExactly $false
+    }
+
+    It 'Should return $false if a scriptclass object is specified with a valid scriptclass class object of a different scriptclass than the instance' {
+        is-scriptobject $newInstance $::.ClassClass65 | Should BeExactly $false
+    }
+
+    It 'Should return $false if only a non-scriptclass object is specified' {
+        is-scriptobject [Type] | Should BeExactly $false
+        is-scriptobject 3 | Should BeExactly $false
+    }
+
+    It 'Should return $false if non-scriptclass object is specified with a scriptclass type name' {
+        is-scriptobject ([Type]) ClassClass64 | Should BeExactly $false
+        is-scriptobject 3 ClassClass64 | Should BeExactly $false
+    }
+
+    It 'Should throw an exception if the scriptclass parameter is a string that is not the name of defined scriptclass' {
+        { is-scriptobject $newInstance 'idontexist' } | Should Throw
+    }
+
+    It 'Should throw an exception if the scriptclass parameter is not a PSCustomObject' {
+        { is-scriptobject $newInstance 3 | out-null } | Should Throw
+    }
+
+    It 'Should throw an exception if the scriptclass parameter is not a PSCustomObject created with new-scriptobject with a PSTypeName that matches the class' {
+        $custom = [PSCustomObject]@{field1=1;field2=2}
+        $typedcustom = [PSCustomObject]@{field1=1;field2=2;PSTypeName='notascriptclass'}
+        { is-scriptobject $newInstance $custom | out-null } | Should Throw
+        { is-scriptobject $newInstance $typedcustom | out-null } | Should Throw
+    }
+
+}
