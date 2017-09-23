@@ -834,9 +834,9 @@ Describe 'Static functions' {
         }
     }
 
-    Context "When a static method is invoked through invoke-methodwithcontext or with or =>" {
+    Context "When a static method is invoked through invoke-method or with or =>" {
         It 'Should accept the result of get-class as the class on which to call the method for invoke-methodwithcontext' {
-            invoke-withcontext (get-class ClassClass52) staticmethod 2 3 | Should BeExactly 5
+            invoke-method (get-class ClassClass52) staticmethod 2 3 | Should BeExactly 5
         }
 
         It 'Should accept the result of get-class as the class on which to call the method for "with"' {
