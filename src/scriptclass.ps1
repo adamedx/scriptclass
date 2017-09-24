@@ -332,6 +332,7 @@ function __get-classmembers($classDefinition) {
     function __initialize {}
 
     $script:__statics__ = @{}
+    $script:__staticvars__ = @{}
     . $classDefinition | out-null
 
     get-variable -scope 0 | foreach { $__classvariables__[$_.name] = $_ }
@@ -395,9 +396,12 @@ function __get-classproperties($memberData) {
 
 function static([ScriptBlock] $staticBlock) {
     $snapshot1 = ls function:
+    $varsnapshot1 = get-variable -scope 0
     . $staticBlock
     $snapshot2 = ls function:
+    $varsnapshot2 = get-variable -scope 0
     $delta = @{}
+    $varDelta = @{}
     $snapshot2 | foreach { $delta[$_.name] = $_ }
     $snapshot1 | foreach {
         # For any function that exists in both snapshots, only remove if the
@@ -410,9 +414,21 @@ function static([ScriptBlock] $staticBlock) {
         }
     }
 
+    $varsnapshot2 | foreach { $varDelta[$_.name] = $_ }
+    $varsnapshot1 | foreach {
+        if ($varDelta[$_.name].gethashcode() -eq $_.gethashcode()) {
+            $varDelta.remove($_.name)
+        }
+    }
+
     $delta.getenumerator() | foreach {
         $statics = $script:__statics__
         $statics[$_.name] = $_.value
+    }
+
+    $varDelta.getenumerator() | foreach {
+        $staticvars = $script:__staticvars__
+        $staticvars[$_.name] = $_.value
     }
 }
 
@@ -475,6 +491,11 @@ function __define-class($classDefinition) {
     $script:__statics__.getenumerator() | foreach {
         __add-member $classDefinition.prototype.scriptclass $_.name ScriptMethod $_.value.scriptblock
     }
+
+    $script:__staticvars__.getenumerator() | foreach {
+        __add-member $classDefinition.prototype.scriptclass $_.name NoteProperty $_.value.value
+    }
+
 }
 
 
