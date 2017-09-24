@@ -830,20 +830,16 @@ Describe 'Static functions' {
             function staticmethod($arg1, $arg2) {
                 $arg1 + $arg2
             }
+
+            function staticmethod2($arg1, $arg2) {
+                $this |=> staticmethod $arg1 $arg2
+            }
         }
 
         function instancemethod {}
     }
 
     Context "When a static method is invoked through ::>" {
-        ScriptClass ClassClass52 {
-            static {
-                function staticmethod($arg1, $arg2) {
-                    $arg1 + $arg2
-                }
-            }
-        }
-
         It 'Should accept the name of the class as a string as the class on which to call the method' {
             'ClassClass52' |::> staticmethod 8 5 | Should BeExactly 13
         }
@@ -869,6 +865,10 @@ Describe 'Static functions' {
             $newInstance = new-so ClassClass74
 
             $newInstance.mainValue | Should BeExactly 7
+        }
+
+        It "has a `$this variable available to static methods that enables access to other static members in the class" {
+            $::.ClassClass52 |=> staticmethod2 13 3 | Should BeExactly 16
         }
 
         It "should throw an exception if the type piped to ::> is not a string" {
@@ -1010,6 +1010,106 @@ Describe 'Static functions' {
     }
 }
 
+Describe 'Static member variables' {
+    Context "When declaring a class with static member variables" {
+        ScriptClass ClassClass75 {
+            static {
+                $var1 = $null
+                $var2 = 7
+
+                function getvar {
+                    $this.var2
+                }
+            }
+        }
+
+        It "should not have variables accessible through the ::> function for the class" {
+            {
+                'ClassClass75' |::> var2 | Should BeExactly 7
+            } | Should Throw
+        }
+
+        It 'should have variables accessible through the $:: member for the class' {
+            $::.ClassClass75.var1 | Should BeExactly $null
+            $::.ClassClass75.var2 | Should BeExactly 7
+        }
+
+        It 'should have variables accessible through the scriptclass member of an instance' {
+            $newInstance = new-so ClassClass75
+            $newInstance.scriptclass.var1 | Should BeExactly $null
+            $newInstance.scriptclass.var2 | Should BeExactly 7
+        }
+
+        It 'should have static member variables available to static methods through a $this variable' {
+            $::.ClassClass75 |=> getvar | Should BeExactly 7
+        }
+
+        It "should throw an exception if there is an attempt to access variables through the ::> function for the class" {
+            { 'ClassClass75' |::> var2 | out-null } | Should Throw
+        }
+
+        It "should throw an exception if a static variable that was not defined is passed to the ::> function" {
+            { 'ClassClass75' |::> var3 | out-null } | Should Throw
+        }
+
+        It 'should throw an exception if a static variable that was not defined is accessed as a member of $::' {
+            { $::.ClassClass75.var3 | out-null } | Should Throw
+        }
+
+        It 'should throw an exception if a static variable that was not defined is accessed as a member of an instance scriptclass member' {
+            $newInstance = new-so ClassClass75
+            { $newInstance.var3 | out-null } | Should Throw
+        }
+
+        It 'should update the value of the variable when it is assigned by accessing the class member of $::' {
+            ScriptClass ClassClass76 {
+                static {
+                    $var1 = 4
+                }
+            }
+            $::.ClassClass75.var1 = 10
+            $::.ClassClass75.var1 | Should BeExactly 10
+        }
+
+        It 'should be accessible for read and write through static and instance methods' {
+            ScriptClass ClassClass77 {
+                static {
+                    $instances = 0
+                    function InstanceCount {
+                        $this.instances
+                    }
+                }
+
+                function __initialize {
+                    $this.scriptclass.instances++
+                }
+            }
+
+            $newInstance = new-so ClassClass77
+            $::.ClassClass77.instances | Should BeExactly 1
+            $::.ClassClass77 |=> InstanceCount | Should BeExactly 1
+            $secondInstance = new-so ClassClass77
+
+            $::.ClassClass77 |=> InstanceCount | Should BeExactly 2
+            $::.ClassClass77 |=> InstanceCount | Should BeExactly $::.ClassClass77.instances
+        }
+    }
+
+    Context "When static variables are defined with the same name" {
+        ScriptClass ClassClass78 {
+            $bothtypes = 7
+            static { $bothtypes = 5 }
+        }
+
+        $newInstance = new-so ClassClass78
+
+        It 'should allow static and non-static variables of the same name to be defined' {
+            $newInstance.bothtypes | Should BeExactly 7
+            $newInstance.scriptclass.bothtypes | Should BeExactly 5
+        }
+    }
+}
+
 Describe 'The is-scriptobject cmdlet' {
     ScriptClass ClassClass64 {}
     ScriptClass ClassClass65 {}
@@ -1062,5 +1162,5 @@ Describe 'The is-scriptobject cmdlet' {
         { is-scriptobject $newInstance $custom | out-null } | Should Throw
         { is-scriptobject $newInstance $typedcustom | out-null } | Should Throw
     }
-
 }
+
