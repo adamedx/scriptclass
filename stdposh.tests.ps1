@@ -38,10 +38,12 @@ Describe "Stdposh module manifest" {
             $manifest.exportedvariables.keys -contains '::' | Should BeExactly $true
         }
 
-        It "should export the 'ScriptClass' and 'with' aliases and only those aliases" {
-            $manifest.exportedaliases.count | Should BeExactly 2
-            $manifest.exportedaliases.keys -contains 'with' | Should BeExactly $true
+        It "should export the 'new-so', 'ScriptClass', and 'with' aliases and only those aliases" {
+            $manifest.exportedaliases.count | Should BeExactly 3
+            $manifest.exportedaliases.keys -contains 'new-so' | Should BeExactly $true
             $manifest.exportedaliases.keys -contains 'ScriptClass' | Should BeExactly $true
+            $manifest.exportedaliases.keys -contains 'with' | Should BeExactly $true
+
         }
     }
 }

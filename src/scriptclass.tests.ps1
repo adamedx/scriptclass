@@ -20,7 +20,6 @@ Describe "The class definition interface" {
     Context "When declaring a simple class" {
         It "succeeds with trivial parameters for the new-class cmdlet" {
             $result = add-scriptclass SimpleClass1 {}
-
             $result | Should BeExactly $null
         }
 
@@ -46,12 +45,28 @@ Describe "The class definition interface" {
             $newInstance.typeandval | Should BeExactly 7
             ($newInstance.typeandval).gettype() | Should BeExactly 'double'
         }
+
+        It "Does not throw an exception if add-scriptclass is used inside an add-scriptclass definition of a function" {
+            {
+                add-scriptclass ClassClassOuter72 {
+                    add-scriptclass ClassClassOuter73 {}
+                }
+            } | Should Not Throw
+        }
     }
 
     Context "When declaring a class with ScriptClass" {
         It "succeeds when using the ScriptClass alias" {
             $result = ScriptClass ClassClass1 {}
             $result | Should BeExactly $null
+        }
+
+        It "Does not throw an exception if ScriptClass is used inside a ScriptClass definition of a function" {
+            {
+                ScriptClass ClassClassOuter70 {
+                    ScriptClass ClassClassOuter71 {}
+                }
+            } | Should Not Throw
         }
 
         It "allows the user to define a property on the class" {
@@ -87,12 +102,19 @@ Describe "The class definition interface" {
     Context "when creating an object from a class declared with ScriptClass" {
         ScriptClass ClassClass53 {}
 
-        It "can create a new object using new-object with the specified type" {
+        It "can create a new object using new-scriptobject with the specified type" {
             $className = 'ClassClass7'
             ScriptClass $className {}
 
             $newInstance = new-scriptobject $className
             $newInstance.PSTypeName | Should BeExactly $className
+        }
+
+        It "can create a new object using new-so alias for new-scriptobject with the specified type" {
+            ScriptClass ClassClass66 {}
+
+            $newInstance = new-so ClassClass66
+            $newInstance.PSTypeName | Should BeExactly ClassClass66
         }
 
         It "has a 'scriptclass' member that has a className member equal to the class name" {
@@ -320,6 +342,21 @@ Describe "The class definition interface" {
 
             $newInstance.objectState | Should BeExactly $initialStateValue
         }
+
+        It "can use the new-so alias from within the __initialize method" {
+            ScriptClass ClassClass67 { $value = 5 }
+            ScriptClass ClassClass68 {
+                $indirectValue = $null
+
+                function __initialize {
+                    $this.indirectValue = new-so ClassClass67
+                }
+            }
+
+            $newInstance = new-so ClassClass68
+
+            $newInstance.indirectValue.value | Should BeExactly 5
+        }
     }
 
     Context "When a method is invoked on an object defined with ScriptClass" {
@@ -403,7 +440,7 @@ Describe "The class definition interface" {
             with $newInstance outer 4 5 6 | Should BeExactly 22
         }
 
-        It "can invoke other methods in the object using the call alias with the `$this variable and passing variable arguments using @args" {
+        It "can invoke other methods in the object using the 'with' alias with the `$this variable and passing variable arguments using @args" {
 
             $className = 'ClassClass24'
 
@@ -814,6 +851,24 @@ Describe 'Static functions' {
         It "should accept the scriptclass property of an instance as a way to invoke the static method" {
             $newInstance = new-scriptobject ClassClass52
             with $newInstance.scriptclass staticmethod 20 50 Should BeExactly 70
+        }
+
+        It "should be accessible from within the class initializer" {
+            ScriptClass ClassClass74 {
+                $mainValue = $null
+                static {
+                    function InitialVal {
+                        7
+                    }
+                }
+                function __initialize {
+                    $this.mainValue = ('ClassClass74' |::> InitialVal)
+                }
+            }
+
+            $newInstance = new-so ClassClass74
+
+            $newInstance.mainValue | Should BeExactly 7
         }
 
         It "should throw an exception if the type piped to ::> is not a string" {
