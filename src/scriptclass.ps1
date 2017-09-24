@@ -16,8 +16,10 @@ set-strictmode -version 2
 
 $__classTable = @{}
 
+set-alias new-so new-scriptobject
 set-alias ScriptClass add-scriptclass
 set-alias with invoke-method
+
 
 new-variable -name StrictTypeCheckingTypename -value '__scriptclass_strict_value__' -Option Constant
 new-variable -name ScriptClassTypeName -value 'ScriptClassType' -option Constant
@@ -435,9 +437,9 @@ function modulefunc {
 }
 
 function __define-class($classDefinition) {
-    $aliases = @(get-item alias:with)
+    $aliases = @((get-item alias:with), (get-item 'alias:new-so'))
     pushd function:
-    $functions = ls invoke-method, '=>', __invoke-methodwithcontext, __invoke-scriptwithcontext, __get-classmembers, static
+    $functions = ls invoke-method, '=>', new-scriptobject, __invoke-methodwithcontext, __invoke-scriptwithcontext, __get-classmembers, static
     popd
 
     $memberData = $null
