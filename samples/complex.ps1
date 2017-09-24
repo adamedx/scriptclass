@@ -16,8 +16,12 @@ $here = Split-Path -Parent $MyInvocation.MyCommand.Path
 import-module "$here/../stdposh.psd1" -force
 
 ScriptClass Complex {
-    __property real,0
-    __property imaginary,0
+    $real = 0
+    $imaginary = 0
+
+    function __initialize {
+        $this.scriptclass.instances++
+    }
 
     function add($real, $imaginary) {
         $result = new-scriptobject Complex
@@ -36,6 +40,24 @@ ScriptClass Complex {
         "$($this.real) + $($this.imaginary)i"
     }
 
+    static {
+        $instances = 0
+        function Compare([PSTypeName('Complex')] $first, [PSTypeName('Complex')] $second) {
+            $delta = ($first |=> magnitude) - ($second |=> magnitude)
+
+            if ([Math]::abs($delta) -lt .00000000000001) {
+                0
+            } elseif ($delta -gt 0) {
+                1
+            } else {
+                -1
+            }
+        }
+
+        function InstanceCount {
+            $this.instances
+        }
+    }
 }
 
 $complex = new-scriptobject Complex
@@ -47,4 +69,7 @@ write-host ("Now set to: {0}, Magnitude = {1}" -f ($resultcomplex |=> showstring
 $resultComplex2 = $resultcomplex |=> add 0 4
 write-host ("Now set to: {0}, Magnitude = {1}" -f ($resultcomplex2 |=> showstring), ($resultcomplex2 |=> magnitude))
 
+write-host ("{0} {2} {1}" -f ($resultcomplex |=> showstring), ($resultcomplex2 |=> showstring), @{-1='<';0='=';1='>'}[($::.Complex |=> Compare $resultComplex $resultComplex2)])
+
+write-host ("Total instances of Complex created: {0}" -f ($::.Complex |=> InstanceCount))
 
