@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<package >
+  <metadata>
+    <id>adamedx.stdposh</id>
+    <version>0.5.0</version>
+    <authors>adamedx</authors>
+    <owners>adamedx</owners>
+    <licenseUrl>https://www.apache.org/licenses/LICENSE-2.0</licenseUrl>
+    <projectUrl>https://github.com/adamedx/stdposh</projectUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <description>Usability enhancements for core PowerShell capabilities</description>
+    <releaseNotes>Initial development</releaseNotes>
+    <copyright>Copyright 2017</copyright>
+    <tags>class object</tags>
+  </metadata>
+  <files>
+    <file src="LICENSE.md" target="$targetBase$" />
+    <file src="README.md" target="$targetBase$" />
+    <file src="stdposh.psd1" target="$targetBase$" />
+    <file src="samples\**\*.ps1" target="$targetBase$\bin" />
+    <file src="src\**\*.ps1" target="$targetBase$\bin" />
+    <file src="test\**\*.ps1" target="$targetBase$\Functions" />
+  </files>
+</package>

@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-$here = Split-Path -Parent $MyInvocation.MyCommand.Path
+$here = split-path -parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
 
 Describe "Stdposh module manifest" {
     $manifestLocation   = Join-Path $here 'stdposh.psd1'
@@ -44,6 +44,26 @@ Describe "Stdposh module manifest" {
             $manifest.exportedaliases.keys -contains 'ScriptClass' | Should BeExactly $true
             $manifest.exportedaliases.keys -contains 'with' | Should BeExactly $true
 
+        }
+    }
+
+    Context "When dot sourcing a script that imports library" {
+        $scriptentry = (get-item "$here\test\assets\simpletestclient.ps1").fullname
+        It "Should dot source without errors" {
+            iex "& powershell -noprofile -command { `$erroractionpreference = 'stop'; . '$scriptentry' }"
+            $lastexitcode | Should BeExactly 0
+        }
+
+        It "Should dot source without errors and allow the definition of a class" {
+            $uniqueReturnValue = 23609
+            iex "& powershell -noprofile -command { `$erroractionpreference = 'stop'; . '$scriptentry'; ScriptClass ClassTest { `$data = $uniqueReturnValue; function testfunc() { `$this.data }}; `$obj = new-so ClassTest; exit (`$obj |=> testfunc)}"
+            $lastexitcode | Should BeExactly $uniqueReturnValue
+        }
+
+
+        It "Should dot source twice in the same session without errors" {
+            iex "& powershell -noprofile -command { `$erroractionpreference = 'stop'; . '$scriptentry'; . '$scriptentry'; }"
+            $lastexitcode | Should BeExactly 0
         }
     }
 }
