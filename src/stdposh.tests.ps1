@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-$here = Split-Path -Parent $MyInvocation.MyCommand.Path
+$here = split-path -parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
 
 Describe "Stdposh module manifest" {
     $manifestLocation   = Join-Path $here 'stdposh.psd1'
