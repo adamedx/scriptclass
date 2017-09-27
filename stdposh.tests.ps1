@@ -46,6 +46,26 @@ Describe "Stdposh module manifest" {
 
         }
     }
+
+    Context "When dot sourcing a script that imports library" {
+        $scriptentry = (get-item "$here\test\assets\simpletestclient.ps1").fullname
+        It "Should dot source without errors" {
+            iex "& powershell -noprofile -command { `$erroractionpreference = 'stop'; . '$scriptentry' }"
+            $lastexitcode | Should BeExactly 0
+        }
+
+        It "Should dot source without errors and allow the definition of a class" {
+            $uniqueReturnValue = 23609
+            iex "& powershell -noprofile -command { `$erroractionpreference = 'stop'; . '$scriptentry'; ScriptClass ClassTest { `$data = $uniqueReturnValue; function testfunc() { `$this.data }}; `$obj = new-so ClassTest; exit (`$obj |=> testfunc)}"
+            $lastexitcode | Should BeExactly $uniqueReturnValue
+        }
+
+
+        It "Should dot source twice in the same session without errors" {
+            iex "& powershell -noprofile -command { `$erroractionpreference = 'stop'; . '$scriptentry'; . '$scriptentry'; }"
+            $lastexitcode | Should BeExactly 0
+        }
+    }
 }
 
 

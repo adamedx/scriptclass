@@ -20,9 +20,13 @@ set-alias new-so new-scriptobject
 set-alias ScriptClass add-scriptclass
 set-alias with invoke-method
 
+if ( ! (test-path variable:stricttypecheckingtypename) ) {
+    new-variable -name StrictTypeCheckingTypename -value '__scriptclass_strict_value__' -Option Constant
+}
 
-new-variable -name StrictTypeCheckingTypename -value '__scriptclass_strict_value__' -Option Constant
-new-variable -name ScriptClassTypeName -value 'ScriptClassType' -option Constant
+if ( ! (test-path variable:scriptclasstypename) ) {
+    new-variable -name ScriptClassTypeName -value 'ScriptClassType' -option Constant
+}
 
 $:: = [PSCustomObject] @{}
 
@@ -435,7 +439,8 @@ function static([ScriptBlock] $staticBlock) {
 function modulefunc {
     param($functions, $aliases, $className, $_classDefinition)
     set-strictmode -version 2 # necessary because strictmode gets reset when you execute in a new module
-    $functions | foreach { new-item "function:$($_.name)" -value $_.scriptblock }
+    # Add the functions explicitly at script scope to avoid issues with importing into an interactive shell
+    $functions | foreach { new-item "function:script:$($_.name)" -value $_.scriptblock }
     $aliases | foreach { set-alias $_.name $_.resolvedcommandname };
     $__exception__ = $null
     $__newfunctions__ = @{}
