@@ -133,9 +133,9 @@ Describe "The class definition interface" {
             $newInstance.scriptclass.scriptclass | Should BeExactly $null
         }
 
-        It "has a 'scriptclass' member that has exactly two noteproperty properties and one scriptproperty property" {
+        It "has a 'scriptclass' member that has exactly three noteproperty properties and one scriptproperty property" {
             $newInstance = new-scriptobject ClassClass53
-            ($newInstance.scriptclass | gm -membertype noteproperty).count | Should BeExactly 2
+            ($newInstance.scriptclass | gm -membertype noteproperty).count | Should BeExactly 3
             ($newInstance.scriptclass | gm -membertype scriptproperty) -is [Microsoft.PowerShell.Commands.MemberDefinition] | Should BeExactly $true
         }
 
@@ -1007,6 +1007,18 @@ Describe 'Static functions' {
                 $newInstance |=> bothtypes | Should BeExactly 7
             }
         }
+
+        It "Does not allow the use of 'static' within a static block" {
+            {
+                ScriptClass ClassClass80 {
+                    static {
+                        static {
+                            $thisshouldnotwork = $null
+                        }
+                    }
+                }
+            } | Should Throw
+        }
     }
 }
 
@@ -1106,6 +1118,52 @@ Describe 'Static member variables' {
         It 'should allow static and non-static variables of the same name to be defined' {
             $newInstance.bothtypes | Should BeExactly 7
             $newInstance.scriptclass.bothtypes | Should BeExactly 5
+        }
+    }
+
+    It "Does not allow the use of 'static' within a static block" {
+        {
+            ScriptClass ClassClass80 {
+                static {
+                    static {
+                        $thisshouldnotwork = $null
+                    }
+                }
+            }
+        } | Should Throw
+    }
+}
+
+Describe 'Typed static member variables' {
+    Context 'When declaring typed static members with strict-val' {
+        ScriptClass ClassClass79 {
+            static {
+                $stuff = strict-val [object]
+                $stuffint = strict-val [int32]
+                $stufftype = strict-val [Type]
+                $stuffintval = strict-val [int] 1
+                $stufftypeval = strict-val [Type] ([int])
+            }
+        }
+
+        It 'should allow the typed static member of type [object] with no initializer to evaluate as $null' {
+            $::.ClassClass79.stuff | Should BeExactly $null
+        }
+
+        It 'should allow the typed static member of type [object] with no initializer to be assigned a value' {
+            $::.ClassClass79.stuff = 512
+            $::.ClassClass79.stuff | Should BeExactly 512
+        }
+
+        It "should enforce type mismatch errors when defining" {
+            { $::.ClassClass79.stuffint = new-object object } | Should Throw
+            { $::.ClassClass79.stufftype = ([string]) } | Should Not Throw
+            { $::.ClassClass79.stufftype = '2' } | Should Throw
+        }
+
+        It "can create a new object that includes additional typed properties set to default values with strict-val" {
+            $::.ClassClass79.stuffintval | Should BeExactly 1
+            $::.ClassClass79.stufftypeval | Should BeExactly ([int])
         }
     }
 }

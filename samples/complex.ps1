@@ -41,7 +41,7 @@ ScriptClass Complex {
     }
 
     static {
-        $instances = 0
+        $instances = strict-val [int] 0
         function Compare([PSTypeName('Complex')] $first, [PSTypeName('Complex')] $second) {
             $delta = ($first |=> magnitude) - ($second |=> magnitude)
 

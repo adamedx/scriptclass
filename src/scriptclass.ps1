@@ -26,6 +26,10 @@ if ( ! (test-path variable:stricttypecheckingtypename) ) {
 
 if ( ! (test-path variable:scriptclasstypename) ) {
     new-variable -name ScriptClassTypeName -value 'ScriptClassType' -option Constant
+#    $PSTypeName = @{TypeName=$ScriptClassTypeName;MemberType='NoteProperty';DefaultDisplayPropertySet=@('PSTypeName');MemberName='PSTypeName';Value=$ScriptClassTypeName}
+#    Update-TypeData @PSTypeName -force
+#    $TypedMembers = @{TypeName=$ScriptClasstypeName;MemberType='NoteProperty';MemberName='typedMembers';Value=@{}}
+ #   Update-TypeData @TypedMembers
 }
 
 $:: = [PSCustomObject] @{}
@@ -233,6 +237,7 @@ function __add-classmember($className, $classDefinition) {
     $classMember = [PSCustomObject] @{
         PSTypeName = $ScriptClassTypeName
         ClassName = $className
+        TypedMembers = @{}
         ScriptClass = $null
     }
 
@@ -260,6 +265,20 @@ function __invoke-scriptwithcontext($objectContext, $script) {
     $script.InvokeWithContext($functions, $thisVariable, $args)
 }
 
+
+function __add-scriptpropertytyped($object, $memberName, $memberType, $initialValue = $null) {
+    if ($initialValue -ne $null) {
+        $evalString = "param(`[$memberType] `$value)"
+        $evalBlock = [ScriptBlock]::Create($evalString)
+        (. $evalBlock $initialValue) | out-null
+    }
+
+    $getBlock = [ScriptBlock]::Create("[$memberType] `$this.TypedMembers['$memberName']")
+    $setBlock = [Scriptblock]::Create("param(`$val) `$this.TypedMembers['$memberName'] = [$memberType] `$val")
+
+    __add-member $object $memberName 'ScriptProperty' $getBlock $null $setBlock
+    $object.TypedMembers[$memberName] = $initialValue
+}
 
 function __add-member($prototype, $memberName, $psMemberType, $memberValue, $memberType = $null, $memberSecondValue = $null, $force = $false) {
     $arguments = @{name=$memberName;memberType=$psMemberType;value=$memberValue}
@@ -399,6 +418,7 @@ function __get-classproperties($memberData) {
 }
 
 function static([ScriptBlock] $staticBlock) {
+    function static { throw "The 'static' function may not be used from within a static block" }
     $snapshot1 = ls function:
     $varsnapshot1 = get-variable -scope 0
     . $staticBlock
@@ -498,9 +518,12 @@ function __define-class($classDefinition) {
     }
 
     $script:__staticvars__.getenumerator() | foreach {
-        __add-member $classDefinition.prototype.scriptclass $_.name NoteProperty $_.value.value
+        if ( $_.value.value -is [PSCustomObject] -and $_.value.value.psobject.typenames.contains($StrictTypeCheckingTypename) ) {
+            __add-scriptpropertytyped $classDefinition.prototype.scriptclass $_.name $_.value.value.type $_.value.value.value
+        } else {
+            __add-member $classDefinition.prototype.scriptclass $_.name NoteProperty $_.value.value
+        }
     }
 
 }
-
 
