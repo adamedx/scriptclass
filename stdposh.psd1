@@ -57,7 +57,7 @@ Description = 'Standard library for PowerShell enhanced usability'
 # RequiredAssemblies = @()
 
 # Script files (.ps1) that are run in the caller's environment prior to importing this module.
-ScriptsToProcess = @('src/scriptclass.ps1')
+ScriptsToProcess = @('src/std.ps1')
 
 # Type files (.ps1xml) to be loaded when importing this module
 # TypesToProcess = @()
@@ -69,13 +69,13 @@ ScriptsToProcess = @('src/scriptclass.ps1')
 # NestedModules = @()
 
 # Functions to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no functions to export.
-FunctionsToExport = @('=>', '::>', 'add-scriptclass', 'invoke-method', 'is-scriptobject', 'new-scriptobject')
+FunctionsToExport = @('=>', '::>', 'add-scriptclass', 'invoke-method', 'is-scriptobject', 'new-scriptobject', 'Load-Assembly', 'include-source')
 
 # Cmdlets to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no cmdlets to export.
 CmdletsToExport = @()
 
 # Variables to export from this module
-VariablesToExport = '::'
+VariablesToExport = @('::', 'include')
 
 # Aliases to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no aliases to export.
 AliasesToExport = @('new-so', 'ScriptClass', 'with')
@@ -87,7 +87,7 @@ AliasesToExport = @('new-so', 'ScriptClass', 'with')
 # ModuleList = @()
 
 # List of all files packaged with this module
-FileList = @('src/scriptclass.ps1')
+FileList = @('src/scriptclass.ps1', 'src/std.ps1', 'src/include.ps1', 'src/assemblyhelper.ps1')
 
 # Private data to pass to the module specified in RootModule/ModuleToProcess. This may also contain a PSData hashtable with additional module metadata used by PowerShell.
 PrivateData = @{

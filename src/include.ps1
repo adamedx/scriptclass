@@ -11,34 +11,70 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-$includes = @{}
-$included = @{}
+$script:includes = @{}
+$script:included = @{}
+
+set-alias include invoke-command
+
+$include = {param([string] $scriptPath = $null) . (include-source $scriptpath (CallerScriptRoot))}
+
+function script:CallerScriptRoot {
+    $callstack = get-pscallstack
+    $caller = $null
+    $thisScript = $callstack[0].scriptname
+    for ($current = 1; $current -lt $callstack.length; $current++) {
+        $currentScriptRoot = $callstack[$current].scriptname
+        if ( $currentScriptRoot -ne $null -and $currentScriptRoot.length -gt 0 ) {
+            if ( $currentScriptRoot -ne $thisScript ) {
+                $caller = $currentScriptRoot
+                break
+            }
+        }
+    }
+
+    if ( $caller -eq $null ) {
+        throw "Unable to determine calling script's directory"
+    }
+
+    split-path $caller
+}
 
 function ValidateIncludePath($includePath) {
-    if ( $includePath.StartsWith("/") -or $includePath.StartsWith("\\") ) {
+    if ( $includePath.StartsWith("/") -or $includePath.StartsWith("\") ) {
         throw "Path specified to include-source '$includePath' started with a path separator which is not allowed -- only relative paths may be specified"
-    }
-
-    if ( $includePath.StartsWith(".") ) {
-        throw "Path specified to include-source '$includePath' started with the forbidden character '.'"
-    }
-
-    if ( $includePath.Contains("..") ) {
-        throw "Path specified to include-source '$includePath' may not contain '..' in the path"
     }
 }
 
-function include-source($appRelativePath)
-{
+function get-includepath($appRelativePath) {
     ValidateIncludePath($appRelativePath)
     $relativePath = "$($appRelativePath).ps1"
     $relativeNormal = $relativePath.ToLower()
-    $fullPath = (join-path $ApplicationRoot $relativePath | get-item).Fullname
+    $fullPath = (join-path (CallerScriptRoot) $relativePath | get-item).Fullname
     $canonical = $fullPath.ToLower()
-    if ( $included[$canonical] -eq $null )
-    {
-        $included[$canonical] = @($ApplicationRoot, $relativeNormal)
-        $includes[$canonical] = $false
+    $canonical
+}
+
+function include-source($appRelativePath, $callerScriptDir = $null)
+{
+    $appRoot = if ( $callerScriptDir -eq $null ) {
+        CallerScriptRoot
+    } else {
+        $callerScriptDir
+    }
+
+    ValidateIncludePath($appRelativePath)
+    $relativePath = "$($appRelativePath).ps1"
+    $relativeNormal = $relativePath.ToLower()
+    $fullPath = (join-path ($appRoot) $relativePath | get-item).Fullname
+    $canonical = $fullPath.ToLower()
+    if ( $script:included[$canonical] -eq $null ) {
+        $script:included[$canonical] = @(($appRoot), $relativeNormal)
+        $script:includes[$canonical] = $false
+        $canonical
+    } else {
+        {}
     }
 }
+
+
 

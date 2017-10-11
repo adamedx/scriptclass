@@ -1107,7 +1107,7 @@ Describe 'Static member variables' {
         }
     }
 
-    Context "When static variables are defined with the same name" {
+    Context "When static variables are defined with the same name as a non-static variable" {
         ScriptClass ClassClass78 {
             $bothtypes = 7
             static { $bothtypes = 5 }
