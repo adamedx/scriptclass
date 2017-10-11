@@ -12,26 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 set-strictmode -version 2
 
-$alreadyInitialized = try {
-    get-variable -scope script IsStdLibInitialized >* out-null
-    $true
-} catch {
-    $false
-}
-
-if ($alreadyInitialized) {
-    throw "This script file must only be sourced once from the entry script."
-}
-
-$ApplicationRoot = (get-item "$psscriptRoot/../../..").fullname
-
-function script:ApplicationRoot {
-    $ApplicationRoot
-}
-
+. (join-path $psscriptroot scriptclass.ps1)
 . (join-path $psscriptroot include.ps1)
-. (join-path $psscriptroot 'define-class.ps1')
+. (join-path $psscriptroot assemblyhelper.ps1)
 
-$script:IsStdlibInitialized = $true
+

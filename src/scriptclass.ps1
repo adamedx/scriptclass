@@ -75,7 +75,6 @@ function new-scriptobject {
     $existingClass = __find-existingClass $className
 
     $newObject = $existingClass.prototype.psobject.copy()
-
     __invoke-methodwithcontext $newObject '__initialize' @args | out-null
     $newObject
 }
@@ -363,7 +362,12 @@ function __get-classmembers($classDefinition) {
 
     $__classfunctions__ = @{}
     ls function: | foreach { $__classfunctions__[$_.name] = $_ }
-    $__functions__ | foreach { $__classfunctions__.remove($_.name) }
+    $__functions__ | foreach {
+        if ( $_.scriptblock -eq $__classfunctions__[$_.name].scriptblock) {
+            $__classfunctions__.remove($_.name)
+
+        }
+    }
 
     @{functions=$__classfunctions__;variables=$__classvariables__}
 }

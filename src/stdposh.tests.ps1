@@ -20,7 +20,7 @@ Describe "Stdposh module manifest" {
 
     Context "When loading the manifest" {
         It "should export the exact same set of functions as are in the set of expected functions" {
-            $expectedFunctions = @('=>', '::>', 'add-scriptclass', 'invoke-method', 'is-scriptobject', 'new-scriptobject')
+            $expectedFunctions = @('=>', '::>', 'add-scriptclass', 'invoke-method', 'is-scriptobject', 'new-scriptobject', 'include-source', 'load-assembly')
 
             $manifest.ExportedFunctions.count | Should BeExactly $expectedFunctions.length
 
@@ -33,9 +33,10 @@ Describe "Stdposh module manifest" {
             $verifiedExportsCount -eq $expectedFunctions.length | Should BeExactly $true
         }
 
-        It "should export the :: variable and only the" {
-            $manifest.exportedvariables.count | Should BeExactly 1
+        It "should export the '::' and 'include' variables and only the" {
+            $manifest.exportedvariables.count | Should BeExactly 2
             $manifest.exportedvariables.keys -contains '::' | Should BeExactly $true
+            $manifest.exportedvariables.keys -contains 'include' | Should BeExactly $true
         }
 
         It "should export the 'new-so', 'ScriptClass', and 'with' aliases and only those aliases" {
