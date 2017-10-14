@@ -19,17 +19,14 @@ $__classTable = @{}
 set-alias new-so new-scriptobject
 set-alias ScriptClass add-scriptclass
 set-alias with invoke-method
+set-alias const new-constant
 
 if ( ! (test-path variable:stricttypecheckingtypename) ) {
-    new-variable -name StrictTypeCheckingTypename -value '__scriptclass_strict_value__' -Option Constant
+    new-variable -name StrictTypeCheckingTypename -value '__scriptclass_strict_value__' -Option Readonly
 }
 
 if ( ! (test-path variable:scriptclasstypename) ) {
-    new-variable -name ScriptClassTypeName -value 'ScriptClassType' -option Constant
-#    $PSTypeName = @{TypeName=$ScriptClassTypeName;MemberType='NoteProperty';DefaultDisplayPropertySet=@('PSTypeName');MemberName='PSTypeName';Value=$ScriptClassTypeName}
-#    Update-TypeData @PSTypeName -force
-#    $TypedMembers = @{TypeName=$ScriptClasstypeName;MemberType='NoteProperty';MemberName='typedMembers';Value=@{}}
- #   Update-TypeData @TypedMembers
+    new-variable -name ScriptClassTypeName -value 'ScriptClassType' -option Readonly
 }
 
 $:: = [PSCustomObject] @{}
@@ -292,7 +289,7 @@ function __add-member($prototype, $memberName, $psMemberType, $memberValue, $mem
     $newMember = ($prototype | add-member -passthru @arguments)
 }
 
-function __add-typemember($memberType, $className, $memberName, $typeName, $initialValue, $hidden = $false) {
+function __add-typemember($memberType, $className, $memberName, $typeName, $initialValue, $constant = $false) {
     if ($typeName -ne $null -and -not $typeName -is [Type]) {
         throw "Invalid argument passed for type -- the argument must be of type [Type]"
     }
@@ -311,13 +308,11 @@ function __add-typemember($memberType, $className, $memberName, $typeName, $init
 
     $defaultDisplay = @(0..$classDefinition.typedata.members.keys.count)
 
-    if ( ! $hidden ) {
-        $defaultDisplay[$classDefinition.typedata.members.keys.count - 1] = $memberName
-    }
+    $defaultDisplay[$classDefinition.typedata.members.keys.count - 1] = $memberName
 
     $aliasName = "__$($memberName)"
     $realName = $memberName
-    if ($typeName -ne $null) {
+    if ($typeName -ne $null -or $constant) {
         $realName = $aliasName
         $aliasName = $memberName
     }
@@ -335,8 +330,20 @@ function __add-typemember($memberType, $className, $memberName, $typeName, $init
             $evalBlock = [ScriptBlock]::Create($evalString)
             (. $evalBlock $initialValue) | out-null
         }
-        $getBlock = [ScriptBlock]::Create("[$typeName] `$this.$realName")
-        $setBlock = [Scriptblock]::Create("param(`$val) `$this.$realName = [$typeName] `$val")
+    }
+
+    if ($typeName -ne $null -or $constant) {
+        $typeCoercion = if ( $typeName -ne $null ) {
+            "[$typeName]"
+        } else {
+            ''
+        }
+        $getBlock = [ScriptBlock]::Create("$typeCoercion `$this.$realName")
+        $setBlock = if (! $constant) {
+            [Scriptblock]::Create("param(`$val) `$this.$realName = $typeCoercion `$val")
+        } else {
+            [Scriptblock]::Create("param(`$val) throw `"member '$aliasName' cannot be overwritten because it is read-only`"")
+        }
         $aliasTypeData = @{TypeName=$className;MemberType='ScriptProperty';MemberName=$aliasName;Value=$getBlock;SecondValue=$setBlock}
         Update-TypeData -force @aliasTypeData
     }
@@ -397,6 +404,25 @@ function strict-val {
     }
 }
 
+function new-constant {
+    param(
+        [parameter(mandatory=$true)] $name,
+        [parameter(mandatory=$true)] $value
+    )
+
+    $existingVariable = try {
+        get-variable -name $name -scope 1 2> (out-null)
+    } catch {
+        $null
+    }
+
+    if ( $existingVariable -eq $null ) {
+        new-variable -name $name -value $value -scope 1 -option readonly *> (out-null)
+    } elseif ($existingVariable.value -ne $value) {
+        throw "Attempt to redefine constant '$name' from value '$($existingVariable.value) to '$value'"
+    }
+}
+
 function __get-classproperties($memberData) {
     $classProperties = @{}
 
@@ -415,7 +441,7 @@ function __get-classproperties($memberData) {
             $_.value.value
         }
 
-        $classProperties[$_.name] = @{type=$propType;value=$propVal}
+        $classProperties[$_.name] = @{type=$propType;value=$propVal;variable=$_.value}
     }
 
     $classProperties
@@ -482,9 +508,9 @@ function modulefunc {
 }
 
 function __define-class($classDefinition) {
-    $aliases = @((get-item alias:with), (get-item 'alias:new-so'))
+    $aliases = @((get-item alias:with), (get-item 'alias:new-so'), (get-item alias:const))
     pushd function:
-    $functions = ls invoke-method, '=>', new-scriptobject, __invoke-methodwithcontext, __invoke-scriptwithcontext, __get-classmembers, static
+    $functions = ls invoke-method, '=>', new-scriptobject, new-constant, __invoke-methodwithcontext, __invoke-scriptwithcontext, __get-classmembers, static
     popd
 
     $memberData = $null
@@ -506,7 +532,7 @@ function __define-class($classDefinition) {
     $classProperties = __get-classproperties $memberData
 
     $classProperties.getenumerator() | foreach {
-        __add-typemember NoteProperty $classDefinition.typeData.TypeName $_.name $_.value.type $_.value.value
+        __add-typemember NoteProperty $classDefinition.typeData.TypeName $_.name $_.value.type $_.value.value ($_.value.variable.options -eq 'readonly')
     }
 
     $nextFunctions = $memberData.__newfunctions__

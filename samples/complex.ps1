@@ -16,8 +16,10 @@ $here = Split-Path -Parent $MyInvocation.MyCommand.Path
 import-module "$here/../stdposh.psd1" -force
 
 ScriptClass Complex {
-    $real = 0
-    $imaginary = 0
+    const ZERO_COORDINATE (strict-val [double] 0)
+
+    $real = $ZERO_COORDINATE
+    $imaginary = $ZERO_COORDINATE
 
     function __initialize {
         $this.scriptclass.instances++
@@ -43,14 +45,12 @@ ScriptClass Complex {
     static {
         $instances = strict-val [int] 0
         function Compare([PSTypeName('Complex')] $first, [PSTypeName('Complex')] $second) {
-            $delta = ($first |=> magnitude) - ($second |=> magnitude)
-
-            if ([Math]::abs($delta) -lt .00000000000001) {
-                0
-            } elseif ($delta -gt 0) {
+            if (($first |=> magnitude) -gt ($second |=> magnitude)) {
                 1
-            } else {
+            } elseif (($first |=> magnitude) -lt ($second |=> magnitude)) {
                 -1
+            } else {
+                0
             }
         }
 

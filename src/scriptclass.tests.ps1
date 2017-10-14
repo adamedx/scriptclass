@@ -1222,3 +1222,101 @@ Describe 'The is-scriptobject cmdlet' {
     }
 }
 
+Describe "The const cmdlet" {
+    function clean-variable($name) {
+        $existing = $true
+
+        @('Script', 'Local', 1) | foreach {
+            $existing = try {
+                get-variable -name $name -scope $_ 2> (out-null)
+            } catch {
+                $null
+            }
+
+            if ($existing -ne $null) {
+                $existing | remove-variable -scope $_ -force
+            } else {
+                break
+            }
+        }
+    }
+
+    function variable-exists($name) {
+        (get-variable -name $name 2> (out-null)) -ne $null
+    }
+
+    BeforeEach {
+        clean-variable testvar
+        variable-exists testvar | Should Be False
+    }
+
+    AfterEach {
+        clean-variable testvar
+        variable-exists testvar | Should Be False
+    }
+
+    Context "when defining constants" {
+        ScriptClass ConstTest0 {
+            const testConst 159
+            const strictConst (strict-val [double] 11)
+            function writeConstant($value) {
+                $this.testConst = $value
+            }
+        }
+        It "creates a read-only variable with the specified value" {
+            $newInstance = new-so ConstTest0
+            $newInstance.testConst | Should BeExactly 159
+        }
+
+        It "throws an exception if an assignment is made to the constant even if the value is the same as the existing value" {
+            { ScriptClass ConstTest1 { const testvar 159; $testvar = 157 } } | Should Throw "Cannot Overwrite"
+            { ScriptClass ConstTest2 { const testvar 159; $testvar = 159 } } | Should Throw "Cannot overwrite"
+        }
+
+        It "throws an exception if an assignment is made to the constant by consumers of the object" {
+            $newInstance = new-so ConstTest0
+            { $newInstance.testConst = $newInstance.testConst } | Should Throw "Exception setting"
+            { $newInstance.testConst = ( $newInstance.testConst - 1) } | Should Throw "Exception setting"
+        }
+
+        It "throws an exception if an assignment is made to the constant by methods of the object" {
+            $newInstance = new-so ConstTest0
+            { $newInstance |=> writeConstant $newInstance.testConst } | Should Throw "Exception setting"
+            { $newInstance |=> writeConstant ( $newInstance.testConst - 1 ) } | Should Throw "Exception setting"
+        }
+
+        It "throws an exception if an attempt is made to define it with a different value" {
+            { ScriptClass ConstTest3 { const testvar 156; const testvar 157} } | Should Throw "Attempt to redefine"
+        }
+
+        It "does not throw an exception if const is used to define the value more than once with the same value" {
+            { ScriptClass ConstTest4 { const testvar 159; const testvar 159} } | Should Not Throw
+        }
+
+        It "does not conflict with a variable with the same name defined at script scope" {
+            ScriptClass ConstTest5 { const testvar 159; function getval { $this.testvar } }
+            new-variable testvar -scope script -value 157
+            $newInstance = new-so ConstTest5
+            $newInstance.testvar | Should BeExactly 159
+            $newInstance |=> getval | Should BeExactly 159
+            $testvar | Should BeExactly 157
+            $script:testvar | Should BeExactly 157
+        }
+
+        It "does not conflict with a variable with the same name defined at local scope" {
+            ScriptClass ConstTest6 { const testvar 159; function getval { $testvar = 5; $testvar } }
+            $newInstance = new-so ConstTest6
+            $newInstance.testvar | Should BeExactly 159
+            $newInstance |=> getval | Should BeExactly 5
+        }
+
+        It "defines strictly typed constants when used with 'strict-val'" {
+            $newInstance = new-so ConstTest0
+            $newInstance.strictConst.gettype() | Should BeExactly 'double'
+            ([int] $newInstance.strictConst) | Should BeExactly 11
+        }
+
+    }
+}
+
+
