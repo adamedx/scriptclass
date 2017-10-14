@@ -2,7 +2,7 @@
 <package >
   <metadata>
     <id>adamedx.stdposh</id>
-    <version>0.6.0</version>
+    <version>0.7.0</version>
     <authors>adamedx</authors>
     <owners>adamedx</owners>
     <licenseUrl>https://www.apache.org/licenses/LICENSE-2.0</licenseUrl>
@@ -17,8 +17,8 @@
     <file src="LICENSE.md" target="$targetBase$" />
     <file src="README.md" target="$targetBase$" />
     <file src="stdposh.psd1" target="$targetBase$" />
-    <file src="samples\**\*.ps1" target="$targetBase$\bin" />
-    <file src="src\**\*.ps1" target="$targetBase$\bin" />
-    <file src="test\**\*.ps1" target="$targetBase$\Functions" />
+    <file src="samples\complex.ps1" target="$targetBase$\samples" />
+    <file src="src\**\*.ps1" target="$targetBase$\src" />
+    <file src="test\**\*.ps1" target="$targetBase$\test" />
   </files>
 </package>
