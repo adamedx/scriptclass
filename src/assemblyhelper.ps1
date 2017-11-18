@@ -32,6 +32,12 @@ function LoadAssemblyFromRoot($assemblyRoot, $assemblyName) {
     [System.Reflection.Assembly]::LoadFrom($assemblyPath) | Out-Null
 }
 
-function Load-Assembly($assemblyName, $assemblyRoot) {
+function Load-Assembly($assemblyName, $assemblyRoot = $null) {
+    $searchRoot = if ( $assemblyRoot -ne $null ) {
+        $assemblyRoot
+    } else {
+        (LibraryBase)
+    }
+
     LoadAssemblyFromRoot $assemblyRoot  $assemblyName
 }

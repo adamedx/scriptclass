@@ -19,6 +19,9 @@ $erroractionpreference = 'stop'
 
 $basepath = (get-item (split-path -parent $psscriptroot)).fullname
 $packageManifest = join-path $basepath stdposh.nuspec
+$moduleManifestPath = join-path $basepath stdposh.psd1
+
+$moduleVersion = (test-modulemanifest $moduleManifestPath).version
 
 $outputDirectory = if ( $targetDirectory -ne $null ) {
     $targetDirectory
@@ -35,7 +38,7 @@ if ( ! (test-path $outputDirectory) ) {
 write-host "Building nuget package from manifest '$packageManifest'..."
 write-host "Output directory = '$outputDirectory'..."
 
-$nugetbuildcmd = "& nuget pack '$packageManifest' -outputdirectory '$outputdirectory'"
+$nugetbuildcmd = "& nuget pack '$packageManifest' -outputdirectory '$outputdirectory' -nopackageanalysis -version '$moduleVersion'"
 write-host "Executing command: ", $nugetbuildcmd
 
 iex $nugetbuildcmd
@@ -46,4 +49,7 @@ if ( $buildResult -ne 0 ) {
     throw "Command `"$nugetbuildcmd`" failed with exit status $buildResult"
 }
 
+$packagePath = ((ls $outputdirectory -filter *.nupkg) | select -first 1).fullname
+
+write-host "Package successfully built at '$packagePath'"
 write-host -f green "Build succeeded."
