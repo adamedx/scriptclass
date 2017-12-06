@@ -81,7 +81,7 @@ function get-class([string] $className) {
     $existingClass.prototype.scriptclass
 }
 
-function is-scriptobject {
+function test-scriptobject {
     param(
         [parameter(valuefrompipeline=$true, mandatory=$true)] $Object,
         $ScriptClass = $null
@@ -355,24 +355,87 @@ function __add-typemember($memberType, $className, $memberName, $typeName, $init
 
 function __get-classmembers($classDefinition) {
     $__functions__ = ls function:
-    $__variables__ = get-variable -scope 0 # must restrict to this scope or we see variables outside the module
+    $__variables__ = @{}
+
     $__classvariables__ = @{}
 
     function __initialize {}
 
     $script:__statics__ = @{}
     $script:__staticvars__ = @{}
+
+    $scope = 0
+    $scopevariables = @{}
+    $aftervariables = @{}
+
+    # Due to some strange behaivor with dot-sourcing, variables
+    # from the dot-sourced script are NOT always importing into scope 0.
+    # In fact, they have been observed to import to scope 4!!!
+    # Due to this, we need to enumerate ALL scopes before and after
+    # sourcing the script and compare the results. We run the risk
+    # of including scripts at global or script scope though, and may
+    # need to do additional checks to avoid this.
+    while ($scope -ge 0) {
+        try {
+            $scopevariables = get-variable -scope $scope
+        } catch {
+            $scope = -1
+        }
+
+        if ($scope -ge 0) {
+            $scopevariables | foreach {
+                $__variables__[ $scope, $_.name -join ':' ] = $_
+            }
+            $scope++
+        }
+    }
+
+    # Note that variables dot sourced here will not necessarily import at
+    # scope 0 as one would think, so we'll need to retrieve all visible scopes
     . $classDefinition | out-null
 
-    get-variable -scope 0 | foreach { $__classvariables__[$_.name] = $_ }
-    $__variables__ | foreach { $__classvariables__.remove($_.name) }
+    # Do NOT create new variables after this step to avoid retrieving them
+    # and confusing them with new variables from the class. We'll need to filter out
+    # the "_" and "PSItem" automatic variables -- those are never valid class member
+    # names anyway.
+
+    $scope = 0
+    $scopevariables = @{}
+    while ($scope -ge 0) {
+        try {
+            $scopevariables = get-variable -scope $scope
+        } catch {
+            $scope = -1
+        }
+
+        if ($scope -ge 0) {
+            $scopevariables | foreach {
+                if ($_.name -ne '_' -and $_.name -ne 'psitem' ) {
+                    $aftervariables[ $scope, $_.name -join ':' ] = $_
+                }
+            }
+            $scope++
+        }
+    }
+
+    $addedVariables = @{}
+    $aftervariables.getenumerator() | foreach {
+        if (! $__variables__.containskey($_.name)) {
+            $varname = $_.value.name
+            $varscope = [int32] (($_.name -split ':')[0])
+            $existingVariable = $addedVariables[$varname]
+            if ($addedVariables[$varname] -eq $null -or $varscope -lt $addedVariables[$varname]) {
+                $__classvariables__[$varname] = $_.value
+                $addedVariables[$varname] = $varscope
+            }
+        }
+    }
 
     $__classfunctions__ = @{}
     ls function: | foreach { $__classfunctions__[$_.name] = $_ }
     $__functions__ | foreach {
         if ( $_.scriptblock -eq $__classfunctions__[$_.name].scriptblock) {
             $__classfunctions__.remove($_.name)
-
         }
     }
 
@@ -411,7 +474,7 @@ function new-constant {
     )
 
     $existingVariable = try {
-        get-variable -name $name -scope 1 2> (out-null)
+        get-variable -name $name -scope 1 2> $null
     } catch {
         $null
     }
@@ -489,6 +552,7 @@ function static([ScriptBlock] $staticBlock) {
 function modulefunc {
     param($functions, $aliases, $className, $_classDefinition)
     set-strictmode -version 2 # necessary because strictmode gets reset when you execute in a new module
+
     # Add the functions explicitly at script scope to avoid issues with importing into an interactive shell
     $functions | foreach { new-item "function:script:$($_.name)" -value $_.scriptblock }
     $aliases | foreach { set-alias $_.name $_.resolvedcommandname };

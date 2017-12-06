@@ -1,7 +1,9 @@
 pkg/*
+lib/*
 *~
 .chef
 .#*
 *#
 *.dll
-
+.bubble/*
+BubbleFile

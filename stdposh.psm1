@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+. "$psscriptroot/src/std.ps1"
+
 $script:__LibraryBase = $psscriptroot
 
 $moduleFile = $myinvocation.mycommand.name
@@ -40,7 +42,22 @@ while (--$componentIndex -ge 1) {
     }
 }
 
-function LibraryBase {
+function get-librarybase {
     $script:__LibraryBase
 }
+
+$variables = @('::', 'include')
+
+$functions = @('=>', '::>', 'add-scriptclass',
+               'invoke-method', 'test-scriptobject',
+               'new-scriptobject', 'import-assembly',
+               'import-source', 'get-librarybase')
+
+$aliases = @('include-source', 'new-so',
+             'ScriptClass', 'with', 'load-assembly')
+
+export-modulemember -variable $variables -function $functions -alias $aliases
+
+
+
 

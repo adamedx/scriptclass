@@ -17,9 +17,11 @@ param($targetDirectory = $null)
 set-strictmode -version 2
 $erroractionpreference = 'stop'
 
-$basepath = (get-item (split-path -parent $psscriptroot)).fullname
-$packageManifest = join-path $basepath stdposh.nuspec
-$moduleManifestPath = join-path $basepath stdposh.psd1
+$basedirectory = get-item (split-path -parent $psscriptroot)
+$basepath = $basedirectory.fullname
+$moduleName = $basedirectory.name
+$packageManifest = join-path $basepath "$moduleName.nuspec"
+$moduleManifestPath = join-path $basepath "$moduleName.psd1"
 
 $moduleVersion = (test-modulemanifest $moduleManifestPath).version
 

@@ -32,12 +32,28 @@ function LoadAssemblyFromRoot($assemblyRoot, $assemblyName) {
     [System.Reflection.Assembly]::LoadFrom($assemblyPath) | Out-Null
 }
 
-function Load-Assembly($assemblyName, $assemblyRoot = $null) {
+function import-assembly($assemblyName, $assemblyRoot = $null) {
     $searchRoot = if ( $assemblyRoot -ne $null ) {
         $assemblyRoot
     } else {
-        (LibraryBase)
+        split-path -parent (get-pscallstack)[1].scriptname
+    }
+    write-verbose "Using assembly root '$searchRoot'..."
+
+    $assemblyNameParent = split-path -parent $assemblyName
+    $assemblyFile = split-path -leaf $assemblyName
+    $searchRootDirectory = join-path $searchRoot $assemblyNameParent
+    $searchRootItem = get-item $searchRootDirectory 2>$null
+
+    if ( $searchRootItem -eq $null ) {
+        throw "Unable to find assembly '$assemblyName' because given search directory '$searchRoot' was not accessible"
     }
 
-    LoadAssemblyFromRoot $assemblyRoot  $assemblyName
+    $searchRootFullyQualified = $searchRootItem.fullname
+
+    write-verbose "Using fully qualified assembly root '$searchRootFullyQualified' to find assembly '$assemblyFile'..."
+
+    LoadAssemblyFromRoot $searchRootFullyQualified  $assemblyFile
 }
+
+
