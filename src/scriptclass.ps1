@@ -14,12 +14,9 @@
 
 set-strictmode -version 2
 
-$__classTable = @{}
-
-set-alias new-so new-scriptobject
-set-alias ScriptClass add-scriptclass
-set-alias with invoke-method
 set-alias const new-constant
+
+$__classTable = @{}
 
 if ( ! (test-path variable:stricttypecheckingtypename) ) {
     new-variable -name StrictTypeCheckingTypename -value '__scriptclass_strict_value__' -Option Readonly

@@ -39,14 +39,18 @@ Describe "Stdposh module manifest" {
             $manifest.exportedvariables.keys -contains 'include' | Should BeExactly $true
         }
 
-        It "should export the 'new-so', 'ScriptClass', 'include-source', 'load-assembly', and 'with' aliases and only those aliases" {
+        It "should, PENDING fix, export the 'new-so', 'ScriptClass', 'const', 'load-assembly', and 'with' aliases and only those aliases" -pending {
             $manifest.exportedaliases.count | Should BeExactly 5
             $manifest.exportedaliases.keys -contains 'new-so' | Should BeExactly $true
             $manifest.exportedaliases.keys -contains 'ScriptClass' | Should BeExactly $true
             $manifest.exportedaliases.keys -contains 'with' | Should BeExactly $true
-            $manifest.exportedaliases.keys -contains 'include-source' | Should BeExactly $true
+            $manifest.exportedaliases.keys -contains 'const' | Should BeExactly $true
             $manifest.exportedaliases.keys -contains 'load-assembly' | Should BeExactly $true
 
+        }
+
+        It "should export no aliases to avoid a defect in PowerShell import of nested modules with aliases" {
+            $manifest.exportedaliases.count | Should BeExactly 0
         }
     }
 

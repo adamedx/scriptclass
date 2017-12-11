@@ -12,7 +12,7 @@
 RootModule = './stdposh.psm1'
 
 # Version number of this module.
-ModuleVersion = '0.11.26'
+ModuleVersion = '0.11.35'
 
 # Supported PSEditions
 # CompatiblePSEditions = @()
@@ -57,7 +57,7 @@ Description = 'Standard library for PowerShell enhanced usability'
 # RequiredAssemblies = @()
 
 # Script files (.ps1) that are run in the caller's environment prior to importing this module.
-# ScriptsToProcess = @('src/std.ps1')
+ScriptsToProcess = @('src/std.ps1')
 
 # Type files (.ps1xml) to be loaded when importing this module
 # TypesToProcess = @()
@@ -78,7 +78,8 @@ CmdletsToExport = @()
 VariablesToExport = @('::', 'include')
 
 # Aliases to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no aliases to export.
-AliasesToExport = @('include-source', 'new-so', 'ScriptClass', 'with', 'load-assembly')
+AliasesToExport = @()
+# AliasesToExport = @('include-source', 'new-so', 'ScriptClass', 'with', 'load-assembly')
 
 # DSC resources to export from this module
 # DscResourcesToExport = @()

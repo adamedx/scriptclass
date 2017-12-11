@@ -14,12 +14,10 @@
 $script:includes = @{}
 $script:included = @{}
 
-set-alias include import-source
-set-alias include-source import-source
+# set-alias include import-source
+# set-alias include-source import-source
 
-$global:include = {param([string] $scriptPath = $null) . (import-source $scriptpath (CallerScriptRoot))}
-
-$include = {param([string] $scriptPath = $null) . (include-source $scriptpath (CallerScriptRoot))}
+$script:include = {param([string] $scriptPath = $null) . (import-source $scriptpath (CallerScriptRoot))}
 
 function script:CallerScriptRoot {
     $callstack = get-pscallstack
