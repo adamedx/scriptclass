@@ -14,9 +14,18 @@
 
 $here = Split-Path -Parent $MyInvocation.MyCommand.Path
 $sut = (Split-Path -Leaf $MyInvocation.MyCommand.Path) -replace '\.Tests\.', '.'
-. "$here\$sut"
+$thismodule = join-path (split-path -parent $here) 'stdposh.psd1'
 
 Describe "The class definition interface" {
+    BeforeAll {
+        remove-module $thismodule -force 2>$null
+        import-module $thismodule -force
+    }
+
+    AfterAll {
+        remove-module $thismodule -force 2>$null
+    }
+
     Context "When declaring a simple class" {
         It "succeeds with trivial parameters for the new-class cmdlet" {
             $result = add-scriptclass SimpleClass1 {}
@@ -592,6 +601,15 @@ Describe "The class definition interface" {
 }
 
 Describe "The get-class cmdlet" {
+    BeforeAll {
+        remove-module $thismodule -force 2>$null
+        import-module $thismodule -force
+    }
+
+    AfterAll {
+        remove-module $thismodule -force 2>$null
+    }
+
     ScriptClass ClassClass59 {
     }
 
@@ -612,6 +630,15 @@ Describe "The get-class cmdlet" {
 }
 
 Describe 'The $:: collection' {
+    BeforeAll {
+        remove-module $thismodule -force 2>$null
+        import-module $thismodule -force
+    }
+
+    AfterAll {
+        remove-module $thismodule -force 2>$null
+    }
+
     ScriptClass ClassClass60 {}
     ScriptClass ClassClass60a {}
     ScriptClass ClassClass60b {}
@@ -652,6 +679,15 @@ Describe 'The $:: collection' {
 }
 
 Describe "'with' function for object-based command context" {
+    BeforeAll {
+        remove-module $thismodule -force 2>$null
+        import-module $thismodule -force
+    }
+
+    AfterAll {
+        remove-module $thismodule -force 2>$null
+    }
+
     Context "When invoking an object's method through with" {
         $className = 'ClassClass32'
 
@@ -755,6 +791,15 @@ Describe "'with' function for object-based command context" {
 }
 
 Describe 'The => invocation function' {
+    BeforeAll {
+        remove-module $thismodule -force 2>$null
+        import-module $thismodule -force
+    }
+
+    AfterAll {
+        remove-module $thismodule -force 2>$null
+    }
+
     Context "When a method is invoked through the => function" {
         $initialValue = 10
         ScriptClass ClassClass43 {
@@ -825,6 +870,15 @@ Describe 'The => invocation function' {
 }
 
 Describe 'Static functions' {
+    BeforeAll {
+        remove-module $thismodule -force 2>$null
+        import-module $thismodule -force
+    }
+
+    AfterAll {
+        remove-module $thismodule -force 2>$null
+    }
+
     ScriptClass ClassClass52 {
         static {
             function staticmethod($arg1, $arg2) {
@@ -1023,6 +1077,15 @@ Describe 'Static functions' {
 }
 
 Describe 'Static member variables' {
+    BeforeAll {
+        remove-module $thismodule -force 2>$null
+        import-module $thismodule -force
+    }
+
+    AfterAll {
+        remove-module $thismodule -force 2>$null
+    }
+
     Context "When declaring a class with static member variables" {
         ScriptClass ClassClass75 {
             static {
@@ -1135,6 +1198,15 @@ Describe 'Static member variables' {
 }
 
 Describe 'Typed static member variables' {
+    BeforeAll {
+        remove-module $thismodule -force 2>$null
+        import-module $thismodule -force
+    }
+
+    AfterAll {
+        remove-module $thismodule -force 2>$null
+    }
+
     Context 'When declaring typed static members with strict-val' {
         ScriptClass ClassClass79 {
             static {
@@ -1169,6 +1241,15 @@ Describe 'Typed static member variables' {
 }
 
 Describe 'The test-scriptobject cmdlet' {
+    BeforeAll {
+        remove-module $thismodule -force 2>$null
+        import-module $thismodule -force
+    }
+
+    AfterAll {
+        remove-module $thismodule -force 2>$null
+    }
+
     ScriptClass ClassClass64 {}
     ScriptClass ClassClass65 {}
     $newInstance = new-scriptobject ClassClass64
@@ -1223,6 +1304,15 @@ Describe 'The test-scriptobject cmdlet' {
 }
 
 Describe "The const cmdlet" {
+    BeforeAll {
+        remove-module $thismodule -force 2>$null
+        import-module $thismodule -force
+    }
+
+    AfterAll {
+        remove-module $thismodule -force 2>$null
+    }
+
     function clean-variable($name) {
         $existing = $true
 
