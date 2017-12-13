@@ -19,4 +19,9 @@ set-strictmode -version 2
 . (join-path $psscriptroot include.ps1)
 . (join-path $psscriptroot assemblyhelper.ps1)
 
+set-alias new-so new-scriptobject
+set-alias ScriptClass add-scriptclass
+set-alias with invoke-method
+set-alias const new-constant
+
 

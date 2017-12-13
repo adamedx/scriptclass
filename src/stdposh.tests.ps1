@@ -20,7 +20,7 @@ Describe "Stdposh module manifest" {
 
     Context "When loading the manifest" {
         It "should export the exact same set of functions as are in the set of expected functions" {
-            $expectedFunctions = @('=>', '::>', 'add-scriptclass', 'invoke-method', 'is-scriptobject', 'new-scriptobject', 'include-source', 'load-assembly')
+            $expectedFunctions = @('=>', '::>', 'add-scriptclass', 'invoke-method', 'test-scriptobject', 'new-scriptobject', 'import-source', 'import-assembly', 'get-librarybase')
 
             $manifest.ExportedFunctions.count | Should BeExactly $expectedFunctions.length
 
@@ -33,18 +33,24 @@ Describe "Stdposh module manifest" {
             $verifiedExportsCount -eq $expectedFunctions.length | Should BeExactly $true
         }
 
-        It "should export the '::' and 'include' variables and only the" {
+        It "should export the '::' and 'include' variables and only those variables" {
             $manifest.exportedvariables.count | Should BeExactly 2
             $manifest.exportedvariables.keys -contains '::' | Should BeExactly $true
             $manifest.exportedvariables.keys -contains 'include' | Should BeExactly $true
         }
 
-        It "should export the 'new-so', 'ScriptClass', and 'with' aliases and only those aliases" {
-            $manifest.exportedaliases.count | Should BeExactly 3
+        It "should, PENDING fix, export the 'new-so', 'ScriptClass', 'const', 'load-assembly', and 'with' aliases and only those aliases" -pending {
+            $manifest.exportedaliases.count | Should BeExactly 5
             $manifest.exportedaliases.keys -contains 'new-so' | Should BeExactly $true
             $manifest.exportedaliases.keys -contains 'ScriptClass' | Should BeExactly $true
             $manifest.exportedaliases.keys -contains 'with' | Should BeExactly $true
+            $manifest.exportedaliases.keys -contains 'const' | Should BeExactly $true
+            $manifest.exportedaliases.keys -contains 'load-assembly' | Should BeExactly $true
 
+        }
+
+        It "should export no aliases to avoid a defect in PowerShell import of nested modules with aliases" {
+            $manifest.exportedaliases.count | Should BeExactly 0
         }
     }
 
@@ -69,4 +75,27 @@ Describe "Stdposh module manifest" {
     }
 }
 
+Describe 'The get-librarybase function' {
+    Context "When the module is imported" {
+        It "The function should return the parent directory of the directory in which the module is installed" {
+            $scriptParent = split-path -parent $psscriptroot
+            $scriptParentParent = split-path -parent $scriptParent
+
+            # The module file may be in a source directory, or it may be an installed package
+            # using the path convention `modulename\version\modulename.psm1`, look for the name
+            # that way
+            $moduleLocation = if ( (split-path -leaf $scriptParent) -eq 'stdposh' ) {
+                $scriptParent
+            } else {
+                $scriptParentParent
+            }
+
+            test-path $moduleLocation | Should BeExactly $true
+            $moduleParent = split-path -parent $moduleLocation
+            $libraryBaseOutputCommand = "`$erroractionpreference = 'stop';import-module '$moduleLocation';get-LibraryBase"
+            $libraryBaseOutput = iex "powershell -noprofile -command { $libraryBaseOutputCommand }"
+            $libraryBaseOutput | Should Be $moduleParent
+        }
+    }
+}
 

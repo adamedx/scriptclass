@@ -9,10 +9,10 @@
 @{
 
 # Script module or binary module file associated with this manifest.
-# RootModule = ''
+RootModule = './stdposh.psm1'
 
 # Version number of this module.
-ModuleVersion = '0.5'
+ModuleVersion = '0.11.36'
 
 # Supported PSEditions
 # CompatiblePSEditions = @()
@@ -69,7 +69,7 @@ ScriptsToProcess = @('src/std.ps1')
 # NestedModules = @()
 
 # Functions to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no functions to export.
-FunctionsToExport = @('=>', '::>', 'add-scriptclass', 'invoke-method', 'is-scriptobject', 'new-scriptobject', 'Load-Assembly', 'include-source')
+FunctionsToExport = @('=>', '::>', 'add-scriptclass', 'invoke-method', 'test-scriptobject', 'new-scriptobject', 'import-assembly', 'import-source', 'get-librarybase')
 
 # Cmdlets to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no cmdlets to export.
 CmdletsToExport = @()
@@ -78,7 +78,8 @@ CmdletsToExport = @()
 VariablesToExport = @('::', 'include')
 
 # Aliases to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no aliases to export.
-AliasesToExport = @('new-so', 'ScriptClass', 'with')
+AliasesToExport = @()
+# AliasesToExport = @('include-source', 'new-so', 'ScriptClass', 'with', 'load-assembly')
 
 # DSC resources to export from this module
 # DscResourcesToExport = @()
@@ -87,7 +88,7 @@ AliasesToExport = @('new-so', 'ScriptClass', 'with')
 # ModuleList = @()
 
 # List of all files packaged with this module
-FileList = @('src/scriptclass.ps1', 'src/std.ps1', 'src/include.ps1', 'src/assemblyhelper.ps1')
+FileList = @('./stdposh.psd1', './stdposh.psm1', 'src/scriptclass.ps1', 'src/std.ps1', 'src/include.ps1', 'src/assemblyhelper.ps1')
 
 # Private data to pass to the module specified in RootModule/ModuleToProcess. This may also contain a PSData hashtable with additional module metadata used by PowerShell.
 PrivateData = @{

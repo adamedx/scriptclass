@@ -17,8 +17,13 @@ param($targetDirectory = $null)
 set-strictmode -version 2
 $erroractionpreference = 'stop'
 
-$basepath = (get-item (split-path -parent $psscriptroot)).fullname
-$packageManifest = join-path $basepath stdposh.nuspec
+$basedirectory = get-item (split-path -parent $psscriptroot)
+$basepath = $basedirectory.fullname
+$moduleName = $basedirectory.name
+$packageManifest = join-path $basepath "$moduleName.nuspec"
+$moduleManifestPath = join-path $basepath "$moduleName.psd1"
+
+$moduleVersion = (test-modulemanifest $moduleManifestPath).version
 
 $outputDirectory = if ( $targetDirectory -ne $null ) {
     $targetDirectory
@@ -35,7 +40,7 @@ if ( ! (test-path $outputDirectory) ) {
 write-host "Building nuget package from manifest '$packageManifest'..."
 write-host "Output directory = '$outputDirectory'..."
 
-$nugetbuildcmd = "& nuget pack '$packageManifest' -outputdirectory '$outputdirectory'"
+$nugetbuildcmd = "& nuget pack '$packageManifest' -outputdirectory '$outputdirectory' -nopackageanalysis -version '$moduleVersion'"
 write-host "Executing command: ", $nugetbuildcmd
 
 iex $nugetbuildcmd
@@ -46,4 +51,7 @@ if ( $buildResult -ne 0 ) {
     throw "Command `"$nugetbuildcmd`" failed with exit status $buildResult"
 }
 
+$packagePath = ((ls $outputdirectory -filter *.nupkg) | select -first 1).fullname
+
+write-host "Package successfully built at '$packagePath'"
 write-host -f green "Build succeeded."

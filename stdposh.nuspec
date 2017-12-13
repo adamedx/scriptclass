@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <package >
   <metadata>
-    <id>adamedx.stdposh</id>
-    <version>0.7.0</version>
+    <id>stdposh</id>
+    <version>0.0.0</version>
     <authors>adamedx</authors>
     <owners>adamedx</owners>
     <licenseUrl>https://www.apache.org/licenses/LICENSE-2.0</licenseUrl>
@@ -11,14 +11,15 @@
     <description>Usability enhancements for core PowerShell capabilities</description>
     <releaseNotes>Initial development</releaseNotes>
     <copyright>Copyright 2017</copyright>
-    <tags>class object</tags>
+    <tags>class object ScriptClass PSModule</tags>
   </metadata>
   <files>
-    <file src="LICENSE.md" target="$targetBase$" />
-    <file src="README.md" target="$targetBase$" />
-    <file src="stdposh.psd1" target="$targetBase$" />
-    <file src="samples\complex.ps1" target="$targetBase$\samples" />
-    <file src="src\**\*.ps1" target="$targetBase$\src" />
-    <file src="test\**\*.ps1" target="$targetBase$\test" />
+    <file src="LICENSE.md" target="." />
+    <file src="README.md" target="." />
+    <file src="stdposh.psd1" target="." />
+    <file src="stdposh.psm1" target="." />
+    <file src="samples\complex.ps1" target="samples/" />
+    <file src="src\**\*.ps1" target="src/" />
+    <file src="test\**\*.ps1" target="test/" />
   </files>
 </package>

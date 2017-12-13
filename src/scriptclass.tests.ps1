@@ -14,9 +14,18 @@
 
 $here = Split-Path -Parent $MyInvocation.MyCommand.Path
 $sut = (Split-Path -Leaf $MyInvocation.MyCommand.Path) -replace '\.Tests\.', '.'
-. "$here\$sut"
+$thismodule = join-path (split-path -parent $here) 'stdposh.psd1'
 
 Describe "The class definition interface" {
+    BeforeAll {
+        remove-module $thismodule -force 2>$null
+        import-module $thismodule -force
+    }
+
+    AfterAll {
+        remove-module $thismodule -force 2>$null
+    }
+
     Context "When declaring a simple class" {
         It "succeeds with trivial parameters for the new-class cmdlet" {
             $result = add-scriptclass SimpleClass1 {}
@@ -592,6 +601,15 @@ Describe "The class definition interface" {
 }
 
 Describe "The get-class cmdlet" {
+    BeforeAll {
+        remove-module $thismodule -force 2>$null
+        import-module $thismodule -force
+    }
+
+    AfterAll {
+        remove-module $thismodule -force 2>$null
+    }
+
     ScriptClass ClassClass59 {
     }
 
@@ -612,6 +630,15 @@ Describe "The get-class cmdlet" {
 }
 
 Describe 'The $:: collection' {
+    BeforeAll {
+        remove-module $thismodule -force 2>$null
+        import-module $thismodule -force
+    }
+
+    AfterAll {
+        remove-module $thismodule -force 2>$null
+    }
+
     ScriptClass ClassClass60 {}
     ScriptClass ClassClass60a {}
     ScriptClass ClassClass60b {}
@@ -652,6 +679,15 @@ Describe 'The $:: collection' {
 }
 
 Describe "'with' function for object-based command context" {
+    BeforeAll {
+        remove-module $thismodule -force 2>$null
+        import-module $thismodule -force
+    }
+
+    AfterAll {
+        remove-module $thismodule -force 2>$null
+    }
+
     Context "When invoking an object's method through with" {
         $className = 'ClassClass32'
 
@@ -755,6 +791,15 @@ Describe "'with' function for object-based command context" {
 }
 
 Describe 'The => invocation function' {
+    BeforeAll {
+        remove-module $thismodule -force 2>$null
+        import-module $thismodule -force
+    }
+
+    AfterAll {
+        remove-module $thismodule -force 2>$null
+    }
+
     Context "When a method is invoked through the => function" {
         $initialValue = 10
         ScriptClass ClassClass43 {
@@ -825,6 +870,15 @@ Describe 'The => invocation function' {
 }
 
 Describe 'Static functions' {
+    BeforeAll {
+        remove-module $thismodule -force 2>$null
+        import-module $thismodule -force
+    }
+
+    AfterAll {
+        remove-module $thismodule -force 2>$null
+    }
+
     ScriptClass ClassClass52 {
         static {
             function staticmethod($arg1, $arg2) {
@@ -1023,6 +1077,15 @@ Describe 'Static functions' {
 }
 
 Describe 'Static member variables' {
+    BeforeAll {
+        remove-module $thismodule -force 2>$null
+        import-module $thismodule -force
+    }
+
+    AfterAll {
+        remove-module $thismodule -force 2>$null
+    }
+
     Context "When declaring a class with static member variables" {
         ScriptClass ClassClass75 {
             static {
@@ -1135,6 +1198,15 @@ Describe 'Static member variables' {
 }
 
 Describe 'Typed static member variables' {
+    BeforeAll {
+        remove-module $thismodule -force 2>$null
+        import-module $thismodule -force
+    }
+
+    AfterAll {
+        remove-module $thismodule -force 2>$null
+    }
+
     Context 'When declaring typed static members with strict-val' {
         ScriptClass ClassClass79 {
             static {
@@ -1168,67 +1240,85 @@ Describe 'Typed static member variables' {
     }
 }
 
-Describe 'The is-scriptobject cmdlet' {
+Describe 'The test-scriptobject cmdlet' {
+    BeforeAll {
+        remove-module $thismodule -force 2>$null
+        import-module $thismodule -force
+    }
+
+    AfterAll {
+        remove-module $thismodule -force 2>$null
+    }
+
     ScriptClass ClassClass64 {}
     ScriptClass ClassClass65 {}
     $newInstance = new-scriptobject ClassClass64
     It 'Should return $true if only a scriptclass object instance is specified by position' {
-        is-scriptobject $newInstance | Should BeExactly $true
+        test-scriptobject $newInstance | Should BeExactly $true
     }
 
     It 'Should return $true if a scriptclass object instance is specified through the pipeline' {
-        $newInstance | is-scriptobject | Should BeExactly $true
+        $newInstance | test-scriptobject | Should BeExactly $true
     }
 
     It 'Should return $true if a scriptclass object is specified with its script class type name' {
-        is-scriptobject $newInstance ClassClass64 | Should BeExactly $true
+        test-scriptobject $newInstance ClassClass64 | Should BeExactly $true
     }
 
     It 'Should return $true if a scriptclass object is specified with its scriptclass class object' {
-        is-scriptobject $newInstance $::.ClassClass64 | Should BeExactly $true
+        test-scriptobject $newInstance $::.ClassClass64 | Should BeExactly $true
     }
 
     It 'Should return $false if a scriptclass object is specified with a valid scriptclass class name of a different scriptclass than the instance' {
-        is-scriptobject $newInstance 'ClassClass65' | Should BeExactly $false
+        test-scriptobject $newInstance 'ClassClass65' | Should BeExactly $false
     }
 
     It 'Should return $false if a scriptclass object is specified with a valid scriptclass class object of a different scriptclass than the instance' {
-        is-scriptobject $newInstance $::.ClassClass65 | Should BeExactly $false
+        test-scriptobject $newInstance $::.ClassClass65 | Should BeExactly $false
     }
 
     It 'Should return $false if only a non-scriptclass object is specified' {
-        is-scriptobject [Type] | Should BeExactly $false
-        is-scriptobject 3 | Should BeExactly $false
+        test-scriptobject [Type] | Should BeExactly $false
+        test-scriptobject 3 | Should BeExactly $false
     }
 
     It 'Should return $false if non-scriptclass object is specified with a scriptclass type name' {
-        is-scriptobject ([Type]) ClassClass64 | Should BeExactly $false
-        is-scriptobject 3 ClassClass64 | Should BeExactly $false
+        test-scriptobject ([Type]) ClassClass64 | Should BeExactly $false
+        test-scriptobject 3 ClassClass64 | Should BeExactly $false
     }
 
     It 'Should throw an exception if the scriptclass parameter is a string that is not the name of defined scriptclass' {
-        { is-scriptobject $newInstance 'idontexist' } | Should Throw
+        { test-scriptobject $newInstance 'idontexist' } | Should Throw
     }
 
     It 'Should throw an exception if the scriptclass parameter is not a PSCustomObject' {
-        { is-scriptobject $newInstance 3 | out-null } | Should Throw
+        { test-scriptobject $newInstance 3 | out-null } | Should Throw
     }
 
     It 'Should throw an exception if the scriptclass parameter is not a PSCustomObject created with new-scriptobject with a PSTypeName that matches the class' {
         $custom = [PSCustomObject]@{field1=1;field2=2}
         $typedcustom = [PSCustomObject]@{field1=1;field2=2;PSTypeName='notascriptclass'}
-        { is-scriptobject $newInstance $custom | out-null } | Should Throw
-        { is-scriptobject $newInstance $typedcustom | out-null } | Should Throw
+        { test-scriptobject $newInstance $custom | out-null } | Should Throw
+        { test-scriptobject $newInstance $typedcustom | out-null } | Should Throw
     }
 }
 
 Describe "The const cmdlet" {
+    BeforeAll {
+        remove-module $thismodule -force 2>$null
+        import-module $thismodule -force
+    }
+
+    AfterAll {
+        remove-module $thismodule -force 2>$null
+    }
+
     function clean-variable($name) {
         $existing = $true
 
         @('Script', 'Local', 1) | foreach {
             $existing = try {
-                get-variable -name $name -scope $_ 2> (out-null)
+                get-variable -name $name -scope $_ 2> $null
             } catch {
                 $null
             }
@@ -1242,7 +1332,7 @@ Describe "The const cmdlet" {
     }
 
     function variable-exists($name) {
-        (get-variable -name $name 2> (out-null)) -ne $null
+        (get-variable -name $name 2> $null) -ne $null
     }
 
     BeforeEach {
