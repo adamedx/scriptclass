@@ -12,7 +12,7 @@
 RootModule = './stdposh.psm1'
 
 # Version number of this module.
-ModuleVersion = '0.11.39'
+ModuleVersion = '0.11.41'
 
 # Supported PSEditions
 # CompatiblePSEditions = @()
@@ -69,7 +69,7 @@ ScriptsToProcess = @('src/std.ps1')
 # NestedModules = @()
 
 # Functions to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no functions to export.
-FunctionsToExport = @('=>', '::>', 'add-scriptclass', 'invoke-method', 'test-scriptobject', 'new-scriptobject', 'import-assembly', 'import-source', 'get-librarybase')
+FunctionsToExport = @('=>', '::>', 'add-scriptclass', 'invoke-method', 'test-scriptobject', 'new-scriptobject', 'import-assembly', 'import-script', 'get-librarybase')
 
 # Cmdlets to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no cmdlets to export.
 CmdletsToExport = @()

@@ -20,7 +20,7 @@ Describe "Stdposh module manifest" {
 
     Context "When loading the manifest" {
         It "should export the exact same set of functions as are in the set of expected functions" {
-            $expectedFunctions = @('=>', '::>', 'add-scriptclass', 'invoke-method', 'test-scriptobject', 'new-scriptobject', 'import-source', 'import-assembly', 'get-librarybase')
+            $expectedFunctions = @('=>', '::>', 'add-scriptclass', 'invoke-method', 'test-scriptobject', 'new-scriptobject', 'import-script', 'import-assembly', 'get-librarybase')
 
             $manifest.ExportedFunctions.count | Should BeExactly $expectedFunctions.length
 
