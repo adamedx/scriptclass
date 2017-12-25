@@ -14,10 +14,7 @@
 $script:includes = @{}
 $script:included = @{}
 
-# set-alias include import-source
-# set-alias include-source import-source
-
-$script:include = {param([string] $scriptPath = $null) . (import-source $scriptpath (CallerScriptRoot))}
+$script:include = {param([string] $scriptPath = $null) . (import-script $scriptpath (CallerScriptRoot))}
 
 function script:CallerScriptRoot {
     $callstack = get-pscallstack
@@ -55,7 +52,7 @@ function get-includepath($appRelativePath) {
     $canonical
 }
 
-function import-source($appRelativePath, $callerScriptDir = $null)
+function import-script($appRelativePath, $callerScriptDir = $null)
 {
     $appRoot = if ( $callerScriptDir -eq $null ) {
         CallerScriptRoot

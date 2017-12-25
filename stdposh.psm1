@@ -49,7 +49,7 @@ $variables = @('::', 'include')
 $functions = @('=>', '::>', 'add-scriptclass',
                'invoke-method', 'test-scriptobject',
                'new-scriptobject', 'import-assembly',
-               'import-source', 'get-librarybase')
+               'import-script', 'get-librarybase')
 
 $aliases = @('new-so', 'ScriptClass', 'with', 'load-assembly', 'const' )
 

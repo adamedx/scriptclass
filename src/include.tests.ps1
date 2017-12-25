@@ -18,7 +18,7 @@ $here = Split-Path -Parent $MyInvocation.MyCommand.Path
 $sut = (Split-Path -Leaf $MyInvocation.MyCommand.Path) -replace '\.Tests\.', '.'
 # . "$here\$sut"
 
-Describe "The import-source cmdlet" {
+Describe "The import-script cmdlet" {
     $importCommand = "import-module -force " + (join-path $here "..\stdposh.psd1")
     $simpleClientScriptPath = "TestDrive:\simplesclientcript.ps1"
     $parameterizedClientScriptFile = "parameterizedclientscript.ps1"
@@ -85,7 +85,7 @@ $importCommand
 `$scriptname = '$simplescriptfile'.split('.')[0]
 # . `$include $(remove-ext $simplescriptfile)
 . `$include `$scriptname
-# . (import-source '$(remove-ext $simplescriptfile)')
+# . (import-script '$(remove-ext $simplescriptfile)')
 "@
 
     set-content $parameterizedClientScriptPath -value @"
@@ -133,7 +133,7 @@ $importCommand
 
 
     set-content $modulescriptpath1 -value @"
-. (import-source (join-path '../dir2' $(remove-ext $modulescriptfile2)))
+. (import-script (join-path '../dir2' $(remove-ext $modulescriptfile2)))
 function testvalue(`$arg1, `$arg2) {
     (constantval) + `$arg1 * `$arg2
 }
@@ -145,13 +145,13 @@ set-content $modulescriptpath1include -value @"
 
 # The use of `$include fails for unknown reasons in the context of this
 # test, possibly due to scope issues in the way the script block is
-# invoked. A workaround is to use import-source, which is validated
+# invoked. A workaround is to use import-script, which is validated
 # in a separate test. Any tests using this capability must be marked
 # pending until the issue is investigated and fixed.
 
 # . `$include `$scriptval
 # The equivalent workaround below works just fine in place of the above line
-. (import-source `$scriptval)
+. (import-script `$scriptval)
 function testvalue(`$arg1, `$arg2) {
     (constantval) + `$arg1 * `$arg2
 }
@@ -197,7 +197,7 @@ testvalue `$arg1 `$arg2
             { iex "& '$parameterizedClientScriptPath' '$indirectFile'" } | Should Not Throw
         }
 
-        It 'should treat include paths as relative to the calling module using import-source' {
+        It 'should treat include paths as relative to the calling module using import-script' {
             run-command "& $moduleClientPath 5 3 " | Should Be (5 * 3 + 37)
         }
 
