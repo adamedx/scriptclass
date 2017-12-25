@@ -12,7 +12,7 @@
 RootModule = './stdposh.psm1'
 
 # Version number of this module.
-ModuleVersion = '0.11.36'
+ModuleVersion = '0.11.38'
 
 # Supported PSEditions
 # CompatiblePSEditions = @()
