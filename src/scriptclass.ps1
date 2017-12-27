@@ -48,7 +48,7 @@ function add-scriptclass {
 
     try {
         $classDefinition = __new-class $classData
-        __add-typemember NoteProperty $className ScriptBlock $null $classBlock
+        __add-typemember NoteProperty $className ScriptBlock $null $classBlock -hidden
         __add-classmember $className $classDefinition
         __define-class $classDefinition | out-null
         __remove-publishedclass $className
@@ -235,7 +235,7 @@ function __add-classmember($className, $classDefinition) {
     }
 
     __add-member $classMember PSTypeData ScriptProperty ([ScriptBlock]::Create("(__find-existingclass '$className').typedata"))
-    __add-typemember NoteProperty $className 'scriptclass' $null $classMember
+    __add-typemember NoteProperty $className 'scriptclass' $null $classMember -hidden
 }
 
 function __invoke-methodwithcontext($object, $method) {
@@ -255,7 +255,11 @@ function __invoke-scriptwithcontext($objectContext, $script) {
             $functions[$_.name] = $_.value.script
         }
     }
-    $script.InvokeWithContext($functions, $thisVariable, $args)
+    try {
+        $script.InvokeWithContext($functions, $thisVariable, $args)
+    } catch {
+        throw $_
+    }
 }
 
 
@@ -275,9 +279,6 @@ function __add-scriptpropertytyped($object, $memberName, $memberType, $initialVa
 
 function __add-member($prototype, $memberName, $psMemberType, $memberValue, $memberType = $null, $memberSecondValue = $null, $force = $false) {
     $arguments = @{name=$memberName;memberType=$psMemberType;value=$memberValue}
-    if ($memberType -ne $null) {
-        $arguments['typeName'] = $memberType
-    }
 
     if ($memberSecondValue -ne $null) {
         $arguments['secondValue'] = $memberSecondValue
@@ -286,7 +287,7 @@ function __add-member($prototype, $memberName, $psMemberType, $memberValue, $mem
     $newMember = ($prototype | add-member -passthru @arguments)
 }
 
-function __add-typemember($memberType, $className, $memberName, $typeName, $initialValue, $constant = $false) {
+function __add-typemember($memberType, $className, $memberName, $typeName, $initialValue, $constant = $false, [switch] $hiddenMember) {
     if ($typeName -ne $null -and -not $typeName -is [Type]) {
         throw "Invalid argument passed for type -- the argument must be of type [Type]"
     }
@@ -303,9 +304,15 @@ function __add-typemember($memberType, $className, $memberName, $typeName, $init
         throw "Member '$memberName' already exists for type '$className'"
     }
 
-    $defaultDisplay = @(0..$classDefinition.typedata.members.keys.count)
+    $defaultDisplay = @()
 
-    $defaultDisplay[$classDefinition.typedata.members.keys.count - 1] = $memberName
+    $classDefinition.typedata.defaultdisplaypropertyset.referencedproperties | foreach {
+        $defaultDisplay += $_
+    }
+
+    if (! $hiddenMember.ispresent) {
+        $defaultDisplay += $memberName
+    }
 
     $aliasName = "__$($memberName)"
     $realName = $memberName
