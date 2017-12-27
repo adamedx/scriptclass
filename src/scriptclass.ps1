@@ -62,14 +62,16 @@ function add-scriptclass {
 }
 
 function new-scriptobject {
+    [cmdletbinding()]
     param(
-        [string] $className
+        [parameter(mandatory=$true)] [string] $className,
+        [parameter(valuefromremainingarguments=$true)] $argumentlist
     )
 
     $existingClass = __find-existingClass $className
 
     $newObject = $existingClass.prototype.psobject.copy()
-    __invoke-methodwithcontext $newObject '__initialize' @args | out-null
+    __invoke-methodwithcontext $newObject '__initialize' @argumentlist | out-null
     $newObject
 }
 
@@ -79,6 +81,7 @@ function get-class([string] $className) {
 }
 
 function test-scriptobject {
+    [cmdletbinding()]
     param(
         [parameter(valuefrompipeline=$true, mandatory=$true)] $Object,
         $ScriptClass = $null
@@ -248,7 +251,15 @@ function __invoke-methodwithcontext($object, $method) {
 }
 
 function __invoke-scriptwithcontext($objectContext, $script) {
+    $variables = [PSVariable[]]@()
     $thisVariable = [PSVariable]::new('this', $objectContext)
+    $variables += $thisVariable
+
+    try {
+        $variables += get-variable pscmdlet 2>$null
+    } catch {
+    }
+
     $functions = @{}
     $objectContext.psobject.members | foreach {
         if ( $_.membertype -eq 'ScriptMethod' ) {
@@ -256,7 +267,12 @@ function __invoke-scriptwithcontext($objectContext, $script) {
         }
     }
     try {
-        $script.InvokeWithContext($functions, $thisVariable, $args)
+        # Very strange -- an array of cardinality 1 generates an error when used in the method call to InvokeWithContext, so if there's only one element, convert it back to that one element
+        if ($variables.length -eq 1 ) {
+            $variables = $variables[0]
+        }
+
+        $script.InvokeWithContext($functions, $variables, $args)
     } catch {
         throw $_
     }
