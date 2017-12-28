@@ -46,7 +46,7 @@ function import-assembly($assemblyName, $assemblyRoot = $null) {
     $searchRootItem = get-item $searchRootDirectory 2>$null
 
     if ( $searchRootItem -eq $null ) {
-        throw "Unable to find assembly '$assemblyName' because given search directory '$searchRoot' was not accessible"
+        throw "Unable to find assembly '$assemblyName' because given search directory '$searchRootDirectory' was not accessible"
     }
 
     $searchRootFullyQualified = $searchRootItem.fullname
