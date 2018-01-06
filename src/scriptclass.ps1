@@ -233,6 +233,7 @@ function __add-classmember($className, $classDefinition) {
     $classMember = [PSCustomObject] @{
         PSTypeName = $ScriptClassTypeName
         ClassName = $className
+        InstanceMethods = @{}
         TypedMembers = @{}
         ScriptClass = $null
     }
@@ -591,6 +592,10 @@ function modulefunc {
     export-modulemember -variable __memberResult, __newfunctions__, __newvariables__, __exception__ -function $__newfunctions__.keys
 }
 
+$__instanceWrapperTemplate = @'
+invoke-method $this $this.scriptclass.instancemethods['{0}'] @args
+'@
+
 function __define-class($classDefinition) {
     $aliases = @((get-item alias:with), (get-item 'alias:new-so'), (get-item alias:const))
     pushd function:
@@ -623,7 +628,9 @@ function __define-class($classDefinition) {
 
     $nextFunctions.getenumerator() | foreach {
         if ($nextFunctions[$_.name] -is [System.Management.Automation.FunctionInfo] -and $functions -notcontains $_.name) {
-            __add-typemember ScriptMethod $classDefinition.typeData.TypeName $_.name $null $_.value.scriptblock
+            $methodBlockWrapper = [ScriptBlock]::Create($__instanceWrapperTemplate -f $_.name)
+            __add-typemember ScriptMethod $classDefinition.typeData.TypeName $_.name $null $methodBlockWrapper
+            $classDefinition.prototype.scriptclass.InstanceMethods[$_.name] = $_.value.scriptblock
         }
     }
 
@@ -640,4 +647,5 @@ function __define-class($classDefinition) {
     }
 
 }
+
 

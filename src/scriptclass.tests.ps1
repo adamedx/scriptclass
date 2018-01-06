@@ -142,11 +142,19 @@ Describe "The class definition interface" {
             $newInstance.scriptclass.scriptclass | Should BeExactly $null
         }
 
-        It "has a 'scriptclass' member that has exactly three noteproperty properties and one scriptproperty property" {
+        It "has a 'scriptclass' member that has exactly four noteproperty properties and one scriptproperty property" {
             $newInstance = new-scriptobject ClassClass53
-            ($newInstance.scriptclass | gm -membertype noteproperty).count | Should BeExactly 3
+            ($newInstance.scriptclass | gm -membertype noteproperty).count | Should BeExactly 4
             ($newInstance.scriptclass | gm -membertype scriptproperty) -is [Microsoft.PowerShell.Commands.MemberDefinition] | Should BeExactly $true
         }
+
+        It "has a 'scriptclass' member that is the same object instance as the 'scriptclass' member of a another object of the same scriptclass" {
+            $newInstance = new-scriptobject ClassClass53
+            $newInstance2 = new-scriptobject ClassClass53
+
+            $newInstance.scriptclass.gethashcode() | Should BeExactly $newInstance2.scriptclass.gethashcode()
+        }
+
 
         It "can create a new object that includes additional properties to the default properties" {
             $className = 'ClassClass8'
