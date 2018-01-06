@@ -142,9 +142,9 @@ Describe "The class definition interface" {
             $newInstance.scriptclass.scriptclass | Should BeExactly $null
         }
 
-        It "has a 'scriptclass' member that has exactly four noteproperty properties and one scriptproperty property" {
+        It "has a 'scriptclass' member that has exactly five noteproperty properties and one scriptproperty property" {
             $newInstance = new-scriptobject ClassClass53
-            ($newInstance.scriptclass | gm -membertype noteproperty).count | Should BeExactly 4
+            ($newInstance.scriptclass | gm -membertype noteproperty).count | Should BeExactly 5
             ($newInstance.scriptclass | gm -membertype scriptproperty) -is [Microsoft.PowerShell.Commands.MemberDefinition] | Should BeExactly $true
         }
 
@@ -669,10 +669,10 @@ Describe 'The $:: collection' {
             $::.ClassClass60.pstypedata | Should Not Be $null
         }
 
-        It "should return a class object that has a ScriptBlock member by default" {
+        It "should return a class object that has a ClassScriptBlock member of its scriptclass by default" {
             add-scriptclass ClassClass62 { 62 }
             $classType = $::.ClassClass62.pstypedata
-            $invokeResult = invoke-command -scriptblock $classType.members.ScriptBlock.value
+            $invokeResult = invoke-command -scriptblock $classType.members.ScriptClass.value.ClassScriptBlock
             $invokeResult | Should BeExactly 62
         }
 

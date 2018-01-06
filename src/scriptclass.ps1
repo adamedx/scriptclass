@@ -48,8 +48,8 @@ function add-scriptclass {
 
     try {
         $classDefinition = __new-class $classData
-        __add-typemember NoteProperty $className ScriptBlock $null $classBlock -hidden
-        __add-classmember $className $classDefinition
+#        __add-typemember NoteProperty $className ScriptBlock $null $classBlock -hidden
+        __add-classmember $className $classDefinition $classBlock
         __define-class $classDefinition | out-null
         __remove-publishedclass $className
         $:: | add-member -name $className -memberType 'ScriptProperty' -value ([ScriptBlock]::Create("get-class '$className'"))
@@ -229,17 +229,18 @@ function __remove-class($className) {
     $__classTable.Remove($className)
 }
 
-function __add-classmember($className, $classDefinition) {
+function __add-classmember($className, $classDefinition, $classBlock) {
     $classMember = [PSCustomObject] @{
         PSTypeName = $ScriptClassTypeName
         ClassName = $className
+        ClassScriptBlock = $classBlock
         InstanceMethods = @{}
         TypedMembers = @{}
         ScriptClass = $null
     }
 
     __add-member $classMember PSTypeData ScriptProperty ([ScriptBlock]::Create("(__find-existingclass '$className').typedata"))
-    __add-typemember NoteProperty $className 'scriptclass' $null $classMember -hidden
+    __add-typemember NoteProperty $className 'ScriptClass' $null $classMember -hidden
 }
 
 function __invoke-methodwithcontext($object, $method) {
@@ -606,7 +607,7 @@ function __define-class($classDefinition) {
     $classDefinitionException = $null
 
     try {
-        $memberData = new-module -ascustomobject -scriptblock (gi function:modulefunc).scriptblock -argumentlist $functions, $aliases, $classDefinition.typeData.TypeName, $classDefinition.typedata.members.ScriptBlock.value
+        $memberData = new-module -ascustomobject -scriptblock (gi function:modulefunc).scriptblock -argumentlist $functions, $aliases, $classDefinition.typeData.TypeName, $classDefinition.prototype.ScriptClass.ClassScriptBlock
         $classDefinitionException = $memberData.__exception__
     } catch {
         $classDefinitionException = $_
