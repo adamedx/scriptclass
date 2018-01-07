@@ -386,21 +386,6 @@ function __add-typemember($memberType, $className, $memberName, $typeName, $init
     $classDefinition.typeData = $typeSystemData
 }
 
-function GetClassMemberInfo($object, $memberType) {
-
-    $result = @()
-
-    $object.scriptclass.instancemethods.keys | foreach {
-        $result += [PSCustomObject] @{Name=$_;MemberType='Method'}
-    }
-
-    $object.scriptclass.instanceproperties.keys | foreach {
-        $result += [PSCustomObject] @{Name=$_;MemberType='Property'}
-    }
-
-    $result
-}
-
 function __get-classmembers($classDefinition) {
     $__functions__ = ls function:
     $__variables__ = @{}
@@ -408,10 +393,6 @@ function __get-classmembers($classDefinition) {
     $__classvariables__ = @{}
 
     function __initialize {}
-    function GetScriptClassMember {
-        param( [string]$memberType )
-        GetClassMemberInfo (gi variable:this).value $memberType
-    }
 
     $script:__statics__ = @{}
     $script:__staticvars__ = @{}
