@@ -44,11 +44,10 @@ function add-scriptclass {
         [scriptblock] $classBlock
     )
 
-    $classData = @{TypeName=$className;MemberType='NoteProperty';DefaultDisplayPropertySet=@('PSTypeName');MemberName='PSTypeName';Value=$className}
+    $classData = @{TypeName=$className;MemberType='NoteProperty';DefaultDisplayPropertySet=@('PSTypeName');MemberName='PSTypeName';Value=$className;serializationmethod='SpecificProperties';PropertySerializationSet=@('PSTypeName')}
 
     try {
         $classDefinition = __new-class $classData
-#        __add-typemember NoteProperty $className ScriptBlock $null $classBlock -hidden
         __add-classmember $className $classDefinition $classBlock
         __define-class $classDefinition | out-null
         __remove-publishedclass $className
@@ -323,13 +322,23 @@ function __add-typemember($memberType, $className, $memberName, $typeName, $init
     }
 
     $defaultDisplay = @()
+    $propertySerializationSet = @()
 
     $classDefinition.typedata.defaultdisplaypropertyset.referencedproperties | foreach {
         $defaultDisplay += $_
     }
 
+    $classDefinition.typedata.propertyserializationset.referencedproperties | foreach {
+        $propertyserializationset += $_
+    }
+
+
     if (! $hiddenMember.ispresent) {
         $defaultDisplay += $memberName
+
+        if ($memberType -eq 'NoteProperty' -or $memberType -eq 'ScriptProperty') {
+            $propertyserializationset += $memberName
+        }
     }
 
     $aliasName = "__$($memberName)"
@@ -339,7 +348,7 @@ function __add-typemember($memberType, $className, $memberName, $typeName, $init
         $aliasName = $memberName
     }
 
-    $nameTypeData = @{TypeName=$className;MemberType=$memberType;MemberName=$realName;Value=$initialValue;defaultdisplaypropertyset=$defaultdisplay}
+    $nameTypeData = @{TypeName=$className;MemberType=$memberType;MemberName=$realName;Value=$initialValue;defaultdisplaypropertyset=$defaultdisplay;propertyserializationset=$propertyserializationset;serializationmethod='SpecificProperties'}
 
     __add-member $classDefinition.prototype $realName $memberType $initialValue $typeName
     Update-TypeData -force @nameTypeData
