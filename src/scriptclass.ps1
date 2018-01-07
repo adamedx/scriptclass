@@ -69,7 +69,7 @@ function new-scriptobject {
 
     $existingClass = __find-existingClass $className
 
-    $newObject = $existingClass.prototype.psobject.copy()
+    $newObject = [PSCustomObject] $existingClass.prototype.psobject.copy()
     __invoke-methodwithcontext $newObject '__initialize' @argumentlist | out-null
     $newObject
 }
