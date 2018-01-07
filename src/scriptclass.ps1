@@ -44,12 +44,11 @@ function add-scriptclass {
         [scriptblock] $classBlock
     )
 
-    $classData = @{TypeName=$className;MemberType='NoteProperty';DefaultDisplayPropertySet=@('PSTypeName');MemberName='PSTypeName';Value=$className}
+    $classData = @{TypeName=$className;MemberType='NoteProperty';DefaultDisplayPropertySet=@('PSTypeName');MemberName='PSTypeName';Value=$className;serializationmethod='SpecificProperties';PropertySerializationSet=@('PSTypeName')}
 
     try {
         $classDefinition = __new-class $classData
-        __add-typemember NoteProperty $className ScriptBlock $null $classBlock -hidden
-        __add-classmember $className $classDefinition
+        __add-classmember $className $classDefinition $classBlock
         __define-class $classDefinition | out-null
         __remove-publishedclass $className
         $:: | add-member -name $className -memberType 'ScriptProperty' -value ([ScriptBlock]::Create("get-class '$className'"))
@@ -70,7 +69,7 @@ function new-scriptobject {
 
     $existingClass = __find-existingClass $className
 
-    $newObject = $existingClass.prototype.psobject.copy()
+    $newObject = [PSCustomObject] $existingClass.prototype.psobject.copy()
     __invoke-methodwithcontext $newObject '__initialize' @argumentlist | out-null
     $newObject
 }
@@ -229,16 +228,19 @@ function __remove-class($className) {
     $__classTable.Remove($className)
 }
 
-function __add-classmember($className, $classDefinition) {
+function __add-classmember($className, $classDefinition, $classBlock) {
     $classMember = [PSCustomObject] @{
         PSTypeName = $ScriptClassTypeName
         ClassName = $className
+        ClassScriptBlock = $classBlock
+        InstanceMethods = @{}
+        InstanceProperties = @{}
         TypedMembers = @{}
         ScriptClass = $null
     }
 
     __add-member $classMember PSTypeData ScriptProperty ([ScriptBlock]::Create("(__find-existingclass '$className').typedata"))
-    __add-typemember NoteProperty $className 'scriptclass' $null $classMember -hidden
+    __add-typemember NoteProperty $className 'ScriptClass' $null $classMember -hidden
 }
 
 function __invoke-methodwithcontext($object, $method) {
@@ -321,14 +323,25 @@ function __add-typemember($memberType, $className, $memberName, $typeName, $init
     }
 
     $defaultDisplay = @()
+    $propertySerializationSet = @()
 
     $classDefinition.typedata.defaultdisplaypropertyset.referencedproperties | foreach {
         $defaultDisplay += $_
     }
 
+    $classDefinition.typedata.propertyserializationset.referencedproperties | foreach {
+        $propertyserializationset += $_
+    }
+
     if (! $hiddenMember.ispresent) {
         $defaultDisplay += $memberName
+
+        if ($memberType -eq 'NoteProperty' -or $memberType -eq 'ScriptProperty') {
+            $propertyserializationset += $memberName
+            $classDefinition.prototype.scriptclass.instanceproperties[$memberName] = $typeName
+        }
     }
+
 
     $aliasName = "__$($memberName)"
     $realName = $memberName
@@ -337,7 +350,7 @@ function __add-typemember($memberType, $className, $memberName, $typeName, $init
         $aliasName = $memberName
     }
 
-    $nameTypeData = @{TypeName=$className;MemberType=$memberType;MemberName=$realName;Value=$initialValue;defaultdisplaypropertyset=$defaultdisplay}
+    $nameTypeData = @{TypeName=$className;MemberType=$memberType;MemberName=$realName;Value=$initialValue;defaultdisplaypropertyset=$defaultdisplay;propertyserializationset=$propertyserializationset;serializationmethod='SpecificProperties'}
 
     __add-member $classDefinition.prototype $realName $memberType $initialValue $typeName
     Update-TypeData -force @nameTypeData
@@ -591,6 +604,10 @@ function modulefunc {
     export-modulemember -variable __memberResult, __newfunctions__, __newvariables__, __exception__ -function $__newfunctions__.keys
 }
 
+$__instanceWrapperTemplate = @'
+invoke-method $this $this.scriptclass.instancemethods['{0}'] @args
+'@
+
 function __define-class($classDefinition) {
     $aliases = @((get-item alias:with), (get-item 'alias:new-so'), (get-item alias:const))
     pushd function:
@@ -601,7 +618,7 @@ function __define-class($classDefinition) {
     $classDefinitionException = $null
 
     try {
-        $memberData = new-module -ascustomobject -scriptblock (gi function:modulefunc).scriptblock -argumentlist $functions, $aliases, $classDefinition.typeData.TypeName, $classDefinition.typedata.members.ScriptBlock.value
+        $memberData = new-module -ascustomobject -scriptblock (gi function:modulefunc).scriptblock -argumentlist $functions, $aliases, $classDefinition.typeData.TypeName, $classDefinition.prototype.ScriptClass.ClassScriptBlock
         $classDefinitionException = $memberData.__exception__
     } catch {
         $classDefinitionException = $_
@@ -623,7 +640,9 @@ function __define-class($classDefinition) {
 
     $nextFunctions.getenumerator() | foreach {
         if ($nextFunctions[$_.name] -is [System.Management.Automation.FunctionInfo] -and $functions -notcontains $_.name) {
-            __add-typemember ScriptMethod $classDefinition.typeData.TypeName $_.name $null $_.value.scriptblock
+            $methodBlockWrapper = [ScriptBlock]::Create($__instanceWrapperTemplate -f $_.name)
+            __add-typemember ScriptMethod $classDefinition.typeData.TypeName $_.name $null $methodBlockWrapper
+            $classDefinition.prototype.scriptclass.InstanceMethods[$_.name] = $_.value.scriptblock
         }
     }
 
@@ -640,4 +659,5 @@ function __define-class($classDefinition) {
     }
 
 }
+
 
