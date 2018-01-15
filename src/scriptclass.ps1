@@ -268,15 +268,38 @@ function __invoke-scriptwithcontext($objectContext, $script) {
             $functions[$_.name] = $_.value.script
         }
     }
-    try {
+    $result = try {
         # Very strange -- an array of cardinality 1 generates an error when used in the method call to InvokeWithContext, so if there's only one element, convert it back to that one element
         if ($variables.length -eq 1 ) {
             $variables = $variables[0]
         }
 
-        $script.InvokeWithContext($functions, $variables, $args)
+        $invokeWrapper = {
+            try {
+                $__results = . $script @args
+                @{
+                    result = $__results
+                    succeeded = $true
+                }
+            } catch {
+                @{
+                    result = $_
+                    succeeded = $false
+                }
+            }
+        }
+
+        $invokeWrapper.InvokeWithContext($functions, $variables, $args)
     } catch {
-        throw $_
+        write-error $_
+        get-pscallstack | write-error
+        $_
+    }
+
+    if ( $result.succeeded ) {
+        $result.result
+    } else {
+        throw $result.result
     }
 }
 
