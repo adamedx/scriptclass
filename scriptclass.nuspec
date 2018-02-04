@@ -6,7 +6,7 @@
     <authors>adamedx</authors>
     <owners>adamedx</owners>
     <licenseUrl>https://www.apache.org/licenses/LICENSE-2.0</licenseUrl>
-    <projectUrl>https://github.com/adamedx/stdposh</projectUrl>
+    <projectUrl>https://github.com/adamedx/scriptclass</projectUrl>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <description>Usability enhancements for core PowerShell capabilities</description>
     <releaseNotes>Initial development</releaseNotes>

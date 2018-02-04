@@ -12,7 +12,7 @@
 RootModule = './scriptclass.psm1'
 
 # Version number of this module.
-ModuleVersion = '0.12.1'
+ModuleVersion = '0.12.2'
 
 # Supported PSEditions
 # CompatiblePSEditions = @()
@@ -102,7 +102,7 @@ PrivateData = @{
         LicenseUri = 'http://www.apache.org/licenses/LICENSE-2.0'
 
         # A URL to the main website for this project.
-        ProjectUri = 'https://github.com/adamedx/stdposh'
+        ProjectUri = 'https://github.com/adamedx/scriptclass'
 
         # A URL to an icon representing this module.
         # IconUri = ''
