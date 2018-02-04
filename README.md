@@ -1,4 +1,4 @@
-Enhanced Standard Library (stdlib) for PowerShell
+ScriptClass Extension for PowerShell
 =================================================
 This Enhanced Standard Library (stdlib) provides code re-use capabilities and syntactic affordances for PowerShell similar to comparable dynamic languages such as PowerShell. The overall aim is to facilitate the development of PowerShell-based applications rather than just scripts or utilities that comprise the typical PowerShell use case.
 

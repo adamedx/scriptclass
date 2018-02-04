@@ -1,4 +1,4 @@
-# Copyright 2017, Adam Edwards
+# Copyright 2018, Adam Edwards
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@ $sut = (Split-Path -Leaf $MyInvocation.MyCommand.Path) -replace '\.Tests\.', '.'
 # . "$here\$sut"
 
 Describe "The import-script cmdlet" {
-    $importCommand = "import-module -force " + (join-path $here "..\stdposh.psd1")
+    $importCommand = "import-module -force " + (join-path $here "..\scriptclass.psd1")
     $simpleClientScriptPath = "TestDrive:\simplesclientcript.ps1"
     $parameterizedClientScriptFile = "parameterizedclientscript.ps1"
     $parameterizedClientScriptPath = join-path "TestDrive:" $parameterizedClientScriptFile

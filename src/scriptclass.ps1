@@ -56,7 +56,7 @@ function add-scriptclass {
         __remove-publishedclass $className
         __clear-typedata $className
         __remove-class $className
-        throw $_
+        throw
     }
 }
 
