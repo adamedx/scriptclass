@@ -14,7 +14,7 @@
 
 $here = Split-Path -Parent $MyInvocation.MyCommand.Path
 $sut = (Split-Path -Leaf $MyInvocation.MyCommand.Path) -replace '\.Tests\.', '.'
-$thismodule = join-path (split-path -parent $here) 'stdposh.psd1'
+$thismodule = join-path (split-path -parent $here) 'scriptclass.psd1'
 
 Describe "The class definition interface" {
     BeforeAll {

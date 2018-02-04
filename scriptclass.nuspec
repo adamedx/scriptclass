@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <package >
   <metadata>
-    <id>stdposh</id>
+    <id>scriptclass</id>
     <version>0.0.0</version>
     <authors>adamedx</authors>
     <owners>adamedx</owners>
@@ -16,8 +16,8 @@
   <files>
     <file src="LICENSE.md" target="." />
     <file src="README.md" target="." />
-    <file src="stdposh.psd1" target="." />
-    <file src="stdposh.psm1" target="." />
+    <file src="scriptclass.psd1" target="." />
+    <file src="scriptclass.psm1" target="." />
     <file src="samples\complex.ps1" target="samples/" />
     <file src="src\**\*.ps1" target="src/" />
     <file src="test\**\*.ps1" target="test/" />

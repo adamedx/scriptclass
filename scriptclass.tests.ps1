@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-$here = split-path -parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
+$here = Split-Path -Parent $MyInvocation.MyCommand.Path
 
-Describe "Stdposh module manifest" {
-    $manifestLocation   = Join-Path $here 'stdposh.psd1'
+Describe "ScriptClass module manifest" {
+    $manifestLocation   = Join-Path $here 'scriptclass.psd1'
     $manifest = Test-ModuleManifest -Path $manifestlocation -ErrorAction Stop -WarningAction SilentlyContinue
 
     Context "When loading the manifest" {
@@ -78,13 +78,13 @@ Describe "Stdposh module manifest" {
 Describe 'The get-librarybase function' {
     Context "When the module is imported" {
         It "The function should return the parent directory of the directory in which the module is installed" {
-            $scriptParent = split-path -parent $psscriptroot
+            $scriptParent = $psscriptroot
             $scriptParentParent = split-path -parent $scriptParent
 
             # The module file may be in a source directory, or it may be an installed package
             # using the path convention `modulename\version\modulename.psm1`, look for the name
             # that way
-            $moduleLocation = if ( (split-path -leaf $scriptParent) -eq 'stdposh' ) {
+            $moduleLocation = if ( (split-path -leaf $scriptParent) -eq 'scriptclass' ) {
                 $scriptParent
             } else {
                 $scriptParentParent
