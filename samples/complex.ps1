@@ -13,19 +13,19 @@
 # limitations under the License.
 
 $here = Split-Path -Parent $MyInvocation.MyCommand.Path
-import-module "$here/../stdposh.psd1" -force
+import-module "$here/../scriptclass.psd1" -force
 
 ScriptClass Complex {
-    const ZERO_COORDINATE (strict-val [double] 0)
+    const ZERO_COORDINATE 0.0
 
-    $real = $ZERO_COORDINATE
-    $imaginary = $ZERO_COORDINATE
+    $Real = strict-val [double] $ZERO_COORDINATE
+    $Imaginary = strict-val [double] $ZERO_COORDINATE
 
     function __initialize {
-        $this.scriptclass.instances++
+        $::.Complex |=> AddInstance
     }
 
-    function add($real, $imaginary) {
+    function Add($real, $imaginary) {
         $result = new-scriptobject Complex
 
         $result.real = $this.real + $real
@@ -34,16 +34,21 @@ ScriptClass Complex {
         $result
     }
 
-    function magnitude {
+    function Magnitude {
         [Math]::sqrt($this.real * $this.real + $this.imaginary * $this.imaginary)
     }
 
-    function showstring {
+    function AsText {
         "$($this.real) + $($this.imaginary)i"
     }
 
     static {
-        $instances = strict-val [int] 0
+        $Instances = strict-val [int] 0
+
+        function AddInstance {
+            $this.instances++
+        }
+
         function Compare([PSTypeName('Complex')] $first, [PSTypeName('Complex')] $second) {
             if (($first |=> magnitude) -gt ($second |=> magnitude)) {
                 1
@@ -61,15 +66,18 @@ ScriptClass Complex {
 }
 
 $complex = new-scriptobject Complex
-write-host ("Initial value: {0}, Magnitude = {1} " -f ($complex |=> showstring), ($complex |=> magnitude))
+write-host ("Initial value: {0}, Magnitude = {1} " -f ($complex |=> AsText), ($complex |=> Magnitude))
 
 $resultComplex = $complex |=> add 3 0
-write-host ("Now set to: {0}, Magnitude = {1}" -f ($resultcomplex |=> showstring), ($resultcomplex |=> magnitude))
+write-host "`nAdd (3, 0):"
+write-host ("`tResult = {0}, Magnitude = {1}" -f ($resultcomplex |=> AsText), ($resultcomplex |=> Magnitude))
 
 $resultComplex2 = $resultcomplex |=> add 0 4
-write-host ("Now set to: {0}, Magnitude = {1}" -f ($resultcomplex2 |=> showstring), ($resultcomplex2 |=> magnitude))
+write-host "`nAdd (0, 4):"
+write-host ("`tResult = {0}, Magnitude = {1}" -f ($resultcomplex2 |=> AsText), ($resultcomplex2 |=> Magnitude))
 
-write-host ("{0} {2} {1}" -f ($resultcomplex |=> showstring), ($resultcomplex2 |=> showstring), @{-1='<';0='=';1='>'}[($::.Complex |=> Compare $resultComplex $resultComplex2)])
+write-host "`nWhat's greater?"
+write-host ("{0} {2} {1}" -f ($resultcomplex |=> AsText), ($resultcomplex2 |=> AsText), @{-1='<';0='=';1='>'}[($::.Complex |=> Compare $resultComplex $resultComplex2)])
 
-write-host ("Total instances of Complex created: {0}" -f ($::.Complex |=> InstanceCount))
+write-host ("`nTotal instances of Complex created: {0}" -f ($::.Complex |=> InstanceCount))
 

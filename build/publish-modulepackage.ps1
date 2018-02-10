@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-param($targetRepository = 'psgallery', $targetDirectory = $null, [switch] $noclean, [switch] $force)
+param($targetRepository = 'psgallery', $repositoryKeyFile = $null, [switch] $noclean, [switch] $force)
 
 . "$psscriptroot/common-build-functions.ps1"
 
@@ -20,8 +20,12 @@ $moduleOutputPath = Get-ModuleOutputDirectory
 
 write-host "Publishing module at '$moduleOutputPath' to PS module repository '$targetRepository'..."
 
+$repositoryKey = if ( $repositoryKeyFile -ne $null ) {
+    Get-RepositoryKeyFromFile $repositoryKeyFile
+}
+
 $forceArgument = @{force=$force}
 
-publish-modulebuild $moduleOutputPath $targetRepository @forceArgument
+publish-modulebuild $moduleOutputPath $targetRepository $repositoryKey @forceArgument
 
 write-host -foregroundcolor green "Publish succeeded."

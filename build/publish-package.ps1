@@ -22,8 +22,7 @@ $basepath = (get-item (split-path -parent $psscriptroot)).fullname
 $feedUri = if ( $targetFeedUri -ne $null ) {
     $targetFeedUri
 } else {
-    'c:\test\psrepo'
-#    'https://adamedx.pkgs.visualstudio.com/_packaging/SecretPackages/nuget/v3/index.json'
+    throw 'Default targetFeedUri Not Yet Implemented'
 }
 
 $packageLocation = if ( $packagePath -ne $null ) {

@@ -220,11 +220,23 @@ function build-nugetpackage {
     $packagePath
 }
 
+function Get-RepositoryKeyFromFile($path) {
+    $fileData = get-content $path
+    $keyContent = if ( $fileData -is [string] ) {
+        $fileData
+    } else {
+        $fileData[0]
+    }
+
+    $keyContent.trim()
+}
+
 function publish-modulebuild {
     [cmdletbinding()]
     param(
         $moduleSourceDirectory = $null,
         $destinationRepositoryName = $null,
+        $repositoryKey = $null,
         [switch] $force)
 
     $manifestPaths = ls $moduleSourceDirectory -filter *.psd1
@@ -243,6 +255,11 @@ function publish-modulebuild {
         throw "Unable to find destination repository '$destinationRepositoryName' -- supply the correct repository name or register one with register-psrepository"
     }
 
-    $forceArgument = @{force=$force}
-    publish-module -path $moduleSourceDirectory -repository $destinationRepositoryName -verbose @forceArgument
+    $arguments = @{force=$force}
+
+    if ( $repositoryKey -ne $null ) {
+        $arguments['nugetapikey'] = $repositoryKey
+    }
+
+    publish-module -path $moduleSourceDirectory -repository $destinationRepositoryName -verbose @arguments
 }
