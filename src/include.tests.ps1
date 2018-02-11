@@ -15,8 +15,6 @@
 set-strictmode -version 2
 
 $here = Split-Path -Parent $MyInvocation.MyCommand.Path
-$sut = (Split-Path -Leaf $MyInvocation.MyCommand.Path) -replace '\.Tests\.', '.'
-# . "$here\$sut"
 
 Describe "The import-script cmdlet" {
     $importCommand = "import-module -force " + (join-path $here "..\scriptclass.psd1")
@@ -184,6 +182,10 @@ testvalue `$arg1 `$arg2
             run-command ("& " + (gi $simpleclientscriptpath).fullname) | Should BeExactly 0
         }
 
+        It 'should throw an exception if the include path does not exist' {
+            { import-script 'thisdoesnotexist.io' 2>&1 | out-null } | Should Throw
+        }
+
         It 'should throw an exception when loading a script file with an error' {
             { run-command ". `$include $(remove-ext $errorscriptfile)" } | Should Not Throw
             run-command ". `$include $(remove-ext $errorscriptfile)" | Should Not Be 0
@@ -211,3 +213,4 @@ testvalue `$arg1 `$arg2
         }
     }
 }
+

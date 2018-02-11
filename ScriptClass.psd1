@@ -12,7 +12,7 @@
 RootModule = './scriptclass.psm1'
 
 # Version number of this module.
-ModuleVersion = '0.12.4'
+ModuleVersion = '0.12.6'
 
 # Supported PSEditions
 # CompatiblePSEditions = @()
@@ -24,13 +24,13 @@ GUID = '9b0f5599-0498-459c-9a47-125787b1af19'
 Author = 'Adam Edwards'
 
 # Company or vendor of this module
-#CompanyName = 'AfroSoft'
+CompanyName = 'Modulus Group'
 
 # Copyright statement for this module
 Copyright = '(c) 2018 Adam Edwards.'
 
 # Description of the functionality provided by this module
-Description = 'Standard library for PowerShell enhanced usability'
+Description = "Class definition extensions for PowerShell's object-based type system"
 
 # Minimum version of the Windows PowerShell engine required by this module
 # PowerShellVersion = ''
@@ -69,10 +69,10 @@ ScriptsToProcess = @('src/std.ps1')
 # NestedModules = @()
 
 # Functions to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no functions to export.
-FunctionsToExport = @('=>', '::>', 'add-scriptclass', 'invoke-method', 'test-scriptobject', 'new-scriptobject', 'import-assembly', 'import-script', 'get-librarybase')
+FunctionsToExport = @('=>', '::>')
 
 # Cmdlets to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no cmdlets to export.
-CmdletsToExport = @()
+CmdletsToExport = @('add-scriptclass', 'invoke-method', 'test-scriptobject', 'new-scriptobject', 'import-assembly', 'import-script', 'get-librarybase')
 
 # Variables to export from this module
 VariablesToExport = @('::', 'include')
@@ -96,7 +96,7 @@ PrivateData = @{
     PSData = @{
 
         # Tags applied to this module. These help with module discovery in online galleries.
-         Tags = @('class', 'object')
+         Tags = @('class', 'object', 'PSCustomObject')
 
         # A URL to the license for this module.
         LicenseUri = 'http://www.apache.org/licenses/LICENSE-2.0'

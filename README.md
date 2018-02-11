@@ -51,7 +51,7 @@ PS> $complexNumber |=> Magnitude
 ScriptClass designed to work on PowerShell 5.0 and Windows 10 / Windows Server 2016. To install it to your user profile from [PowerShell Gallery](https://www.powershellgallery.com/), just run the following command:
 
 ```powershell
-    Install-Module ScriptClass
+    Install-Module ScriptClass -scope currentuser
 ```
 
 After this, all of the ScriptClass cmdlets will be availble to PowerShell code, enabling you to define classes as you would in object-oriented languages.
@@ -79,7 +79,7 @@ To test, execute the PowerShell command below from the root of the repository
 invoke-pester
 ```
 
-This will run all tests and list any errors that must be corrected prior to mergig any changes you've made to the repository.
+This will run all tests and list any errors that must be corrected prior to merging any changes you've made to the repository.
 
 ### Building the module
 

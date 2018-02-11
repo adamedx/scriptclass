@@ -12,49 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-$script:__LibraryBase = $psscriptroot
-
-$moduleFile = $myinvocation.mycommand.name
-$moduleName = if ($moduleFile.tolower().endswith('.psm1')) {
-    $moduleFile.substring(0, $moduleFile.length - 5)
-} else {
-    $moduleFile
-}
-
-$modulePathComponents = $psscriptroot.replace('/', '\') -split "\\"
-$componentIndex = $modulePathComponents.length
-
-while (--$componentIndex -ge 1) {
-    if ( $moduleName -eq $modulePathComponents[$componentIndex] ) {
-        $foundComponents = @()
-        $foundIndex = 0
-        while ( $foundIndex -lt $componentIndex ) {
-            $foundComponents += $modulePathComponents[$foundIndex++]
-        }
-        $script:__LibraryBase = if ($foundIndex -ge 1 ) {
-            ($foundComponents -join '\')
-        } else {
-            '\'
-        }
-        break
-    }
-}
-
-function get-librarybase {
-    $script:__LibraryBase
-}
-
 $variables = @('::', 'include')
 
-$functions = @('=>', '::>', 'add-scriptclass',
+$functions = @('add-scriptclass',
                'invoke-method', 'test-scriptobject',
                'new-scriptobject', 'import-assembly',
                'import-script', 'get-librarybase')
 
+$cmdlets = @('add-scriptclass',
+             'invoke-method', 'test-scriptobject',
+             'new-scriptobject', 'import-assembly',
+             'import-script')
+
+
 $aliases = @('new-so', 'ScriptClass', 'with', 'load-assembly', 'const' )
 
-export-modulemember -variable $variables -function $functions # -alias $aliases
-
-
+export-modulemember -variable $variables -cmdlet $cmdlets -function $functions # -alias $aliases
 
 
