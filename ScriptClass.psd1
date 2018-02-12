@@ -9,10 +9,15 @@
 @{
 
 # Script module or binary module file associated with this manifest.
-RootModule = './scriptclass.psm1'
+# Be VERY careful here -- 'scriptclass.psm1' vs '.\scriptclass.ps1' do
+# different things -- the latter will cause publish-module to find
+# a scriptclass.psm1 in a parent directory, and then it will publish
+# the parent directory rather than something nested underneath as the
+# output of a build! Do not precede with '.'!
+RootModule = 'scriptclass.psm1'
 
 # Version number of this module.
-ModuleVersion = '0.12.6'
+ModuleVersion = '0.12.8'
 
 # Supported PSEditions
 # CompatiblePSEditions = @()
@@ -72,7 +77,7 @@ ScriptsToProcess = @('src/std.ps1')
 FunctionsToExport = @('=>', '::>')
 
 # Cmdlets to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no cmdlets to export.
-CmdletsToExport = @('add-scriptclass', 'invoke-method', 'test-scriptobject', 'new-scriptobject', 'import-assembly', 'import-script', 'get-librarybase')
+CmdletsToExport = @('add-scriptclass', 'invoke-method', 'test-scriptobject', 'new-scriptobject', 'import-assembly', 'import-script')
 
 # Variables to export from this module
 VariablesToExport = @('::', 'include')
