@@ -14,10 +14,10 @@
 # a scriptclass.psm1 in a parent directory, and then it will publish
 # the parent directory rather than something nested underneath as the
 # output of a build! Do not precede with '.'!
-RootModule = 'scriptclass.psm1'
+# RootModule = ''
 
 # Version number of this module.
-ModuleVersion = '0.12.9'
+ModuleVersion = '0.12.10'
 
 # Supported PSEditions
 # CompatiblePSEditions = @()
