@@ -20,7 +20,7 @@ Describe "ScriptClass module manifest" {
 
     Context "When loading the manifest" {
         It "should export the exact same set of cmdlets as are in the set of expected cmdlets" {
-            $expectedCmdlets = @('add-scriptclass', 'invoke-method', 'test-scriptobject', 'new-scriptobject', 'import-script', 'import-assembly', 'get-librarybase')
+            $expectedCmdlets = @('add-scriptclass', 'invoke-method', 'test-scriptobject', 'new-scriptobject', 'import-script', 'import-assembly')
 
             $manifest.ExportedCmdlets.count | Should BeExactly $expectedCmdlets.length
 
@@ -48,24 +48,18 @@ Describe "ScriptClass module manifest" {
         }
 
 
-        It "should export the '::' and 'include' variables and only those variables" {
-            $manifest.exportedvariables.count | Should BeExactly 2
+        It "should export the '::' variable and only that variable" {
+            $manifest.exportedvariables.count | Should BeExactly 1
             $manifest.exportedvariables.keys -contains '::' | Should BeExactly $true
-            $manifest.exportedvariables.keys -contains 'include' | Should BeExactly $true
         }
 
-        It "should, PENDING fix, export the 'new-so', 'ScriptClass', 'const', 'load-assembly', and 'with' aliases and only those aliases" -pending {
+        It "should, PENDING fix, export the 'new-so', 'ScriptClass', 'const', 'load-assembly', and 'with' aliases and only those aliases" {
             $manifest.exportedaliases.count | Should BeExactly 5
             $manifest.exportedaliases.keys -contains 'new-so' | Should BeExactly $true
             $manifest.exportedaliases.keys -contains 'ScriptClass' | Should BeExactly $true
             $manifest.exportedaliases.keys -contains 'with' | Should BeExactly $true
             $manifest.exportedaliases.keys -contains 'const' | Should BeExactly $true
             $manifest.exportedaliases.keys -contains 'load-assembly' | Should BeExactly $true
-
-        }
-
-        It "should export no aliases to avoid a defect in PowerShell import of nested modules with aliases" {
-            $manifest.exportedaliases.count | Should BeExactly 0
         }
     }
 

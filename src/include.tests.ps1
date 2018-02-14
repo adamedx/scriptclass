@@ -15,9 +15,22 @@
 set-strictmode -version 2
 
 $here = Split-Path -Parent $MyInvocation.MyCommand.Path
+$thismodule = join-path (split-path -parent $here) 'scriptclass.psd1'
 
 Describe "The import-script cmdlet" {
-    $importCommand = "import-module -force " + (join-path $here "..\scriptclass.psd1")
+    remove-module $thismodule -force 2>$null
+    import-module $thismodule -force
+
+    BeforeAll {
+        remove-module $thismodule -force 2>$null
+        import-module $thismodule -force
+    }
+
+    AfterAll {
+        remove-module $thismodule -force 2>$null
+    }
+
+    $importCommand = "import-module -force '" + (join-path $here "..\scriptclass.psd1") + "'"
     $simpleClientScriptPath = "TestDrive:\simplesclientcript.ps1"
     $parameterizedClientScriptFile = "parameterizedclientscript.ps1"
     $parameterizedClientScriptPath = join-path "TestDrive:" $parameterizedClientScriptFile
@@ -82,7 +95,7 @@ function incomplete {
 $importCommand
 `$scriptname = '$simplescriptfile'.split('.')[0]
 # . `$include $(remove-ext $simplescriptfile)
-. `$include `$scriptname
+. (import-script `$scriptname)
 # . (import-script '$(remove-ext $simplescriptfile)')
 "@
 
@@ -90,16 +103,18 @@ $importCommand
 param([string] `$fileToInclude, [string] `$exprtoeval = '0')
 $importCommand
 `$filename = `$filetoinclude.split('.')[0]
-. `$include `$filename
+. (import-script `$filename)
 iex `$exprtoeval
 "@
     set-content $simpleScriptPath -value @"
+$importCommand
 `$simplescriptvar = 2371
 function simplescriptfunc { `$simplescriptvar }
 set-alias set-aliassimple simplescriptfunc
 "@
 
     set-content $includeOncePath -value @"
+$importCommand
 `$alreadyDefined = try {
     get-variable includeonce >* $null
     `$true
@@ -113,7 +128,7 @@ if (`$alreadyDefined) {
 
     set-content $indirectPath -value @"
 $importCommand
-. `$include $(remove-ext $includeonceFile)
+. (import-script $(remove-ext $includeonceFile))
 . '$parameterizedClientScriptPath' '$includeOnceFile'
 "@
 
@@ -131,6 +146,7 @@ $importCommand
 
 
     set-content $modulescriptpath1 -value @"
+$importCommand
 . (import-script (join-path '../dir2' $(remove-ext $modulescriptfile2)))
 function testvalue(`$arg1, `$arg2) {
     (constantval) + `$arg1 * `$arg2
@@ -138,6 +154,7 @@ function testvalue(`$arg1, `$arg2) {
 "@
 
 set-content $modulescriptpath1include -value @"
+$importCommand
 `$scriptval = 'hi2'
 `$scriptval = '$(join-path ../dir2 (remove-ext $modulescriptfile2include))'
 
@@ -156,21 +173,25 @@ function testvalue(`$arg1, `$arg2) {
 "@
 
     set-content $modulescriptpath2 -value @"
+$importCommand
 function constantval {37 }
 "@
 
     set-content $modulescriptpath2include -value @"
+$importCommand
 function constantval {37 }
 "@
 
     set-content $moduleclientpath -value @"
 param(`$arg1, `$arg2)
+$importCommand
 $importmodulepathtestcommand
 testvalue `$arg1 `$arg2
 "@
 
     set-content $moduleclientpathinclude -value @"
 param(`$arg1, `$arg2)
+$importCommand
 $importmodulepathincludetestcommand
 testvalue `$arg1 `$arg2
 "@
@@ -187,8 +208,8 @@ testvalue `$arg1 `$arg2
         }
 
         It 'should throw an exception when loading a script file with an error' {
-            { run-command ". `$include $(remove-ext $errorscriptfile)" } | Should Not Throw
-            run-command ". `$include $(remove-ext $errorscriptfile)" | Should Not Be 0
+            { run-command ". (import-script $(remove-ext $errorscriptfile))" } | Should Not Throw
+            run-command ". (import-script $(remove-ext $errorscriptfile))" | Should Not Be 0
         }
 
         It 'should process the file only once even if it is included in a script more than once' {
@@ -197,14 +218,6 @@ testvalue `$arg1 `$arg2
 
         It 'should process the file only once even if it is included in a script more than once through an indirect inclusion' {
             { iex "& '$parameterizedClientScriptPath' '$indirectFile'" } | Should Not Throw
-        }
-
-        It 'should treat include paths as relative to the calling module using import-script' {
-            run-command "& $moduleClientPath 5 3 " | Should Be (5 * 3 + 37)
-        }
-
-        It 'should treat include paths as relative to the calling module using the $include variable' -pending {
-            run-command "& $moduleClientPathinclude 5 3 " | Should Be (5 * 3 + 37)
         }
 
         It 'should throw an exception if the include path starts with a pathsep' {

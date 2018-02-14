@@ -12,21 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-$variables = @('::', 'include')
+$variables = @('::')
 
-$functions = @('add-scriptclass',
-               'invoke-method', 'test-scriptobject',
-               'new-scriptobject', 'import-assembly',
-               'import-script', 'get-librarybase')
+$functions = @('=>', '::>')
 
-$cmdlets = @('add-scriptclass',
-             'invoke-method', 'test-scriptobject',
-             'new-scriptobject', 'import-assembly',
-             'import-script')
-
+$cmdlets = @('add-scriptclass', 'invoke-method',
+             'test-scriptobject', 'new-scriptobject',
+             'import-assembly', 'import-script')
 
 $aliases = @('new-so', 'ScriptClass', 'with', 'load-assembly', 'const' )
 
-export-modulemember -variable $variables -cmdlet $cmdlets -function $functions # -alias $aliases
+export-modulemember -variable $variables -cmdlet $cmdlets -function $functions -alias $aliases
+
 
 

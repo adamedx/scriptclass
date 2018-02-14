@@ -14,8 +14,6 @@
 $script:includes = @{}
 $script:included = @{}
 
-$script:include = {param([string] $scriptPath = $null) . (import-script $scriptpath (CallerScriptRoot))}
-
 function script:CallerScriptRoot {
     $callstack = get-pscallstack
     $caller = $null
@@ -52,8 +50,10 @@ function get-includepath($appRelativePath) {
     $canonical
 }
 
-function import-script($appRelativePath, $callerScriptDir = $null)
+function import-script
 {
+    [cmdletbinding()]
+    param ($appRelativePath, $callerScriptDir = $null)
     $appRoot = if ( $callerScriptDir -eq $null ) {
         CallerScriptRoot
     } else {
