@@ -610,6 +610,16 @@ function __get-classproperties($memberData) {
     $classProperties
 }
 
+$__staticBlockLocalVariablesToRemove = @(
+    'varsnapshot1',
+    'PSScriptRoot',
+    'snapshot2'
+    'MyInvocation',
+    'PSBoundParameters',
+    'PSCommandPath'
+    'args'
+)
+
 function static([ScriptBlock] $staticBlock) {
     function static { throw "The 'static' function may not be used from within a static block" }
     $snapshot1 = ls function:
@@ -646,6 +656,15 @@ function static([ScriptBlock] $staticBlock) {
     $varDelta.getenumerator() | foreach {
         $staticvars = $script:__staticvars__
         $staticvars[$_.name] = $_.value
+    }
+
+    # Some variables in this script are being captured -- remove them
+    $script:__staticBlockLocalVariablesToRemove | foreach {
+        if ( ! $staticvars[$_] ) {
+            throw "local variable to remove '$_' does not exist"
+        }
+
+        $staticvars.remove($_)
     }
 }
 

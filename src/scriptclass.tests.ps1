@@ -1409,8 +1409,22 @@ Describe "The const cmdlet" {
 
     }
 
-    Context "When a ScriptClass instance is deserialized" {
-            It "Throws an exception when a ScriptClass  method of a deserialized class is invoked with . notation" {
+    Context "When a ScriptClass instance is serialized or deserialized" {
+
+        It "Does not serialize any method source code" {
+            ScriptClass SerializationClass {
+                function GetDataFromSource {
+                    '__onlyfoundinmethodsource__'
+                }
+            }
+
+            $newInstance = new-so SerializationClass
+            $serializedClass = $newInstance | convertto-json
+            $dataFromSource = $newInstance |=> GetDataFromSource
+            $serializedClass | sls $dataFromSource | Should Be $null
+        }
+
+        It "Throws an exception when a ScriptClass  method of a deserialized class is invoked with . notation" {
             ScriptClass DeserializedFailure {
                 function TestMethod {
                 }
@@ -1467,6 +1481,36 @@ Describe "The const cmdlet" {
             { $deserializedInstance.GetClassState() } | Should Throw
             $deserializedInstance |=> GetClassState | Should Be $stateValue
             $deserializedInstance.GetClassState() | Should Be $stateValue
+        }
+
+            It "Does not serialize any instance method source code or internal method references" {
+            ScriptClass SerializationClass {
+                function GetDataFromSource {
+                    '__onlyfoundinmethodsource__'
+                }
+            }
+
+            $newInstance = new-so SerializationClass
+            $serializedClass = $newInstance | convertto-json
+            $dataFromSource = $newInstance |=> GetDataFromSource
+            $serializedClass | sls $dataFromSource | Should Be $null
+        }
+
+        It "Does not serialize any static method source code or method references" {
+            ScriptClass SerializationClass {
+                static {
+                    function GetDataFromSource {
+                        '__onlyfoundinmethodsource__'
+                    }
+                }
+            }
+
+            $newInstance = new-so SerializationClass
+            $serializedClass = $newInstance | convertto-json
+            $dataFromSource = $newInstance.scriptclass |=> GetDataFromSource
+            $serializedClass | sls $dataFromSource | Should Be $null
+            $serializedClass | sls '__add-member' | Should Be $null
+            $serializedClass | sls '__find-class' | Should Be $null
         }
     }
 }
