@@ -142,9 +142,9 @@ Describe "The class definition interface" {
             $newInstance.scriptclass.scriptclass | Should BeExactly $null
         }
 
-        It "has a 'scriptclass' member that has exactly five noteproperty properties and one scriptproperty property" {
+        It "has a 'scriptclass' member that has exactly four noteproperty properties and one scriptproperty property" {
             $newInstance = new-scriptobject ClassClass53
-            ($newInstance.scriptclass | gm -membertype noteproperty).count | Should BeExactly 5
+            ($newInstance.scriptclass | gm -membertype noteproperty).count | Should BeExactly 4
             ($newInstance.scriptclass | gm -membertype scriptproperty) -is [Microsoft.PowerShell.Commands.MemberDefinition] | Should BeExactly $true
         }
 
@@ -1408,6 +1408,66 @@ Describe "The const cmdlet" {
         }
 
     }
-}
 
+    Context "When a ScriptClass instance is deserialized" {
+            It "Throws an exception when a ScriptClass  method of a deserialized class is invoked with . notation" {
+            ScriptClass DeserializedFailure {
+                function TestMethod {
+                }
+            }
+
+            $newInstance = new-so DeserializedFailure
+            { $newInstance |=> TestMethod } | Should Not Throw
+            { $newInstance.TestMethod() } | Should Not Throw
+            $job = start-job { param($scriptclassInstance) $scriptclassInstance } -argumentlist $newInstance
+            $deserializedInstance = receive-job $job
+            { $deserializedInstance.TestMethod() } | Should Throw
+        }
+
+        It "Returns the same value using instance state as a non-deserialized class without an exception when a ScriptClass method of a deserialized class is invoked with invoke-method notation" {
+            ScriptClass DeserializedSuccess {
+                $state = $null
+                function __initialize($state) {
+                    $this.state = $state
+                }
+                function GetClassState {
+                    $this.state
+                }
+            }
+
+            $stateValue = 159
+            $newInstance = new-so DeserializedSuccess $stateValue
+            $newInstance |=> GetClassState | Should Be $stateValue
+            $newInstance.GetClassState() | Should Be $stateValue
+
+            $job = start-job { param($scriptclassInstance) $scriptclassInstance } -argumentlist $newInstance
+            $deserializedInstance = receive-job $job -wait
+            { $deserializedInstance.GetClassState() } | Should Throw
+            $deserializedInstance |=> GetClassState | Should Be $stateValue
+        }
+
+        It "Restores . method invocation after a method is invoked with invoke-method notation once" {
+            ScriptClass DeserializedRestore {
+                $state = $null
+                function __initialize($state) {
+                    $this.state = $state
+                }
+                function GetClassState {
+                    $this.state
+                }
+            }
+
+            $stateValue = 157
+            $newInstance = new-so DeserializedRestore $stateValue
+            $newInstance |=> GetClassState | Should Be $stateValue
+            $newInstance.GetClassState() | Should Be $stateValue
+
+            $job = start-job { param($scriptclassInstance) $scriptclassInstance } -argumentlist $newInstance
+            $deserializedInstance = receive-job $job -wait
+            { $deserializedInstance.GetClassState() } | Should Throw
+            $deserializedInstance |=> GetClassState | Should Be $stateValue
+            $deserializedInstance.GetClassState() | Should Be $stateValue
+        }
+    }
+}
 
