@@ -202,7 +202,7 @@ function __new-class([Hashtable]$classData, [ScriptBlock] $classBlock) {
     $typeSystemData = get-typedata $classname
 
     $prototype = [PSCustomObject]@{PSTypeName=$className}
-    $classDefinition = @{typedata=$typeSystemData;prototype=$prototype;classblock=$classblock}
+    $classDefinition = @{typedata=$typeSystemData;prototype=$prototype;classblock=$classblock;instancemethods=@{}}
     $__classTable[$className] = $classDefinition
     $classDefinition
 }
@@ -236,7 +236,6 @@ function __add-classmember($className, $classDefinition) {
     $classMember = [PSCustomObject] @{
         PSTypeName = $ScriptClassTypeName
         ClassName = $className
-        InstanceMethods = @{}
         InstanceProperties = @{}
         TypedMembers = @{}
         ScriptClass = $null
@@ -246,14 +245,13 @@ function __add-classmember($className, $classDefinition) {
     __add-typemember NoteProperty $className 'ScriptClass' $null $classMember -hidden
 }
 
-function __restore-deserializedobjectmethods($object) {
+function __restore-deserializedobjectmethods($existingClass, $object) {
     # Deserialization of ScriptClass object, say from start-job or even a remote session,
     # strips off ScriptMethod and ScriptProperty properties. ScriptProperty properties are
     # evaluated and converted to NoteProperty. ScriptMethod properties are simply
     # omitted. Here we restore ScriptMethod properties from the original class definition.
     # Only methods are restored here -- a separate adjustment is required for
     # the missing ScriptProperty properties.
-    $existingClass = __find-existingClass $object.scriptclass.className
     $templateObject = [PSCustomObject] $existingClass.prototype.psobject.copy()
     $object.scriptclass = $existingClass.prototype.scriptclass
     $existingClass.prototype | gm -membertype scriptmethod | foreach {
@@ -276,10 +274,14 @@ function __invoke-methodwithcontext($object, $method) {
         # the ScriptMethod property altogether. We check for a suggestive evidence
         # of that here, and if so, we invoke a just-in-time fixup and retry.
         if (! $methodScript -and ( $object | gm scriptclass)) {
-            if ($object.scriptclass.instancemethods[$method].gettype().fullname -ne 'System.Management.Automation.ScriptBlock') {
-                __restore-deserializedobjectmethods $object
+            $existingClass = __find-existingClass $object.scriptclass.className
+            write-verbose "Missing method '$method' on class $($existingClass.prototype.pstypename)"
+            if ($existingClass.instancemethods[$method]) {
+                __restore-deserializedobjectmethods $existingClass $object
                 # Now retry the call -- if the method was restored, this will succeed.
                 $methodScript = $object.psobject.members[$method].script
+            } else {
+                write-verbose "Method '$method' not found"
             }
         }
     } catch {
@@ -670,7 +672,8 @@ function modulefunc {
 }
 
 $__instanceWrapperTemplate = @'
-invoke-method $this $this.scriptclass.instancemethods['{0}'] @args
+$existingClass = __find-existingClass $this.scriptclass.className
+invoke-method $this $existingClass.instancemethods['{0}'] @args
 '@
 
 function __define-class($classDefinition) {
@@ -707,7 +710,7 @@ function __define-class($classDefinition) {
         if ($nextFunctions[$_.name] -is [System.Management.Automation.FunctionInfo] -and $functions -notcontains $_.name) {
             $methodBlockWrapper = [ScriptBlock]::Create($__instanceWrapperTemplate -f $_.name)
             __add-typemember ScriptMethod $classDefinition.typeData.TypeName $_.name $null $methodBlockWrapper
-            $classDefinition.prototype.scriptclass.InstanceMethods[$_.name] = $_.value.scriptblock
+            $classDefinition.InstanceMethods[$_.name] = $_.value.scriptblock
         }
     }
 
