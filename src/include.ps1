@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-$script:includes = @{}
-$script:included = @{}
+$includes = @{}
+$included = @{}
 
-function script:CallerScriptRoot {
+function CallerScriptRoot {
     $callstack = get-pscallstack
     $caller = $null
     $thisScript = $callstack[0].scriptname
@@ -65,9 +65,9 @@ function import-script
     $relativeNormal = $relativePath.ToLower()
     $fullPath = (join-path ($appRoot) $relativePath | get-item).Fullname
     $canonical = $fullPath.ToLower()
-    if ( $script:included[$canonical] -eq $null ) {
-        $script:included[$canonical] = @(($appRoot), $relativeNormal)
-        $script:includes[$canonical] = $false
+    if ( $included[$canonical] -eq $null ) {
+        $included[$canonical] = @(($appRoot), $relativeNormal)
+        $includes[$canonical] = $false
         $canonical
     } else {
         {}
