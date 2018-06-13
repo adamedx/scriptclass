@@ -44,11 +44,15 @@ function add-scriptclass {
         [scriptblock] $classBlock
     )
 
-    $classData = @{TypeName=$className;MemberType='NoteProperty';DefaultDisplayPropertySet=@('PSTypeName');MemberName='PSTypeName';Value=$className;serializationmethod='SpecificProperties';PropertySerializationSet=@('PSTypeName')}
+    # Note that serializationdepth=2 is more like an enum than an actual depth -
+    # According to docs, it means to serialize children and their children. I
+    # do hope it is transitive.
+    # https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.utility/update-typedata?view=powershell-6
+    $classData = @{TypeName=$className;MemberType='NoteProperty';DefaultDisplayPropertySet=@('PSTypeName');MemberName='PSTypeName';Value=$className;serializationdepth=2;serializationmethod='SpecificProperties';PropertySerializationSet=@('PSTypeName')}
 
     try {
-        $classDefinition = __new-class $classData
-        __add-classmember $className $classDefinition $classBlock
+        $classDefinition = __new-class $classData $classBlock
+        __add-classmember $className $classDefinition
         __define-class $classDefinition | out-null
         __remove-publishedclass $className
         $:: | add-member -name $className -memberType 'ScriptProperty' -value ([ScriptBlock]::Create("get-class '$className'"))
@@ -188,7 +192,7 @@ function ::> {
     $classObject |=> $method @remaining
 }
 
-function __new-class([Hashtable]$classData) {
+function __new-class([Hashtable]$classData, [ScriptBlock] $classBlock) {
     $className = $classData['Value']
 
     # remove existing type data
@@ -198,7 +202,7 @@ function __new-class([Hashtable]$classData) {
     $typeSystemData = get-typedata $classname
 
     $prototype = [PSCustomObject]@{PSTypeName=$className}
-    $classDefinition = @{typedata=$typeSystemData;prototype=$prototype}
+    $classDefinition = @{typedata=$typeSystemData;prototype=$prototype;classblock=$classblock;instancemethods=@{}}
     $__classTable[$className] = $classDefinition
     $classDefinition
 }
@@ -228,12 +232,10 @@ function __remove-class($className) {
     $__classTable.Remove($className)
 }
 
-function __add-classmember($className, $classDefinition, $classBlock) {
+function __add-classmember($className, $classDefinition) {
     $classMember = [PSCustomObject] @{
         PSTypeName = $ScriptClassTypeName
         ClassName = $className
-        ClassScriptBlock = $classBlock
-        InstanceMethods = @{}
         InstanceProperties = @{}
         TypedMembers = @{}
         ScriptClass = $null
@@ -243,11 +245,50 @@ function __add-classmember($className, $classDefinition, $classBlock) {
     __add-typemember NoteProperty $className 'ScriptClass' $null $classMember -hidden
 }
 
+function __restore-deserializedobjectmethods($existingClass, $object) {
+    # Deserialization of ScriptClass object, say from start-job or even a remote session,
+    # strips off ScriptMethod and ScriptProperty properties. ScriptProperty properties are
+    # evaluated and converted to NoteProperty. ScriptMethod properties are simply
+    # omitted. Here we restore ScriptMethod properties from the original class definition.
+    # Only methods are restored here -- a separate adjustment is required for
+    # the missing ScriptProperty properties.
+    $templateObject = [PSCustomObject] $existingClass.prototype.psobject.copy()
+    $object.scriptclass = $existingClass.prototype.scriptclass
+    $existingClass.prototype | gm -membertype scriptmethod | foreach {
+        write-verbose "Restoring method $($_.name) on class $($object.scriptclass.classname)"
+        $object | add-member -name $_.name -memberType 'ScriptMethod' -value $templateObject.psobject.methods[$_.name].script
+    }
+}
+
 function __invoke-methodwithcontext($object, $method) {
+    $methodNotFoundException = $null
     $methodScript = try {
         $object.psobject.members[$method].script
     } catch {
-        throw [Exception]::new("Failed to invoke method '$method' on object of type $($object.gettype())", $_.exception)
+        $methodNotFoundException = $_.exception
+    }
+
+    try {
+        # The missing method may be due to a caller specifying the wrong method, but
+        # if the object was deserialized, deserialization may have stripped off
+        # the ScriptMethod property altogether. We check for a suggestive evidence
+        # of that here, and if so, we invoke a just-in-time fixup and retry.
+        if (! $methodScript -and ( $object | gm scriptclass)) {
+            $existingClass = __find-existingClass $object.scriptclass.className
+            write-verbose "Missing method '$method' on class $($existingClass.prototype.pstypename)"
+            if ($existingClass.instancemethods[$method]) {
+                __restore-deserializedobjectmethods $existingClass $object
+                # Now retry the call -- if the method was restored, this will succeed.
+                $methodScript = $object.psobject.members[$method].script
+            } else {
+                write-verbose "Method '$method' not found"
+            }
+        }
+    } catch {
+    }
+
+    if ( ! $methodScript ) {
+        throw [Exception]::new("Failed to invoke method '$method' on object of type $($object.gettype()) -- the method was not found", $methodNotFoundException)
     }
     __invoke-scriptwithcontext $object $methodScript @args
 }
@@ -348,8 +389,10 @@ function __add-typemember($memberType, $className, $memberName, $typeName, $init
     $defaultDisplay = @()
     $propertySerializationSet = @()
 
-    $classDefinition.typedata.defaultdisplaypropertyset.referencedproperties | foreach {
-        $defaultDisplay += $_
+    if ( $classDefinition.typedata.defaultdisplaypropertyset | gm referencedProperties ) {
+        $classDefinition.typedata.defaultdisplaypropertyset.referencedproperties | foreach {
+            $defaultDisplay += $_
+        }
     }
 
     $classDefinition.typedata.propertyserializationset.referencedproperties | foreach {
@@ -358,13 +401,12 @@ function __add-typemember($memberType, $className, $memberName, $typeName, $init
 
     if (! $hiddenMember.ispresent) {
         $defaultDisplay += $memberName
-
         if ($memberType -eq 'NoteProperty' -or $memberType -eq 'ScriptProperty') {
-            $propertyserializationset += $memberName
             $classDefinition.prototype.scriptclass.instanceproperties[$memberName] = $typeName
         }
     }
 
+    $propertyserializationset += $memberName
 
     $aliasName = "__$($memberName)"
     $realName = $memberName
@@ -373,8 +415,10 @@ function __add-typemember($memberType, $className, $memberName, $typeName, $init
         $aliasName = $memberName
     }
 
-    $nameTypeData = @{TypeName=$className;MemberType=$memberType;MemberName=$realName;Value=$initialValue;defaultdisplaypropertyset=$defaultdisplay;propertyserializationset=$propertyserializationset;serializationmethod='SpecificProperties'}
-
+    # For serializationdepth parameter, see
+    # https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.utility/update-typedata?view=powershell-6
+    # It does not seem to be the actual depth.
+    $nameTypeData = @{TypeName=$className;MemberType=$memberType;MemberName=$realName;Value=$initialValue;defaultdisplaypropertyset=$defaultdisplay;serializationdepth=2;serializationmethod='SpecificProperties';propertyserializationset=$propertyserializationset}
     __add-member $classDefinition.prototype $realName $memberType $initialValue $typeName
     Update-TypeData -force @nameTypeData
 
@@ -566,6 +610,16 @@ function __get-classproperties($memberData) {
     $classProperties
 }
 
+$__staticBlockLocalVariablesToRemove = @(
+    'varsnapshot1',
+    'PSScriptRoot',
+    'snapshot2'
+    'MyInvocation',
+    'PSBoundParameters',
+    'PSCommandPath'
+    'args'
+)
+
 function static([ScriptBlock] $staticBlock) {
     function static { throw "The 'static' function may not be used from within a static block" }
     $snapshot1 = ls function:
@@ -603,6 +657,15 @@ function static([ScriptBlock] $staticBlock) {
         $staticvars = $script:__staticvars__
         $staticvars[$_.name] = $_.value
     }
+
+    # Some variables in this script are being captured -- remove them
+    $script:__staticBlockLocalVariablesToRemove | foreach {
+        if ( ! $staticvars[$_] ) {
+            throw "local variable to remove '$_' does not exist"
+        }
+
+        $staticvars.remove($_)
+    }
 }
 
 function modulefunc {
@@ -624,11 +687,12 @@ function modulefunc {
         $__exception__ = $_
     }
 
-    export-modulemember -variable __memberResult, __newfunctions__, __newvariables__, __exception__ -function $__newfunctions__.keys
+    export-modulemember -variable __memberResult, __newfunctions__, __newvariables__, __exception__ -function $__newfunctions__.keys -verbose:$false
 }
 
 $__instanceWrapperTemplate = @'
-invoke-method $this $this.scriptclass.instancemethods['{0}'] @args
+$existingClass = __find-existingClass $this.scriptclass.className
+invoke-method $this $existingClass.instancemethods['{0}'] @args
 '@
 
 function __define-class($classDefinition) {
@@ -641,7 +705,7 @@ function __define-class($classDefinition) {
     $classDefinitionException = $null
 
     try {
-        $memberData = new-module -ascustomobject -scriptblock (gi function:modulefunc).scriptblock -argumentlist $functions, $aliases, $classDefinition.typeData.TypeName, $classDefinition.prototype.ScriptClass.ClassScriptBlock
+        $memberData = new-module -ascustomobject -scriptblock (gi function:modulefunc).scriptblock -argumentlist $functions, $aliases, $classDefinition.typeData.TypeName, $classDefinition.classBlock
         $classDefinitionException = $memberData.__exception__
     } catch {
         $classDefinitionException = $_
@@ -665,7 +729,7 @@ function __define-class($classDefinition) {
         if ($nextFunctions[$_.name] -is [System.Management.Automation.FunctionInfo] -and $functions -notcontains $_.name) {
             $methodBlockWrapper = [ScriptBlock]::Create($__instanceWrapperTemplate -f $_.name)
             __add-typemember ScriptMethod $classDefinition.typeData.TypeName $_.name $null $methodBlockWrapper
-            $classDefinition.prototype.scriptclass.InstanceMethods[$_.name] = $_.value.scriptblock
+            $classDefinition.InstanceMethods[$_.name] = $_.value.scriptblock
         }
     }
 
