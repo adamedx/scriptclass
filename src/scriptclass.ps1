@@ -610,18 +610,17 @@ function __get-classproperties($memberData) {
     $classProperties
 }
 
-$__staticBlockLocalVariablesToRemove = @(
-    'varsnapshot1',
-    'PSScriptRoot',
-    'snapshot2'
-    'MyInvocation',
-    'PSBoundParameters',
-    'PSCommandPath'
-    'args'
-)
-
 function static([ScriptBlock] $staticBlock) {
     function static { throw "The 'static' function may not be used from within a static block" }
+    $script:__staticBlockLocalVariablesToRemove = @(
+        'varsnapshot1',
+        'PSScriptRoot',
+        'snapshot2'
+        'MyInvocation',
+        'PSBoundParameters',
+        'PSCommandPath'
+        'args'
+    )
     $snapshot1 = ls function:
     $varsnapshot1 = get-variable -scope 0
     . $staticBlock
