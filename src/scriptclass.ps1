@@ -298,9 +298,10 @@ function __invoke-scriptwithcontext($objectContext, $script) {
     $thisVariable = [PSVariable]::new('this', $objectContext)
     $variables += $thisVariable
 
-    try {
-        $variables += get-variable pscmdlet 2>$null
-    } catch {
+    $pscmdletVariable = get-variable pscmdlet -erroraction silentlycontinue
+
+    if ( $pscmdletVariable ) {
+        $variables += $pscmdletVariable
     }
 
     $functions = @{}
@@ -573,11 +574,7 @@ function new-constant {
         [parameter(mandatory=$true)] $value
     )
 
-    $existingVariable = try {
-        get-variable -name $name -scope 1 2> $null
-    } catch {
-        $null
-    }
+    $existingVariable = get-variable -name $name -scope 1 -erroraction silentlycontinue
 
     if ( $existingVariable -eq $null ) {
         new-variable -name $name -value $value -scope 1 -option readonly *> (out-null)
