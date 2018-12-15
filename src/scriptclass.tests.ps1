@@ -1198,6 +1198,69 @@ Describe 'Static member variables' {
     }
 }
 
+Describe 'Internal ScriptClass State' {
+    BeforeAll {
+        # This only happens for the first static class defined by scriptclass, simulate
+        # by removing the variable
+        remove-variable -scope 0 __staticBlockLocalVariablesToRemove -erroraction ignore
+
+        remove-module $thismodule -force -erroraction silentlycontinue
+        import-module $thismodule -force
+    }
+
+    AfterAll {
+        remove-module $thismodule -force -erroraction silentlycontinue
+    }
+
+    Context "When defining static members" {
+        It "Should have not reproduce a defect where an extra instance property from ScriptClass internals was present when a class is dot-sourced and the static function is used" {
+            # Requires the script variable __staticBlockLocalVariablesToRemove to be removed
+            # in beforeall
+            . {
+                ScriptClass DotSourcedClassWithStatic {
+                    static {
+                    }
+                }
+            }
+
+            $NoExtraMembersClass = $:: | select -ExpandProperty DotSourcedClassWithStatic
+
+            $NoExtraMembersClass.InstanceProperties.Count | Should Be 0
+
+            #        $::.graphendpoint2 | out-host
+            #        $::.graphendpoint3 | out-host
+        }
+
+        It "Should only have class members ClassName, InstanceProperties, TypedMembers, ScriptClass, PSTypeData, and the user specified member variables" {
+            $noExtraMemberClass = 'ScriptClassStaticNoExtra'
+            ScriptClass $noExtraMemberClass {
+                static {
+                    const member1 1
+                    $member2 = 2
+                    $member3 = 3
+                }
+            }
+
+            $expectedMembers = @(
+                'ClassName',
+                'InstanceProperties',
+                'TypedMembers',
+                'ScriptClass',
+                'PSTypeData',
+                'member1',
+                'member2',
+                'member3'
+            )
+
+            $NoExtraMembersClassList = ($:: | select -ExpandProperty $noExtraMemberClass |
+              gm -membertype noteproperty, scriptproperty | select -expandproperty name | sort) -join ';'
+            $expectedMembersList = ($expectedMembers | sort) -join ';'
+
+            $noExtramembersClassList | Should Be $expectedMembersList
+        }
+    }
+}
+
 Describe 'Typed static member variables' {
     BeforeAll {
         remove-module $thismodule -force -erroraction silentlycontinue

@@ -16,7 +16,11 @@ set-strictmode -version 2
 
 set-alias const new-constant
 
+# Initialize these in script scope at the top to ensure no issues with
+# comparing variables before and after script block execution in
+# subsequent class definition functions
 $__classTable = @{}
+$__staticBlockLocalVariablesToRemove = $null
 
 if ( ! (test-path variable:stricttypecheckingtypename) ) {
     new-variable -name StrictTypeCheckingTypename -value '__scriptclass_strict_value__' -Option Readonly
@@ -610,6 +614,7 @@ function __get-classproperties($memberData) {
 function static([ScriptBlock] $staticBlock) {
     function static { throw "The 'static' function may not be used from within a static block" }
     $script:__staticBlockLocalVariablesToRemove = @(
+        'input',
         'varsnapshot1',
         'PSScriptRoot',
         'snapshot2'
