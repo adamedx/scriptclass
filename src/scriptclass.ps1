@@ -155,8 +155,8 @@ function invoke-method($context, $do) {
     $result
 }
 
-function =>($method) {
-    if ($method -eq $null) {
+function =>($__method__) {
+    if ($__method__ -eq $null) {
         throw "A method must be specified"
     }
 
@@ -173,7 +173,7 @@ function =>($method) {
     $methodargs = $args
     $results = @()
     $objects | foreach {
-        $results += (with $_ $method @methodargs)
+        $results += (with $_ $__method__ @methodargs)
     }
 
     if ( $results.length -eq 1) {
@@ -185,15 +185,15 @@ function =>($method) {
 
 function ::> {
     param(
-        [parameter(valuefrompipeline=$true)] [string] $classSpec,
-        [parameter(position=0)] $method,
-        [parameter(valuefromremainingarguments=$true)] $remaining
+        [parameter(valuefrompipeline=$true)] [string] $__classSpec__,
+        [parameter(position=0)] $__method__,
+        [parameter(valuefromremainingarguments=$true)] $__remaining__
     )
     [cmdletbinding(positionalbinding=$false)]
 
-    $classObject = get-class $classSpec
+    $classObject = get-class $__classSpec__
 
-    $classObject |=> $method @remaining
+    $classObject |=> $__method__ @__remaining__
 }
 
 function __new-class([Hashtable]$classData, [ScriptBlock] $classBlock) {
