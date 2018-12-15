@@ -17,7 +17,7 @@
 # RootModule = ''
 
 # Version number of this module.
-ModuleVersion = '0.13.7'
+ModuleVersion = '0.13.8'
 
 # Supported PSEditions
 # CompatiblePSEditions = @()
@@ -112,7 +112,18 @@ PrivateData = @{
         IconUri = 'https://raw.githubusercontent.com/adamedx/scriptclass/master/assets/ScriptClassIco.png'
 
         # ReleaseNotes of this module
-        # ReleaseNotes = ''
+        ReleaseNotes = @"
+# ScriptClass 0.13.8 Release Notes
+## New features
+
+None.
+
+## Fixed defects
+
+* Fixed inability to use a parameter named 'method' in a ScriptClass object method due to name collision
+* Object pollution: Removed leaked 'input' static property and '__staticBlockVariablesToRemove' instance property
+* Fixed pollution of error streams with internal errors that were handled and should not be surfaced outside ScriptClass
+"@
 
     } # End of PSData hashtable
 
