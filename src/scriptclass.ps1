@@ -245,8 +245,13 @@ function __add-classmember($className, $classDefinition) {
         ScriptClass = $null
     }
 
+    # Add common methods to the class itself
     __add-member $classMember PSTypeData ScriptProperty ([ScriptBlock]::Create("(__find-existingclass '$className').typedata"))
+    __add-member $classMember GetScriptObjectHashCode ScriptMethod { $this.psobject.members.GetHashCode() }
+
+    # Add common methods for each instance
     __add-typemember NoteProperty $className 'ScriptClass' $null $classMember -hidden
+    __add-typemember ScriptMethod $className GetScriptObjectHashCode $null { $this.psobject.members.GetHashCode() }
 }
 
 function __restore-deserializedobjectmethods($existingClass, $object) {

@@ -1574,3 +1574,80 @@ Describe "The const cmdlet" {
     }
 }
 
+Describe "Hash codes for ScriptClass objects" {
+    BeforeAll {
+        remove-module $thismodule -force -erroraction ignore
+        import-module $thismodule -force
+    }
+
+    ScriptClass FirstClass {
+    }
+
+    ScriptClass SecondClass {
+    }
+
+    $Class1Instance1 = new-so FirstClass
+    $Class1Instance2 = new-so FirstClass
+
+    $Class2Instance1 = new-so SecondClass
+    $Class2Instance2 = new-so SecondClass
+
+    Context "When the GetScriptClassHashCode method is invoked on ScriptClass instance objects" {
+        It "Should return an integer hash code" {
+            $hashcode = $Class1Instance1.GetScriptObjectHashCode()
+            $hashcode -is [int] | Should Be $true
+            $hashcode | Should Not Be 0
+        }
+
+        It "Should return the same value as the first time when it is invoked more than once on the same instance object" {
+            $lastVal = $null
+
+            for ($current = 0; $current -lt 10; $current++ ) {
+                $hashcode = $Class1Instance1.GetScriptObjectHashCode()
+                if ( $lastVal ) {
+                    $hashcode | Should BeExactly $lastVal
+                }
+
+                $lastVal = $hashcode
+            }
+        }
+
+        It "Should have unique hash codes for two ScriptClass instance objects of the same class" {
+            $Class1Instance1.GetScriptObjectHashCode() | Should Not Be $class1Instance2.GetScriptObjectHashCode()
+        }
+
+        It "Should have unique hash codes for two ScriptClass instance objects of different classes" {
+            $Class1Instance1.GetScriptObjectHashCode() | Should Not Be $class2Instance1.GetScriptObjectHashCode()
+        }
+    }
+
+
+    Context "When the GetScriptClassHashCode method is invoked on ScriptClass class objects" {
+        It "Should return a non-zero integer hash code" {
+            $hashcode = $Class1Instance1.scriptclass.GetScriptObjectHashCode()
+            $hashcode -is [int] | Should Be $true
+            $hashcode | Should Not Be 0
+        }
+
+        It "Should return the same value as the first time when it is invoked more than once on the same instance object" {
+            $lastVal = $null
+
+            for ($current = 0; $current -lt 10; $current++ ) {
+                $hashcode = $Class1Instance1.scriptclass.GetScriptObjectHashCode()
+                if ( $lastVal ) {
+                    $hashcode | Should BeExactly $lastVal
+                }
+
+                $lastVal = $hashcode
+            }
+        }
+
+        It "Should have the same codes for the ScriptClass property for two ScriptClass instance objects of the same class" {
+            $Class1Instance1.scriptclass.GetScriptObjectHashCode() | Should BeExactly $class1Instance2.scriptclass.GetScriptObjectHashCode()
+        }
+
+        It "Should have unique hash codes for the ScriptClass property for two ScriptClass instance objects of different classes" {
+            $Class1Instance1.scriptclass.GetScriptObjectHashCode() | Should Not Be $class2Instance1.scriptclass.GetScriptObjectHashCode()
+        }
+    }
+}
