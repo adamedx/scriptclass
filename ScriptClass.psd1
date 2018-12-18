@@ -17,7 +17,7 @@
 # RootModule = ''
 
 # Version number of this module.
-ModuleVersion = '0.13.8'
+ModuleVersion = '0.14.0'
 
 # Supported PSEditions
 # CompatiblePSEditions = @()
@@ -113,10 +113,10 @@ PrivateData = @{
 
         # ReleaseNotes of this module
         ReleaseNotes = @"
-# ScriptClass 0.13.8 Release Notes
+# ScriptClass 0.14.0 Release Notes
 ## New features
 
-None.
+* Add ``GetScriptHashCode`` method to ScriptClass objects to return unique hash codes since GetHashCode hashes objects of the same class to the same value
 
 ## Fixed defects
 
