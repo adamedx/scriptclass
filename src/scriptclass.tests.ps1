@@ -1213,7 +1213,7 @@ Describe 'Internal ScriptClass State' {
     }
 
     Context "When defining static members" {
-        It "Should have not reproduce a defect where an extra instance property from ScriptClass internals was present when a class is dot-sourced and the static function is used" {
+        It "Should not reproduce a defect where an extra instance property from ScriptClass internals was present when a class is dot-sourced and the static function is used" {
             # Requires the script variable __staticBlockLocalVariablesToRemove to be removed
             # in beforeall
             . {
@@ -1226,9 +1226,6 @@ Describe 'Internal ScriptClass State' {
             $NoExtraMembersClass = $:: | select -ExpandProperty DotSourcedClassWithStatic
 
             $NoExtraMembersClass.InstanceProperties.Count | Should Be 0
-
-            #        $::.graphendpoint2 | out-host
-            #        $::.graphendpoint3 | out-host
         }
 
         It "Should only have class members ClassName, InstanceProperties, TypedMembers, ScriptClass, PSTypeData, and the user specified member variables" {

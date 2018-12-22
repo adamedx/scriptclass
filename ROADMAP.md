@@ -4,7 +4,7 @@
 
 ### To-do
 * Mocking!
-  * Method mocking
+  * Method mocking - Mock-ScriptClassMethod
   * Object mocking
 * Remove superfluous verbose output from export-module
 * Remove some usage of script scope variables

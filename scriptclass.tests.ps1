@@ -20,7 +20,15 @@ Describe "ScriptClass module manifest" {
 
     Context "When loading the manifest" {
         It "should export the exact same set of cmdlets as are in the set of expected cmdlets" {
-            $expectedCmdlets = @('add-scriptclass', 'invoke-method', 'test-scriptobject', 'new-scriptobject', 'import-script', 'import-assembly')
+            $expectedCmdlets = @(
+                'Add-ScriptClass',
+                'Import-Assembly',
+                'Import-Script',
+                'Invoke-Method',
+                'Mock-ScriptClassMethod',
+                'New-ScriptObject',
+                'Remove-MockScriptClassMethod',
+                'Test-ScriptObject')
 
             $manifest.ExportedCmdlets.count | Should BeExactly $expectedCmdlets.length
 
