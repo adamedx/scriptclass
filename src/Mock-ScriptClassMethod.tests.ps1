@@ -116,7 +116,7 @@ Describe 'inprogress' {
     }
 
     Context "When mocking a static method" {
-        It "Should return the mocked value instead of original if the mock is invoked before the object is created" {
+        It "Should return the mocked value instead of the original" {
             ScriptClass TestClassStaticMethod {
                 static {
                     $staticdata = 11
@@ -134,7 +134,7 @@ Describe 'inprogress' {
             ($::.TestClassStaticMethod |=> StaticRealMethod 3 7) | Should Be 3
         }
 
-        It "Should return the original value after it was mocked and returned a mocked value" {
+        It "Should return the original value after it was mocked and return a mocked value" {
             ScriptClass TestClassStaticMethod2 {
                 static {
                     $staticdata = 11
@@ -155,5 +155,75 @@ Describe 'inprogress' {
 
             ($::.TestClassStaticMethod2 |=> StaticRealMethod 3 7) | Should Be ( $::.TestClassStaticMethod.staticdata + 3 * 7 )
         }
+    }
+
+    Context "When mocking an object method" {
+        It "Should return the mocked value instead of the original" {
+            ScriptClass TestClassObjectMethod {
+                $objectdata = 17
+
+                function RealObjectMethod($parameter1, $parameter2) {
+                    $this.objectdata + $parameter1 * $parameter2 + 1
+                }
+            }
+
+            $testObject = new-so TestClassObjectMethod
+
+            ($testObject |=> RealObjectMethod 3 7) | Should Be ( $testObject.objectData + 3 * 7  + 1 )
+
+            Mock-ScriptClassMethod $testObject RealObjectMethod { 2 }
+
+            ($testObject |=> RealObjectMethod 3 7) | Should Be 2
+        }
+
+        It "Should return the mocked value instead of the original for the mocked object, and the orignal value for an unmocked object of the same clas" {
+            ScriptClass TestClassObjectMethod2 {
+                $objectdata = 23
+
+                function RealObjectMethod($parameter1, $parameter2, $parameter3) {
+                    $this.objectdata + $parameter1 * $parameter2 * $parameter3 + 1
+                }
+            }
+
+            $testObject = new-so TestClassObjectMethod2
+
+            ($testObject |=> RealObjectMethod 3 7 2) | Should Be ( $testObject.objectData + 3 * 7 * 2 + 1 )
+
+            Mock-ScriptClassMethod $testObject RealObjectMethod { 9 }
+
+            ($testObject |=> RealObjectMethod 3 7 2) | Should Be 9
+
+            $testObject2 = new-so TestClassObjectMethod2
+
+            ($testObject2 |=> RealObjectMethod 3 7 2) | Should Be ( $testObject.objectData + 3 * 7 * 2 + 1 )
+        }
+    }
+}
+
+Describe objecttest {
+    BeforeAll {
+        remove-module $thismodule -force -erroraction silentlycontinue
+        import-module $thismodule -force
+    }
+
+    AfterAll {
+        remove-module $thismodule -force -erroraction silentlycontinue
+    }
+
+    It "Should let me see the this pointer in the parameter filter" {
+        ScriptClass TestObjectClass {
+            $objectinfo = 159
+            function OriginalMethod($parameter1, $parameter2) {
+                $this.objectinfo + $parameter1 + $parameter2
+            }
+        }
+
+        $testobj = new-so TestObjectClass
+        $testobj2 = new-so TestObjectClass
+
+        Mock-ScriptClassMethod TestObjectClass OriginalMethod { 10 } -parameterfilter { $this.getscriptobjecthashcode() -eq $testobj.getscriptobjecthashcode() }
+
+        $testobj2 |=> OriginalMethod 1 5 | Should Be 165
+        $testobj |=> OriginalMethod 1 5 | Should Be 10
     }
 }

@@ -16,41 +16,56 @@ function Mock-ScriptClassMethod {
     [cmdletbinding(positionalbinding=$false)]
     param(
         [parameter(position=0, mandatory=$true)]
-        [String] $ClassName,
+        $MockTarget,
 
         [parameter(position=1, mandatory=$true)]
         [String] $MethodName,
 
-        [parameter(position=2, mandatory=$true)]
-        [ScriptBlock] $MockWith,
+        [parameter(position=2)]
+        [ScriptBlock] $MockWith = {},
 
         [parameter(position=3)]
         [ScriptBlock] $ParameterFilter,
 
-        [parameter(parametersetname='object')]
-        [PSCustomObject] $ScriptObject,
-
-        [parameter(parametersetname='static', mandatory=$true)]
+        [parameter(parametersetname='static')]
         [Switch] $Static,
 
         [Switch] $Verifiable
     )
 
-    $frameworkArguments = @{
-        MockWith = $MockWith
-        Verifiable = $Verifiable
+    $ScriptObject = $null
+    $ClassName = $MockTarget
+
+    if ( $MockTarget -is [PSCustomObject] ) {
+        if ( $Static.IsPresent ) {
+            throw [ArgumentException]::new("Argument 'Static' may not be specified when the type of argument 'MockTarget' is [PSCustomObject]. Specify a ScriptClass class name of type [String] for 'MockTarget' to use 'Static'")
+        }
+
+        $ScriptObject = $MockTarget
+        $ClassName = $MockTarget.PSTypeName
+    } elseif ( $MockTarget -isnot [String] ) {
+        throw [ArgumentException]::new("Argument 'MockTarget' of type '$($MockTarget.gettype())' is not of valid type [String] or [PSCustomObject]")
     }
 
-    if ( $ParameterFilter ) {
-        $frameworkArguments['ParameterFilter'] = $ParameterFilter
+    $normalizedParameterFilter = if ( $ParameterFilter ) {
+        $ParameterFilter
+    } else {
+        { $true }
+    }
+
+    $frameworkArguments = @{
+        MockWith = $MockWith
+        ParameterFilter = $normalizedParameterFilter
+        Verifiable = $Verifiable
     }
 
     $methodFunctionToMock = __GetPatchedMethodFunction $ClassName $MethodName $frameworkArguments $Static.IsPresent $ScriptObject
 
-    __MockMethodFunction $methodFunctionToMock $frameworkArguments
+    __MockMethodFunction $methodFunctionToMock $frameworkArguments $ScriptObject ($ParameterFilter -ne $null)
 }
 
 $__MockedScriptClassMethods = @{}
+$__MockedObjectMethods = @{}
 
 function __GetPatchedMethodFunction(
     $className,
@@ -72,14 +87,25 @@ function __GetPatchedMethodFunction(
     $mockableFunction.FunctionName
 }
 
-function __MockMethodFunction($methodFunctionName, $frameworkArguments) {
+function __MockMethodFunction($methodFunctionName, $frameworkArguments, $object, $hasParameterFilter) {
+    if ( $object ) {
+        $objectHash = $object.getscriptobjecthashcode()
+        write-host 'objhash', $objectHash
+        if ( $frameworkArguments['ParameterFilter']) {
+            $frameworkArguments['ParameterFilter'] = [ScriptBlock]::Create('$this.getscriptobjecthashcode() -eq {0};write-host hihihi, "this", ($this.getscriptobjecthashcode()), "target", {0}' -f $objectHash)
+        } else {
+            $objectfilterConjunction = [ScriptBlock]::Create(('__filterResult = . {{' + $frameworkArguments.mockwith.tostring() + ';write-host hehey; }} $__filterResult -and ($this.getscriptobjecthashcode() -eq {0}') -f $objectHash )
+            $frameworkArguments['ParameterFilter'] = $objectfilterConjunction
+        }
+    }
     Mock $methodFunctionName @frameworkArguments
 }
 
 function __PatchStaticMethod($mockFunctionInfo) {
 #    $classObject = $__classTable['GraphContext'].prototype.scriptclass.psobject.methods[$mockFunctionInfo.className]
 #    $classObject = $__classTable['GraphContext'].prototype.scriptclass
-    $mockFunctionInfo.classData.prototype.scriptclass | add-member -name $mockFunctionInfo.methodname -membertype scriptmethod -value $mockFunctionInfo.ReplacementScriptblock -force
+    __SetObjectMethod $mockFunctionInfo.classData.prototype.scriptclass $mockFunctionInfo.methodname $mockFunctionInfo.ReplacementScriptblock
+#    $mockFunctionInfo.classData.prototype.scriptclass | add-member -name $mockFunctionInfo.methodname -membertype scriptmethod -value $mockFunctionInfo.ReplacementScriptblock -force
  #   $classObject | add-member -name $mockFunctionInfo.methodname -membertype scriptmethod -value $mockFunctionInfo.ReplacementScriptblock -force
 #    throw [NotImplementedException]("Static method mocking is not yet implemented")
 }
@@ -89,7 +115,17 @@ function __PatchAllInstancesMethod($mockFunctionInfo) {
 }
 
 function __PatchSingleInstanceMethod($mockFunctionInfo) {
-        throw [NotImplementedException]("Specific object method mocking is not yet implemented")
+    __PatchAllInstancesMethod $mockFunctionInfo
+#    $objectMethod = $mockFunctionInfo.mockedObject.psobject.methods | where name -eq $mockFunctionInfo.methodname
+#    $mockFunctionInfo.mockedObject.psobject.methods.remove($mockFunctionInfo.methodname)
+#    $mockFunctionInfo.mockedObject.psobject.methods.add($objectMethod)
+ #   $replacementMethod = [System.Management.Automation.PSScriptMethod]::new($mockFunctionInfo.methodname, $mockFunctionInfo.replacementscriptblock)
+  #  $mockFunctionInfo.mockedObject.psobject.methods.add($replacementMethod)
+#    $mockFunctionInfo.mockedObject | add-member -name $mockFunctionInfo.methodname -membertype scriptmethod -value $mockFunctionInfo.ReplacementScriptblock -force -typename mocktype
+}
+
+function __SetObjectMethod($object, $methodname, $originalScriptBlock) {
+    $object | add-member -name $methodname -membertype scriptmethod -value $originalScriptblock -force
 }
 
 function __GetMockableMethodName(
@@ -100,18 +136,20 @@ function __GetMockableMethodName(
 ) {
     $methodType = if ( $isStatic ) {
         'static'
-    } elseif ( ! $Object )  {
+    } else { #if ( ! $Object )  {
         'allinstances'
-    } else {
-        "object_$($object.getscriptobjecthashcode())"
+ #   } else {
+#        "object_$($object.getscriptobjecthashcode())"
     }
 
     "___MockScriptClassMethod_$($methodType)_$($classname)_$($methodName)__"
 }
 
 $__mockInstanceMethodTemplate = @'
-{0} $this {1} @args
+{0} @args
 '@
+
+
 
 function __GetMockableMethodFunction(
     $className,
@@ -130,7 +168,7 @@ function __GetMockableMethodFunction(
 
         $originalMethodBlock = __GetClassMethod $className $methodName $isStatic $object
 
-        $replacementMethodBlock = [ScriptBlock]::Create($__mockInstanceMethodTemplate -f ($functionName, $methodName))
+        $replacementMethodBlock = [ScriptBlock]::Create($__mockInstanceMethodTemplate -f $functionName)
 
         new-item "function:script:$($functionName)" -value $originalMethodBlock -force | out-null
 
@@ -153,7 +191,6 @@ function __GetMockableMethodFunction(
 function __GetClassMethod($className, $methodName, $isStatic, $object) {
     $methodBlock = if ( $isStatic ) {
         $__classTable[$className].prototype.scriptclass.psobject.methods[$methodName].script
-#        ($:: | select -expandproperty $className).psobject.methods[$methodName].script
     } else {
         $__classTable[$className].instancemethods[$methodName]
     }
@@ -241,9 +278,14 @@ function __UnpatchAllInstancesMethod($mockedFunctionInfo) {
 }
 
 function __UnpatchSingleInstanceMethod($mockedFunction) {
-    throw [NotImplementedException]::new("Object mock removal not implemented")
+    $objectMethod = $mockFunctionInfo.mockedObject.psobject.methods | where name -eq $mockFunctionInfo.methodname
+    $mockFunctionInfo.mockedObject.psobject.methods.remove($mockFunctionInfo.methodname)
+    $mockFunctionInfo.mockedObject.psobject.methods.add($objectMethod)
+
+#    __UnpatchObject $mockedFunction.mockedObject $mockedFunctionInfo.methodname $mockedFunctionInfo.originalScriptblock
 }
 
 function __UnpatchStaticMethod($mockedFunction) {
-    $mockedFunction.classData.prototype.scriptclass | add-member -name $mockedFunctionInfo.methodname -membertype scriptmethod -value $mockedFunctionInfo.originalScriptblock -force
+    __SetObjectMethod $mockedFunction.classData.prototype.scriptclass $mockedFunctionInfo.methodname $mockedFunctionInfo.originalScriptblock
 }
+
