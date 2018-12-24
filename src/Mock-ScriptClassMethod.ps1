@@ -61,7 +61,7 @@ function Mock-ScriptClassMethod {
 
     $methodFunctionToMock = __GetPatchedMethodFunction $ClassName $MethodName $frameworkArguments $Static.IsPresent $ScriptObject
 
-    __MockMethodFunction $methodFunctionToMock $frameworkArguments $ScriptObject ($ParameterFilter -ne $null)
+    __MockMethodFunction $methodFunctionToMock $frameworkArguments $ScriptObject $MethodName ($ParameterFilter -ne $null)
 }
 
 $__MockedScriptClassMethods = @{}
@@ -87,14 +87,83 @@ function __GetPatchedMethodFunction(
     $mockableFunction.FunctionName
 }
 
-function __MockMethodFunction($methodFunctionName, $frameworkArguments, $object, $hasParameterFilter) {
+$__mockedObjectSerialStart = $null
+$__mockedObjectSerial = $null
+
+function __AllocateUniqueId {
+    if ( $script:__mockedObjectSerial -eq $null ) {
+        $random = [Random]::new()
+        # The next method returns a positive signed [int32]
+        $idStart = [uint64] $random.next()
+        $idStart += [uint64] $random.next()
+        $idStart *= [uint64] ([int32]::MaxValue)
+        $idStart += [uint64] $random.next()
+        $idStart += [uint64] $random.next()
+
+#        $idstart = [uint64] 5555632642719856385
+        write-host 'updating start', $idStart, $idstart.gettype()
+
+        $script:__mockedObjectSerialStart = $idStart
+        $script:__mockedObjectSerial = $idStart
+    } elseif ( $script:__mockedObjectSerial -eq $script:__mockedobjectSerialStart ) {
+        throw 'Maximum mock object count exceeded'
+    }
+
+    write-host -fore yellow $script:__mockedObjectSerial
+
+    $nextId = if ( $script:__mockedObjectSerial -eq [uint64]::MaxValue ) {
+        0
+    } else {
+        $script:__mockedObjectSerial + [uint64] 1
+    }
+
+    $script:__mockedObjectSerial = $nextId
+    $nextId
+}
+
+function __GetMockedObjectUniqueId([PSCustomObject] $object) {
+    if ( ! $object ) {
+        throw 'The specified object was $null'
+    }
+
+    if ( ! ( test-scriptobject $object ) ) {
+        throw 'The specified object was not a ScriptClass object'
+    }
+
+    $objectUniqueId = if ( $object | gm -membertype scriptmethod __ScriptClassMockedObjectId -erroraction ignore) {
+        write-host -fore magenta 'existing object', $object.getscriptobjecthashcode()
+        $object.__ScriptClassMockedObjectId()
+    }
+
+    if ( ! $objectUniqueId ) {
+        write-host -fore cyan 'new object', $object.getscriptobjecthashcode()
+        $objectUniqueId = __AllocateUniqueId
+
+        $object | add-member -name __ScriptClassMockedObjectId -membertype scriptmethod -value ([ScriptBlock]::Create("[uint64] $($objectUniqueId.tostring())")) -force
+    }
+    write-host 'myid', $objectUniqueId, $objectUniqueId.gettype()
+
+    $objectUniqueId
+}
+
+function __MockMethodFunction($methodFunctionName, $frameworkArguments, $object, $methodName, $hasParameterFilter) {
     if ( $object ) {
-        $objectHash = $object.getscriptobjecthashcode()
-        write-host 'objhash', $objectHash
+        $objectId = __GetMockedObjectUniqueId $object
+        $objectEntry = if ( ! $script:__MockedObjectMethods[$objectId] ) {
+            $newEntry = @{
+                MockedMethodFunctions = @{}
+                MockedObject = $object
+            }
+
+            $script:__MockedObjectMethods[$objectId] = $newEntry
+            $newEntry
+        }
+        $objectEntry.MockedMethodFunctions[$methodFunctionName] = $methodName
+        write-host 'objid', $objectId
         if ( $frameworkArguments['ParameterFilter']) {
-            $frameworkArguments['ParameterFilter'] = [ScriptBlock]::Create('$this.getscriptobjecthashcode() -eq {0};write-host hihihi, "this", ($this.getscriptobjecthashcode()), "target", {0}' -f $objectHash)
+            $frameworkArguments['ParameterFilter'] = [ScriptBlock]::Create('$__filterpass = (__GetMockedObjectUniqueId $this) -eq {0};$__filterpass;write-host hihihi, "this", (__GetMockedObjectUniqueId $this), "target", {0}, $__filterpass' -f $objectId)
         } else {
-            $objectfilterConjunction = [ScriptBlock]::Create(('__filterResult = . {{' + $frameworkArguments.mockwith.tostring() + ';write-host hehey; }} $__filterResult -and ($this.getscriptobjecthashcode() -eq {0}') -f $objectHash )
+            $objectfilterConjunction = [ScriptBlock]::Create(('__filterResult = . {{' + $frameworkArguments.mockwith.tostring() + ';write-host hehey; }} $__filterResult -and (__GetMockedObjectUniqueId $this) -eq {0}') -f $objectId )
             $frameworkArguments['ParameterFilter'] = $objectfilterConjunction
         }
     }
@@ -148,8 +217,6 @@ function __GetMockableMethodName(
 $__mockInstanceMethodTemplate = @'
 {0} @args
 '@
-
-
 
 function __GetMockableMethodFunction(
     $className,
@@ -212,6 +279,7 @@ function Remove-ScriptClassMethodMock {
         [string] $ClassName,
 
         [parameter(parametersetname='class', position=1)]
+        [parameter(parametersetname='object', position=0)]
         [string] $MethodName,
 
         [parameter(parametersetname='class')]
@@ -242,7 +310,7 @@ function __GetPatchedMethods($className, $method, $staticMethods, $object) {
         $classData = if ( $ClassName ) {
             $__classTable[$className]
         } else {
-            $object.scriptclass
+            $__classTable[$object.scriptclass.classname]
         }
 
         $methodClass = $classData.prototype.pstypename
@@ -255,6 +323,12 @@ function __GetPatchedMethods($className, $method, $staticMethods, $object) {
             $classData.instancemethods.keys
         }
     }
+
+    if ( $object ) {
+        $methodClass = $object.scriptclass.classname
+    }
+
+    write-host 'method', $methodClass, ($methodClass -eq $null), $methodclass.length
 
     $mockRecords = $methodNames | foreach {
         __GetMockableMethodFunction $methodClass $_ $staticMethods $object
@@ -277,12 +351,32 @@ function __UnpatchAllInstancesMethod($mockedFunctionInfo) {
     $mockedFunctionInfo.classData.instanceMethods[$mockedFunctionInfo.methodName] = $mockedFunctionInfo.OriginalScriptBlock
 }
 
-function __UnpatchSingleInstanceMethod($mockedFunction) {
-    $objectMethod = $mockFunctionInfo.mockedObject.psobject.methods | where name -eq $mockFunctionInfo.methodname
-    $mockFunctionInfo.mockedObject.psobject.methods.remove($mockFunctionInfo.methodname)
-    $mockFunctionInfo.mockedObject.psobject.methods.add($objectMethod)
+function __UnpatchSingleInstanceMethod($mockedFunctionInfo) {
+    write-host -fore yellow 'unpackingobject'
+    $objectId = try {
+        $mockedFunctionInfo.mockedObject.__ScriptClassMockedObjectId()
+    } catch {
+    }
 
-#    __UnpatchObject $mockedFunction.mockedObject $mockedFunctionInfo.methodname $mockedFunctionInfo.originalScriptblock
+    if ( ! $objectId ) {
+        throw [ArgumentException]::new("The specified object is not currently mocked")
+    }
+
+    $objectEntry = $script:__mockedObjectMethods[$objectId]
+
+    if ( $objectEntry ) {
+        $objectEntry.MockedMethodFunctions.Remove($mockedFunctionInfo.FunctionName)
+        if ( $objectEntry.MockedMethodFunctions.count -eq 0 ) {
+            $script:__mockedObjectMethods.Remove($objectId)
+        }
+
+        $mockedFunctionInfo.mockedObject | add-member -name __ScriptClassMockedObjectId -membertype scriptmethod -value {} -force
+    } else {
+        write-host $objectid, $objectid.gettype()
+        $script:__mockedObjectMethods | out-host
+        throw "The mocking table is inconsistent for object id '$objectId'"
+    }
+
 }
 
 function __UnpatchStaticMethod($mockedFunction) {

@@ -28,41 +28,46 @@ Describe 'Mock-ScriptClassObject cmdlet' {
     }
 
     Context 'Invoking simple commands' {
+        ScriptClass SimpleClass {
+            static {
+                function StaticMethod {}
+            }
+
+            function InstanceMethod {}
+        }
+
         It "Should not throw an exception when mocking an existing class method" {
+            { Mock-ScriptClassMethod SimpleClass InstanceMethod } | Should Not Throw
         }
 
         It "Should not throw an exception when mocking an existing class static method" {
+            { Mock-ScriptClassMethod SimpleClass StaticMethod -static } | Should Not Throw
         }
 
         It "Should not throw an exception when mocking an existing object method" {
+            { Mock-ScriptClassMethod SimpleClass StaticMethod -static } | Should Not Throw
         }
 
         It "Should throw an exception with a specific message when attempting to mock a class that does not exist" {
             { Mock-ScriptClassMethod ClassThatDoesNotExist nonexistentmethod { 'nothing' } } | Should Throw 'not found'
         }
+
+        It "Should throw an exception with a specific message when attempting to mock a class instance method that does not exist on a class that exists" {
+            { Mock-ScriptClassMethod SimpleClass nonexistentmethod { 'nothing' } } | Should Throw 'not found'
+        }
+
+        It "Should throw an exception with a specific message when attempting to mock a static method that does not exist on a class that exists" {
+            { Mock-ScriptClassMethod SimpleClass nonexistentstaticmethod { 'nothing' } } | Should Throw 'not found'
+        }
+
+        It "Should throw an exception with a specific message when attempting to mock an instance method of a particular object with a method name that does not exist on that object" {
+            $testObject = new-so SimpleClass
+            { Mock-ScriptClassMethod $testObject nonexistentmethod { 'nothing' } } | Should Throw 'not found'
+        }
+
     }
 
     Context 'Mocking instance methods of a class' {
-    }
-
-    Context 'Mocking static methods of a class' {
-    }
-
-    Context 'Mocking instance methods of an object' {
-    }
-}
-
-Describe 'inprogress' {
-    BeforeAll {
-        remove-module $thismodule -force -erroraction silentlycontinue
-        import-module $thismodule -force
-    }
-
-    AfterAll {
-        remove-module $thismodule -force -erroraction silentlycontinue
-    }
-
-    Context 'When mocking a class instance method' {
         It "Should return the mocked value instead of original if the mock is invoked before the object is created" {
             ScriptClass TestClassInstanceMethod {
                 $data = 9
@@ -115,7 +120,7 @@ Describe 'inprogress' {
         }
     }
 
-    Context "When mocking a static method" {
+    Context 'Mocking static methods of a class' {
         It "Should return the mocked value instead of the original" {
             ScriptClass TestClassStaticMethod {
                 static {
@@ -134,7 +139,7 @@ Describe 'inprogress' {
             ($::.TestClassStaticMethod |=> StaticRealMethod 3 7) | Should Be 3
         }
 
-        It "Should return the original value after it was mocked and return a mocked value" {
+        It "Should return the original value after it was mocked and the mock was removed and return a mocked value" {
             ScriptClass TestClassStaticMethod2 {
                 static {
                     $staticdata = 11
@@ -157,7 +162,7 @@ Describe 'inprogress' {
         }
     }
 
-    Context "When mocking an object method" {
+    Context 'Mocking instance methods of an object' {
         It "Should return the mocked value instead of the original" {
             ScriptClass TestClassObjectMethod {
                 $objectdata = 17
@@ -197,33 +202,28 @@ Describe 'inprogress' {
 
             ($testObject2 |=> RealObjectMethod 3 7 2) | Should Be ( $testObject.objectData + 3 * 7 * 2 + 1 )
         }
-    }
-}
 
-Describe objecttest {
-    BeforeAll {
-        remove-module $thismodule -force -erroraction silentlycontinue
-        import-module $thismodule -force
-    }
+        It "Should return the mocked value instead of the original after the mock is removed from the object with Remove-ScriptClassMethodMock" {
+            ScriptClass TestClassObjectMethod3 {
+                $objectdata = 29
 
-    AfterAll {
-        remove-module $thismodule -force -erroraction silentlycontinue
-    }
-
-    It "Should let me see the this pointer in the parameter filter" {
-        ScriptClass TestObjectClass {
-            $objectinfo = 159
-            function OriginalMethod($parameter1, $parameter2) {
-                $this.objectinfo + $parameter1 + $parameter2
+                function RealObjectMethod($parameter1, $parameter2) {
+                    $this.objectdata + $parameter1 * $parameter2 + 1
+                }
             }
+
+            $testObject = new-so TestClassObjectMethod3
+
+            ($testObject |=> RealObjectMethod 3 7) | Should Be ( $testObject.objectData + 3 * 7  + 1 )
+
+            Mock-ScriptClassMethod $testObject RealObjectMethod { 2 }
+
+            ($testObject |=> RealObjectMethod 3 7) | Should Be 2
+
+            Remove-ScriptClassMethodMock -object $testObject RealObjectMethod
+
+            ($testObject |=> RealObjectMethod 3 7) | Should Be ( $testObject.objectData + 3 * 7  + 1 )
         }
-
-        $testobj = new-so TestObjectClass
-        $testobj2 = new-so TestObjectClass
-
-        Mock-ScriptClassMethod TestObjectClass OriginalMethod { 10 } -parameterfilter { $this.getscriptobjecthashcode() -eq $testobj.getscriptobjecthashcode() }
-
-        $testobj2 |=> OriginalMethod 1 5 | Should Be 165
-        $testobj |=> OriginalMethod 1 5 | Should Be 10
     }
 }
+
