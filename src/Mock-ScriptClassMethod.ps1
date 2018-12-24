@@ -100,7 +100,6 @@ function __AllocateUniqueId {
         $idStart += [uint64] $random.next()
         $idStart += [uint64] $random.next()
 
-#        $idstart = [uint64] 5555632642719856385
         write-host 'updating start', $idStart, $idstart.gettype()
 
         $script:__mockedObjectSerialStart = $idStart
@@ -171,12 +170,7 @@ function __MockMethodFunction($methodFunctionName, $frameworkArguments, $object,
 }
 
 function __PatchStaticMethod($mockFunctionInfo) {
-#    $classObject = $__classTable['GraphContext'].prototype.scriptclass.psobject.methods[$mockFunctionInfo.className]
-#    $classObject = $__classTable['GraphContext'].prototype.scriptclass
     __SetObjectMethod $mockFunctionInfo.classData.prototype.scriptclass $mockFunctionInfo.methodname $mockFunctionInfo.ReplacementScriptblock
-#    $mockFunctionInfo.classData.prototype.scriptclass | add-member -name $mockFunctionInfo.methodname -membertype scriptmethod -value $mockFunctionInfo.ReplacementScriptblock -force
- #   $classObject | add-member -name $mockFunctionInfo.methodname -membertype scriptmethod -value $mockFunctionInfo.ReplacementScriptblock -force
-#    throw [NotImplementedException]("Static method mocking is not yet implemented")
 }
 
 function __PatchAllInstancesMethod($mockFunctionInfo) {
@@ -185,12 +179,6 @@ function __PatchAllInstancesMethod($mockFunctionInfo) {
 
 function __PatchSingleInstanceMethod($mockFunctionInfo) {
     __PatchAllInstancesMethod $mockFunctionInfo
-#    $objectMethod = $mockFunctionInfo.mockedObject.psobject.methods | where name -eq $mockFunctionInfo.methodname
-#    $mockFunctionInfo.mockedObject.psobject.methods.remove($mockFunctionInfo.methodname)
-#    $mockFunctionInfo.mockedObject.psobject.methods.add($objectMethod)
- #   $replacementMethod = [System.Management.Automation.PSScriptMethod]::new($mockFunctionInfo.methodname, $mockFunctionInfo.replacementscriptblock)
-  #  $mockFunctionInfo.mockedObject.psobject.methods.add($replacementMethod)
-#    $mockFunctionInfo.mockedObject | add-member -name $mockFunctionInfo.methodname -membertype scriptmethod -value $mockFunctionInfo.ReplacementScriptblock -force -typename mocktype
 }
 
 function __SetObjectMethod($object, $methodname, $originalScriptBlock) {
@@ -205,10 +193,8 @@ function __GetMockableMethodName(
 ) {
     $methodType = if ( $isStatic ) {
         'static'
-    } else { #if ( ! $Object )  {
+    } else {
         'allinstances'
- #   } else {
-#        "object_$($object.getscriptobjecthashcode())"
     }
 
     "___MockScriptClassMethod_$($methodType)_$($classname)_$($methodName)__"
@@ -317,8 +303,6 @@ function __GetPatchedMethods($className, $method, $staticMethods, $object) {
 
         if ( $staticMethods ) {
             $__classTable[$className].prototype.scriptclass.psobject.methods | select -expandproperty name
-#            ($:: | select -expandproperty $methodClass).psobject.methods | select -expandproperty name
-#            $classData.prototype.scriptclass | gm -membertype scriptmethod |select -expandproperty name
         } else {
             $classData.instancemethods.keys
         }

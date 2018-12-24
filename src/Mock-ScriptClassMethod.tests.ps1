@@ -99,25 +99,6 @@ Describe 'Mock-ScriptClassObject cmdlet' {
             ($testClass |=> RealMethod 3 7) | Should Be 5
 
         }
-
-        It "Should return the mocked value after mocking and then the original value after the mock is removed from the class" {
-            ScriptClass TestClassInstanceMethod3 {
-                $data = 9
-                function RealMethod($parameter1, $parameter2) {
-                    $this.data + $parameter1 + $parameter2
-                }
-            }
-
-            Mock-ScriptClassMethod TestClassInstanceMethod3 RealMethod { 5 }
-
-            $testClass = new-so TestClassInstanceMethod3
-
-            ($testClass |=> RealMethod 3 7) | Should Be 5
-
-            Remove-ScriptClassMethodMock TestClassInstanceMethod3 RealMethod
-
-            ($testClass |=> RealMethod 3 7) | Should Be 19
-        }
     }
 
     Context 'Mocking static methods of a class' {
@@ -137,28 +118,6 @@ Describe 'Mock-ScriptClassObject cmdlet' {
             Mock-ScriptClassMethod TestClassStaticMethod StaticRealMethod { 3 } -static
 
             ($::.TestClassStaticMethod |=> StaticRealMethod 3 7) | Should Be 3
-        }
-
-        It "Should return the original value after it was mocked and the mock was removed and return a mocked value" {
-            ScriptClass TestClassStaticMethod2 {
-                static {
-                    $staticdata = 11
-
-                    function StaticRealMethod($parameter1, $parameter2) {
-                        $this.staticdata + $parameter1 * $parameter2
-                    }
-                }
-            }
-
-            ($::.TestClassStaticMethod2 |=> StaticRealMethod 3 7) | Should Be ( $::.TestClassStaticMethod.staticdata + 3 * 7 )
-
-            Mock-ScriptClassMethod TestClassStaticMethod2 StaticRealMethod { 3 } -static
-
-            ($::.TestClassStaticMethod2 |=> StaticRealMethod 3 7) | Should Be 3
-
-            Remove-ScriptClassMethodMock TestClassStaticMethod2 StaticRealMethod -static
-
-            ($::.TestClassStaticMethod2 |=> StaticRealMethod 3 7) | Should Be ( $::.TestClassStaticMethod.staticdata + 3 * 7 )
         }
     }
 
@@ -202,7 +161,65 @@ Describe 'Mock-ScriptClassObject cmdlet' {
 
             ($testObject2 |=> RealObjectMethod 3 7 2) | Should Be ( $testObject.objectData + 3 * 7 * 2 + 1 )
         }
+    }
+}
 
+Describe 'Remove-ScriptClassMethodMock cmdlet' {
+    BeforeAll {
+        remove-module $thismodule -force -erroraction silentlycontinue
+        import-module $thismodule -force
+    }
+
+    AfterAll {
+        remove-module $thismodule -force -erroraction silentlycontinue
+    }
+
+    Context 'Removing mocks for instance methods' {
+        It "Should return the mocked value after mocking and then the original value after the mock is removed from the class" {
+            ScriptClass TestClassInstanceMethod3 {
+                $data = 9
+                function RealMethod($parameter1, $parameter2) {
+                    $this.data + $parameter1 + $parameter2
+                }
+            }
+
+            Mock-ScriptClassMethod TestClassInstanceMethod3 RealMethod { 5 }
+
+            $testClass = new-so TestClassInstanceMethod3
+
+            ($testClass |=> RealMethod 3 7) | Should Be 5
+
+            Remove-ScriptClassMethodMock TestClassInstanceMethod3 RealMethod
+
+            ($testClass |=> RealMethod 3 7) | Should Be 19
+        }
+    }
+
+    Context 'Removing mocks for static methods' {
+        It "Should return the original value after it was mocked and the mock was removed and return a mocked value" {
+            ScriptClass TestClassStaticMethod2 {
+                static {
+                    $staticdata = 11
+
+                    function StaticRealMethod($parameter1, $parameter2) {
+                        $this.staticdata + $parameter1 * $parameter2
+                    }
+                }
+            }
+
+            ($::.TestClassStaticMethod2 |=> StaticRealMethod 3 7) | Should Be ( $::.TestClassStaticMethod2.staticdata + 3 * 7 )
+
+            Mock-ScriptClassMethod TestClassStaticMethod2 StaticRealMethod { 3 } -static
+
+            ($::.TestClassStaticMethod2 |=> StaticRealMethod 3 7) | Should Be 3
+
+            Remove-ScriptClassMethodMock TestClassStaticMethod2 StaticRealMethod -static
+
+            ($::.TestClassStaticMethod2 |=> StaticRealMethod 3 7) | Should Be ( $::.TestClassStaticMethod2.staticdata + 3 * 7 )
+        }
+    }
+
+    Context 'Removing mocks for object methods' {
         It "Should return the mocked value instead of the original after the mock is removed from the object with Remove-ScriptClassMethodMock" {
             ScriptClass TestClassObjectMethod3 {
                 $objectdata = 29
