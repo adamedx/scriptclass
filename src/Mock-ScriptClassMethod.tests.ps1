@@ -241,6 +241,48 @@ Describe 'Remove-ScriptClassMethodMock cmdlet' {
 
             ($testObject |=> RealObjectMethod 3 7) | Should Be ( $testObject.objectData + 3 * 7  + 1 )
         }
+
+        It "Should not remove the mock for an object method if the class is mocked, then the object, and then the instance method mock is removed" {
+            ScriptClass TestClassObjectMethod4 {
+                $objectdata = 31
+
+                function RealObjectMethod($parameter1, $parameter2) {
+                    $this.objectdata + $parameter1 * $parameter2 + 3
+                }
+            }
+
+            $testObject = new-so TestClassObjectMethod4
+
+            ($testObject |=> RealObjectMethod 3 7) | Should Be ( $testObject.objectData + 3 * 7  + 3 )
+
+            Mock-ScriptClassMethod TestClassObjectMethod4 RealObjectMethod { 2 }
+
+            write-host -fore yellow '**************************'
+             $__MockedScriptClassMethods['___MockScriptClassMethod_allinstances_TestClassObjectMethod4_RealObjectMethod__'] | out-host
+            write-host -fore yellow '**************************'
+
+            ($testObject |=> RealObjectMethod 3 7) | Should Be 2
+
+            Mock-ScriptClassMethod $testObject RealObjectMethod { 5 }
+
+            write-host -fore yellow '**************************'
+             $__MockedScriptClassMethods['___MockScriptClassMethod_allinstances_TestClassObjectMethod4_RealObjectMethod__'] | out-host
+            write-host -fore yellow '**************************'
+
+            ($testObject |=> RealObjectMethod 3 7) | Should Be 5
+
+            Remove-ScriptClassMethodMock TestClassObjectMethod4 RealObjectMethod
+
+            write-host -fore yellow '**************************'
+             $__MockedScriptClassMethods['___MockScriptClassMethod_allinstances_TestClassObjectMethod4_RealObjectMethod__'] | out-host
+            write-host -fore yellow '**************************'
+
+            ($testObject |=> RealObjectMethod 3 7) | Should Be 5
+
+            Remove-ScriptClassMethodMock -object $testObject RealObjectMethod
+
+            ($testObject |=> RealObjectMethod 3 7) | Should Be ( $testObject.objectData + 3 * 7  + 3 )
+        }
     }
 }
 
