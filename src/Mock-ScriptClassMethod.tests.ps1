@@ -155,12 +155,10 @@ Describe 'Mock-ScriptClassObject cmdlet' {
 
             Mock-ScriptClassMethod $testObject RealObjectMethod { 9 }
 
-            write-host 'existing mocked, should return mocked'
             ($testObject |=> RealObjectMethod 3 7 2) | Should Be 9
 
             $testObject2 = new-so TestClassObjectMethod2
 
-            write-host 'new unmocked, should return unmocked'
             ($testObject2 |=> RealObjectMethod 3 7 2) | Should Be ( $testObject.objectData + 3 * 7 * 2 + 1 )
         }
     }
@@ -240,7 +238,7 @@ Describe 'Remove-ScriptClassMethodMock cmdlet' {
             ($testObject |=> RealObjectMethod 3 7) | Should Be 2
 
             Remove-ScriptClassMethodMock -object $testObject RealObjectMethod
-            $testObject.__ScriptClassMockedObjectId() | write-host -fore red
+
             ($testObject |=> RealObjectMethod 3 7) | Should Be ( $testObject.objectData + 3 * 7  + 1 )
         }
 
@@ -259,25 +257,13 @@ Describe 'Remove-ScriptClassMethodMock cmdlet' {
 
             Mock-ScriptClassMethod TestClassObjectMethod4 RealObjectMethod { 2 }
 
-            write-host -fore yellow '**************************'
-             $__MockedScriptClassMethods['___MockScriptClassMethod_allinstances_TestClassObjectMethod4_RealObjectMethod__'] | out-host
-            write-host -fore yellow '**************************'
-
             ($testObject |=> RealObjectMethod 3 7) | Should Be 2
 
             Mock-ScriptClassMethod $testObject RealObjectMethod { 5 }
 
-            write-host -fore yellow '**************************'
-             $__MockedScriptClassMethods['___MockScriptClassMethod_allinstances_TestClassObjectMethod4_RealObjectMethod__'] | out-host
-            write-host -fore yellow '**************************'
-
             ($testObject |=> RealObjectMethod 3 7) | Should Be 5
 
             Remove-ScriptClassMethodMock TestClassObjectMethod4 RealObjectMethod
-
-            write-host -fore yellow '**************************'
-             $__MockedScriptClassMethods['___MockScriptClassMethod_allinstances_TestClassObjectMethod4_RealObjectMethod__'] | out-host
-            write-host -fore yellow '**************************'
 
             ($testObject |=> RealObjectMethod 3 7) | Should Be 5
 
@@ -301,25 +287,15 @@ Describe 'Remove-ScriptClassMethodMock cmdlet' {
 
             Mock-ScriptClassMethod $testObject RealObjectMethod { 5 }
 
-            write-host -fore yellow '1**************************'
-             $__MockedScriptClassMethods['___MockScriptClassMethod_allinstances_TestClassObjectMethod5_RealObjectMethod__'] | out-host
-            write-host -fore yellow '1**************************'
-
             ($testObject |=> RealObjectMethod 3 7) | Should Be 5
 
             Mock-ScriptClassMethod TestClassObjectMethod5 RealObjectMethod { 2 }
 
-            write-host -fore yellow '**************************'
-             $__MockedScriptClassMethods['___MockScriptClassMethod_allinstances_TestClassObjectMethod5_RealObjectMethod__'] | out-host
-            write-host -fore yellow '**************************'
 
             ($testObject |=> RealObjectMethod 3 7) | Should Be 5
 
             Remove-ScriptClassMethodMock TestClassObjectMethod5 RealObjectMethod
 
-            write-host -fore yellow '**************************'
-             $__MockedScriptClassMethods['___MockScriptClassMethod_allinstances_TestClassObjectMethod5_RealObjectMethod__'] | out-host
-            write-host -fore yellow '**************************'
 
             ($testObject |=> RealObjectMethod 3 7) | Should Be 5
 

@@ -192,29 +192,26 @@ function __GetMockableMethodName(
 
 $__mockInstanceMethodTemplate = @'
 set-strictmode -version 2
-write-host 'called stub method'
-$__filterpass = $null
 $__objectMockScriptBlock = if ( $this | gm __ScriptClassMockedObjectId -erroraction ignore ) {{
     $__objectFilterId = $this.__ScriptClassMockedObjectId()
-    $__filterpass = $__objectFilterId
     if ( $__objectFilterId ) {{
         $script:__MockedObjectMethods[$__objectFilterId].MockWith
     }}
 }}
 
 if ( $__objectMockScriptBlock ) {{
-write-host -fore yellow 'Found matching object', $__filterpass
+    # Invoke the object-specific mock
     $__result = . $__objectMockScriptBlock @args
     return $__result
 }} else {{
     $__MethodInfo = $script:__MockedScriptClassMethods['{0}']
     if ( ! $__MethodInfo -or ! $__MethodInfo.AllInstances ) {{
-        write-host 'calling original method'
+        # Invoke the original unmocked method
         $__result = . $__MethodInfo.OriginalScriptBlock @args
         return $__result
     }}
 }}
-write-host -fore yellow 'calling base method'
+# Invoke the all-instance mock of this method
 {0} @args
 '@
 
@@ -300,8 +297,6 @@ function Remove-ScriptClassMethodMock {
         [parameter(parametersetname='all', mandatory=$true)]
         [switch] $All
     )
-    write-host -fore cyan "remove", $classname, $methodname, ($object -ne $null), $static
-
     $targetMethods = if ( $All.IsPresent ) {
         $script:__MockedScriptClassMethods.values | foreach { $_ }
     } else {
@@ -311,11 +306,8 @@ function Remove-ScriptClassMethodMock {
     $targetMethods | foreach {
         __RemoveMockedMethod $_ $Object
         if ( ! $_.AllInstances -and $_.MockedObjects.Count -eq 0 ) {
-            write-host -fore cyan 'removing all instances'
             gi "function:$($_.functionname)" | rm
             $script:__MockedScriptClassMethods.Remove($_.functionname)
-        } else {
-            write-host -fore cyan 'Skipping remove', $_.AllInstances, $_.MockedObjects.Count
         }
     }
 }
@@ -388,17 +380,13 @@ function __UnpatchSingleInstanceMethod($mockedFunctionInfo, $object) {
         throw [ArgumentException]::new("There are no mocked objects for the method '$($mockedFunctionInfo.methodName)'")
     }
 
-    write-host "Reducing instance from", $mockedFunctionInfo.MockedObjects.Count
     $mockedFunctionInfo.MockedObjects.Remove($objectId)
     if ( ! $mockedFunctionInfo.AllInstances -and $mockedFunctionInfo.MockedObjects.Count -eq 0 ) {
         $mockedFunctionInfo.classData.instanceMethods[$mockedFunctionInfo.methodName] = $mockedFunctionInfo.OriginalScriptBlock
     }
 
-    write-host -fore magenta 'fixing up object', $objectId
     $script:__mockedObjectMethods.Remove($objectId)
     $object | add-member -name __ScriptClassMockedObjectId -membertype scriptmethod -value {} -force
-    $myval = $object.__ScriptClassMockedObjectId()
-    write-host -fore cyan $myval, ($myval -eq $null)
 }
 
 function __UnpatchStaticMethod($mockedFunction) {
