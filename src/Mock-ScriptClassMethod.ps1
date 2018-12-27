@@ -142,16 +142,18 @@ function __MockMethodFunction($methodFunctionName, $frameworkArguments, $object,
     if ( $object ) {
         $objectId = __GetMockedObjectUniqueId $object
 
-        if ( ! $script:__MockedObjectMethods[$objectId] ) {
+        $objectEntry = if ( ! $script:__MockedObjectMethods[$objectId] ) {
             $newEntry = @{
                 Object=$object
                 MockWith = $frameworkArguments.MockWith
                 FunctionName = $methodFunctionName
             }
             $script:__MockedObjectMethods.Add($objectId, $newEntry)
-            $methodInfo = $script:__MockedScriptClassMethods[$methodFunctionName]
-            $methodInfo.instanceCount += 1
+            $newEntry
         }
+
+        $methodInfo = $script:__MockedScriptClassMethods[$methodFunctionName]
+        $methodInfo.MockedObjects[$objectId] = $objectEntry
     }
 
     Mock $methodFunctionName @frameworkArguments
@@ -255,7 +257,7 @@ function __GetMockableMethodFunction(
             IsStatic = $isStatic
             ClassData = $__classTable[$className]
             AllInstances = ($object -eq $null)
-            InstanceCount = 0
+            MockedObjects = @{}
             OriginalScriptBlock = $originalMethodBlock
             ReplacementScriptBlock = $replacementMethodBlock
         }
@@ -308,12 +310,12 @@ function Remove-ScriptClassMethodMock {
 
     $targetMethods | foreach {
         __RemoveMockedMethod $_ $Object
-        if ( ! $_.AllInstances -and $_.InstanceCount -eq 0 ) {
+        if ( ! $_.AllInstances -and $_.MockedObjects.Count -eq 0 ) {
             write-host -fore cyan 'removing all instances'
             gi "function:$($_.functionname)" | rm
             $script:__MockedScriptClassMethods.Remove($_.functionname)
         } else {
-            write-host -fore cyan 'Skipping remove', $_.AllInstances, $_.InstanceCount
+            write-host -fore cyan 'Skipping remove', $_.AllInstances, $_.MockedObjects.Count
         }
     }
 }
@@ -361,7 +363,7 @@ function __RemoveMockedMethod($mockedFunctionInfo, $object) {
 
 function __UnpatchAllInstancesMethod($mockedFunctionInfo) {
     $mockedFunctionInfo.AllInstances = $false
-    if ( $mockedFunctionInfo.instancecount -eq 0 ) {
+    if ( $mockedFunctionInfo.MockedObjects.count -eq 0 ) {
         $mockedFunctionInfo.classData.instanceMethods[$mockedFunctionInfo.methodName] = $mockedFunctionInfo.OriginalScriptBlock
     }
 }
@@ -382,13 +384,13 @@ function __UnpatchSingleInstanceMethod($mockedFunctionInfo, $object) {
         throw [ArgumentException]::new("The specified object is not currently mocked")
     }
 
-    if ( $mockedFunctionInfo.InstanceCount -eq 0 ) {
+    if ( $mockedFunctionInfo.MockedObjects.Count -eq 0 ) {
         throw [ArgumentException]::new("There are no mocked objects for the method '$($mockedFunctionInfo.methodName)'")
     }
 
-    write-host "Reducing instance from", $mockedFunctionInfo.InstanceCount
-    $mockedFunctionInfo.InstanceCount -= 1
-    if ( ! $mockedFunctionInfo.AllInstances -and $mockedFunctionInfo.InstanceCount -eq 0 ) {
+    write-host "Reducing instance from", $mockedFunctionInfo.MockedObjects.Count
+    $mockedFunctionInfo.MockedObjects.Remove($objectId)
+    if ( ! $mockedFunctionInfo.AllInstances -and $mockedFunctionInfo.MockedObjects.Count -eq 0 ) {
         $mockedFunctionInfo.classData.instanceMethods[$mockedFunctionInfo.methodName] = $mockedFunctionInfo.OriginalScriptBlock
     }
 
