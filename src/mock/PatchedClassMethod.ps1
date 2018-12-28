@@ -1,0 +1,166 @@
+# Copyright 2019, Adam Edwards
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+function __PatchedClassMethod_New(
+    $classDefinition,
+    $methodName,
+    $isStatic,
+    $allInstances
+) {
+    $className = $classDefinition.prototype.pstypename
+    $functionName = __PatchedClassMethod_GetMockableMethodName $className $methodName $isStatic
+    if ( $isStatic -and ! $allInstances ) {
+        throw [ArgumentException]::new("Mocking of a static method was specified, but allInstances was $false")
+    }
+
+    [PSCustomObject] @{
+        Id = $functionName
+        FunctionName = $functionName
+        ClassName = $className
+        MethodName = $methodName
+        IsStatic = $isStatic
+        ClassData = $classDefinition
+        AllInstances = $allInstances
+        MockedObjects = @{}
+        OriginalScriptBlock = $originalMethodBlock
+        ReplacementScriptBlock = $replacementMethodBlock
+    }
+}
+
+function __PatchedClassMethod_IsActive($mockableMethod, $object) {
+    $isActive = $mockableMethod.AllInstances -or $mockableMethod.MockedObjects.Count -gt 0
+
+    if ( $isActive ) {
+        if ( $object ) {
+            $mockableMethod.MockedObjects.Contains($object.__ScriptClassMockedObjectId())
+        } else {
+            $true
+        }
+    } else {
+        $false
+    }
+}
+
+function __PatchedClassMethod_PatchObjectMethod($mockableMethod, $object) {
+    $objectId = __PatchedObject_GetUniqueId $object
+
+    $mockedObject = __PatchedObject_New $object
+
+    $mockableMethod.MockedObjects[$objectId] = $mockedObject
+}
+
+function __PatchedClassMethod_GetPatchedObject($mockableMethod, $object) {
+    $objectId = __PatchedObject_GetUniqueId $object
+
+    $patchedObject = $mockableMethod.MockedObjects[$objectId]
+
+    if ( ! $patchedObject ) {
+        throw [ArgumentException]::new("The specified object is not mocked")
+    }
+
+    $patchedObject
+}
+
+function __PatchedClassMethod_GetMockedObjectScriptblock($mockableMethod, $object) {
+    if ( $object | gm __ScriptClassMockedObjectId -erroraction ignore ) {
+        $objectId = $object.__ScriptClassMockedObjectId()
+        $mockedObject = if ( $objectId ) {
+            $mockableMethod.MockedObjects[$objectId]
+        }
+
+        if ( $mockedObject ) {
+            $mockedObject.MockScriptblock
+        }
+    }
+}
+
+function __PatchedClassMethod_GetMockableMethodName(
+    $className,
+    $methodName,
+    $isStatic
+) {
+    $methodType = if ( $isStatic ) {
+        'static'
+    } else {
+        'allinstances'
+    }
+
+    "___MockScriptClassMethod_$($methodType)_$($classname)_$($methodName)__"
+}
+
+function __PatchedClassMethod_Patch($mockableMethod, $object) {
+    if ( $mockableMethod.IsStatic ) {
+        __PatchedClassMethod_PatchStaticMethod $mockableMethod
+    } else {
+        __PatchedClassMethod_PatchNonstaticMethod $mockableMethod
+
+        if ( $object ) {
+            __PatchedClassMethod_PatchObjectMethod $mockableMethod $object
+        }
+    }
+}
+
+function __PatchedClassMethod_PatchStaticMethod($mockFunctionInfo) {
+    __PatchedClassMethod_SetObjectMethod $mockFunctionInfo.classData.prototype.scriptclass $mockFunctionInfo.methodname $mockFunctionInfo.ReplacementScriptblock
+}
+
+function __PatchedClassMethod_PatchNonstaticMethod($mockFunctionInfo) {
+    $mockFunctionInfo.classData.instanceMethods[$mockFunctionInfo.methodName] = $mockFunctionInfo.ReplacementScriptBlock
+}
+
+function __PatchedClassMethod_UnpatchNonstaticMethod($mockedFunctionInfo) {
+    $mockedFunctionInfo.AllInstances = $false
+    if ( $mockedFunctionInfo.MockedObjects.count -eq 0 ) {
+        $mockedFunctionInfo.classData.instanceMethods[$mockedFunctionInfo.methodName] = $mockedFunctionInfo.OriginalScriptBlock
+    }
+}
+
+function __PatchedClassMethod_UnpatchObject($mockedFunctionInfo, $object) {
+    if ( ! (__PatchedObject_IsPatched $object) ) {
+        throw [ArgumentException]::new("The specified object is not mocked")
+    }
+
+    if ( ! (__PatchedClassMethod_IsActive $mockedFunctionInfo $object) ) {
+        throw [ArgumentException]::new("There are no mocked objects for the method '$($mockedFunctionInfo.methodName)'")
+    }
+
+    $objectId = $object.__ScriptClassMockedObjectId()
+
+    $mockedFunctionInfo.MockedObjects.Remove($objectId)
+
+    if ( ! (__PatchedClassMethod_IsActive $mockedFunctionInfo ) ) {
+        $mockedFunctionInfo.classData.instanceMethods[$mockedFunctionInfo.methodName] = $mockedFunctionInfo.OriginalScriptBlock
+    }
+
+    $object | add-member -name __ScriptClassMockedObjectId -membertype scriptmethod -value {} -force
+}
+
+function __PatchedClassMethod_UnpatchStaticMethod($patchedMethod) {
+    __PatchedClassMethod_SetObjectMethod $patchedMethod.classData.prototype.scriptclass $patchedMethod.methodname $patchedMethod.originalScriptblock
+}
+
+function __PatchedClassMethod_SetObjectMethod($object, $methodname, $originalScriptBlock) {
+    $object | add-member -name $methodname -membertype scriptmethod -value $originalScriptblock -force
+}
+
+function __PatchedClassMethod_Unpatch($patchedMethod, $object) {
+    if ( $object ) {
+        __PatchedClassMethod_UnpatchObject $patchedMethod $object
+    } elseif ( $patchedMethod.IsStatic ) {
+        __PatchedClassMethod_UnpatchStaticMethod $patchedMethod
+    } else {
+        __PatchedClassMethod_UnpatchNonstaticMethod $patchedMethod
+    }
+}
+

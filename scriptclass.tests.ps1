@@ -27,8 +27,8 @@ Describe "ScriptClass module manifest" {
                 'Invoke-Method',
                 'Mock-ScriptClassMethod',
                 'New-ScriptObject',
-                'Remove-MockScriptClassMethod',
-                'Test-ScriptObject')
+                'Test-ScriptObject',
+                'Unmock-ScriptClassMethod')
 
             $manifest.ExportedCmdlets.count | Should BeExactly $expectedCmdlets.length
 

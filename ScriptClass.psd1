@@ -84,8 +84,8 @@ FunctionsToExport = @('=>', '::>')
         'invoke-method',
         'Mock-ScriptClassMethod',
         'new-scriptobject',
-        'Remove-MockScriptClassMethod',
-        'test-scriptobject')
+        'test-scriptobject',
+        'Unmock-ScriptClassMethod')
 
 # Variables to export from this module
 VariablesToExport = @('::')
@@ -104,8 +104,13 @@ AliasesToExport = @('new-so', 'ScriptClass', 'with', 'load-assembly', 'const')
         './scriptclass.psd1',
         './scriptclass.psm1',
         'src/Mock-ScriptClassMethod.ps1',
+        'src/mock/MethodMocker.ps1',
+        'src/mock/MethodPatcher.ps1',
+        'src/mock/PatchedClassMethod.ps1',
+        'src/mock/PatchedObject.ps1',
         'src/scriptclass.ps1',
         'src/std.ps1',
+        'src/Unmock-ScriptClassMethod.ps1',
         'src/include.ps1',
         'src/assemblyhelper.ps1')
 
@@ -135,7 +140,7 @@ In addition to fixes and minor improvements below, this release adds support for
 ## New features
 
 * Add ``Mock-ScriptClassMethod`` cmdlet to enable mocking via the [Pester](https:/github.com/pester/pester) test framework
-* Add ``Remove-MockScriptClassMethod`` cmdlet to remove mocks added by ``Mock-ScriptClassMethod``
+* Add ``Unmock-ScriptClassMethod`` cmdlet to remove mocks added by ``Mock-ScriptClassMethod``
 * Add ``GetScriptHashCode`` method to ScriptClass objects to return unique hash codes since GetHashCode hashes objects of the same class to the same value
 
 ## Fixed defects

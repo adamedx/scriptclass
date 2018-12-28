@@ -1,4 +1,4 @@
-# Copyright 2017, Adam Edwards
+# Copyright 2019, Adam Edwards
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,9 +13,7 @@
 # limitations under the License.
 
 $here = Split-Path -Parent $MyInvocation.MyCommand.Path
-$sut = (Split-Path -Leaf $MyInvocation.MyCommand.Path) -replace '\.Tests\.', '.'
 $thismodule = join-path (split-path -parent $here) 'scriptclass.psd1'
-. $here/$sut
 
 Describe 'Mock-ScriptClassObject cmdlet' {
     BeforeAll {
@@ -164,7 +162,7 @@ Describe 'Mock-ScriptClassObject cmdlet' {
     }
 }
 
-Describe 'Remove-ScriptClassMethodMock cmdlet' {
+Describe 'Unmock-ScriptClassMethodMock cmdlet' {
     BeforeAll {
         remove-module $thismodule -force -erroraction silentlycontinue
         import-module $thismodule -force
@@ -189,7 +187,7 @@ Describe 'Remove-ScriptClassMethodMock cmdlet' {
 
             ($testClass |=> RealMethod 3 7) | Should Be 5
 
-            Remove-ScriptClassMethodMock TestClassInstanceMethod3 RealMethod
+            Unmock-ScriptClassMethod TestClassInstanceMethod3 RealMethod
 
             ($testClass |=> RealMethod 3 7) | Should Be 19
         }
@@ -213,7 +211,7 @@ Describe 'Remove-ScriptClassMethodMock cmdlet' {
 
             ($::.TestClassStaticMethod2 |=> StaticRealMethod 3 7) | Should Be 3
 
-            Remove-ScriptClassMethodMock TestClassStaticMethod2 StaticRealMethod -static
+            Unmock-ScriptClassMethod TestClassStaticMethod2 StaticRealMethod -static
 
             ($::.TestClassStaticMethod2 |=> StaticRealMethod 3 7) | Should Be ( $::.TestClassStaticMethod2.staticdata + 3 * 7 )
         }
@@ -237,7 +235,7 @@ Describe 'Remove-ScriptClassMethodMock cmdlet' {
 
             ($testObject |=> RealObjectMethod 3 7) | Should Be 2
 
-            Remove-ScriptClassMethodMock -object $testObject RealObjectMethod
+            Unmock-ScriptClassMethod $testObject RealObjectMethod
 
             ($testObject |=> RealObjectMethod 3 7) | Should Be ( $testObject.objectData + 3 * 7  + 1 )
         }
@@ -263,11 +261,11 @@ Describe 'Remove-ScriptClassMethodMock cmdlet' {
 
             ($testObject |=> RealObjectMethod 3 7) | Should Be 5
 
-            Remove-ScriptClassMethodMock TestClassObjectMethod4 RealObjectMethod
+            Unmock-ScriptClassMethod TestClassObjectMethod4 RealObjectMethod
 
             ($testObject |=> RealObjectMethod 3 7) | Should Be 5
 
-            Remove-ScriptClassMethodMock -object $testObject RealObjectMethod
+            Unmock-ScriptClassMethod $testObject RealObjectMethod
 
             ($testObject |=> RealObjectMethod 3 7) | Should Be ( $testObject.objectData + 3 * 7  + 3 )
         }
@@ -294,12 +292,12 @@ Describe 'Remove-ScriptClassMethodMock cmdlet' {
 
             ($testObject |=> RealObjectMethod 3 7) | Should Be 5
 
-            Remove-ScriptClassMethodMock TestClassObjectMethod5 RealObjectMethod
+            Unmock-ScriptClassMethod TestClassObjectMethod5 RealObjectMethod
 
 
             ($testObject |=> RealObjectMethod 3 7) | Should Be 5
 
-            Remove-ScriptClassMethodMock -object $testObject RealObjectMethod
+            Unmock-ScriptClassMethod $testObject RealObjectMethod
 
             ($testObject |=> RealObjectMethod 3 7) | Should Be ( $testObject.objectData + 3 * 7  + 3 )
         }

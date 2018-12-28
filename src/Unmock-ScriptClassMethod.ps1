@@ -12,25 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-function Mock-ScriptClassMethod {
-    [cmdletbinding(positionalbinding=$false)]
+function Unmock-ScriptClassMethod {
+    [cmdletbinding()]
     param(
-        [parameter(position=0, mandatory=$true)]
+        [parameter(parametersetname='specific', position=0, mandatory=$true)]
         $MockTarget,
 
-        [parameter(position=1, mandatory=$true)]
-        [String] $MethodName,
+        [parameter(parametersetname='specific', position=1)]
+        [string] $MethodName,
 
-        [parameter(position=2)]
-        [ScriptBlock] $MockWith = {},
+        [parameter(parametersetname='specific', position=2)]
+        [switch] $Static,
 
-        [parameter(position=3)]
-        [ScriptBlock] $ParameterFilter,
-
-        [parameter(parametersetname='static')]
-        [Switch] $Static,
-
-        [Switch] $Verifiable
+        [parameter(parametersetname='all', mandatory=$true)]
+        [switch] $All
     )
 
     $ScriptObject = $null
@@ -47,14 +42,5 @@ function Mock-ScriptClassMethod {
         throw [ArgumentException]::new("Argument 'MockTarget' of type '$($MockTarget.gettype())' is not of valid type [String] or [PSCustomObject]")
     }
 
-    $normalizedParameterFilter = if ( $ParameterFilter ) {
-        $ParameterFilter
-    } else {
-        { $true }
-    }
-
-    $mocker = __MethodMocker_Get
-
-    __MethodMocker_Mock $mocker $className  $methodName $Static.IsPresent $ScriptObject $MockWith $normalizedParameterFilter $Verifiable.IsPresent
+    __MethodMocker_Unmock $ClassName $MethodName $Static.IsPresent $ScriptObject $All.IsPresent
 }
-
