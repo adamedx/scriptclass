@@ -35,17 +35,17 @@ function __MethodPatcher_Get {
 
     $newPatcher.NonstaticMethodTemplate = @'
 set-strictmode -version 2
-$__mockedMethod = __MethodPatcher_GetMockableMethodByFunctionName (__MethodPatcher_Get) '{0}'
-if ( $__mockedMethod ) {{
-    $__objectMockScriptBlock = __PatchedClassMethod_GetMockedObjectScriptBlock $__mockedMethod $this
+$__patchedMethod = __MethodPatcher_GetPatchedMethodByFunctionName (__MethodPatcher_Get) '{0}'
+if ( $__patchedMethod ) {{
+    $__objectMockScriptBlock = __PatchedClassMethod_GetMockedObjectScriptBlock $__patchedMethod $this
     if ( $__objectMockScriptBlock ) {{
         # Invoke the object-specific mock
         $__result = . $__objectMockScriptBlock @args
         return $__result
     }} else {{
-        if ( ! $__mockedMethod.AllInstances ) {{
+        if ( ! $__patchedMethod.AllInstances ) {{
             # Invoke the original unmocked method
-            $__result = . $__mockedMethod.OriginalScriptBlock @args
+            $__result = . $__patchedMethod.OriginalScriptBlock @args
             return $__result
         }}
     }}
@@ -83,11 +83,11 @@ function __MethodPatcher_QueryPatchedMethods($patcher, $className, $method, $sta
         $methodClass = $object.scriptclass.classname
     }
 
-    $mockedClassMethods = $methodNames | foreach {
+    $patchedClassMethods = $methodNames | foreach {
         __MethodPatcher_GetMockableMethodFunction $patcher $methodClass $_ $staticMethods ($object -eq $null)
     }
 
-    $mockedClassMethods
+    $patchedClassMethods
 }
 
 function __MethodPatcher_GetMockableMethodFunction(
@@ -99,7 +99,7 @@ function __MethodPatcher_GetMockableMethodFunction(
 ) {
     $functionName = __PatchedClassMethod_GetMockableMethodName $className $methodName $isStatic
 
-    $existingPatchMethod = __MethodPatcher_GetMockableMethodByFunctionName $patcher $functionName
+    $existingPatchMethod = __MethodPatcher_GetPatchedMethodByFunctionName $patcher $functionName
 
     if ( $existingPatchMethod ) {
         $existingPatchMethod
@@ -112,11 +112,11 @@ function __MethodPatcher_GetMockableMethodFunction(
 
         new-item "function:script:$($functionName)" -value $originalMethodBlock -force | out-null
 
-        $mockedClassMethod = __PatchedClassMethod_New $classDefinition $methodName $isStatic $allInstances
+        $patchedClassMethod = __PatchedClassMethod_New $classDefinition $methodName $isStatic $allInstances
 
-        $patcher.Methods[$mockedClassMethod.FunctionName] = $mockedClassMethod
+        $patcher.Methods[$patchedClassMethod.FunctionName] = $patchedClassMethod
 
-        $mockedClassMethod
+        $patchedClassMethod
     }
 }
 
@@ -166,7 +166,7 @@ function __MethodPatcher_PatchMethod(
     $mockableMethod
 }
 
-function __MethodPatcher_GetMockableMethodByFunctionName($patcher, $functionName) {
+function __MethodPatcher_GetPatchedMethodByFunctionName($patcher, $functionName) {
     $patcher.Methods[$functionName]
 }
 

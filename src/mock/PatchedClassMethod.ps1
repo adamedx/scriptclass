@@ -32,18 +32,18 @@ function __PatchedClassMethod_New(
         IsStatic = $isStatic
         ClassData = $classDefinition
         AllInstances = $allInstances
-        MockedObjects = @{}
+        PatchedObjects = @{}
         OriginalScriptBlock = $originalMethodBlock
         ReplacementScriptBlock = $replacementMethodBlock
     }
 }
 
-function __PatchedClassMethod_IsActive($mockableMethod, $object) {
-    $isActive = $mockableMethod.AllInstances -or $mockableMethod.MockedObjects.Count -gt 0
+function __PatchedClassMethod_IsActive($patchedMethod, $object) {
+    $isActive = $patchedMethod.AllInstances -or $patchedMethod.PatchedObjects.Count -gt 0
 
     if ( $isActive ) {
         if ( $object ) {
-            $mockableMethod.MockedObjects.Contains($object.__ScriptClassMockedObjectId())
+            $patchedMethod.PatchedObjects.Contains($object.__ScriptClassMockedObjectId())
         } else {
             $true
         }
@@ -52,35 +52,35 @@ function __PatchedClassMethod_IsActive($mockableMethod, $object) {
     }
 }
 
-function __PatchedClassMethod_PatchObjectMethod($mockableMethod, $object) {
+function __PatchedClassMethod_PatchObjectMethod($patchedMethod, $object) {
     $objectId = __PatchedObject_GetUniqueId $object
 
-    $mockedObject = __PatchedObject_New $object
+    $patchedObject = __PatchedObject_New $object
 
-    $mockableMethod.MockedObjects[$objectId] = $mockedObject
+    $patchedMethod.PatchedObjects[$objectId] = $patchedObject
 }
 
-function __PatchedClassMethod_GetPatchedObject($mockableMethod, $object) {
+function __PatchedClassMethod_GetPatchedObject($patchedMethod, $object) {
     $objectId = __PatchedObject_GetUniqueId $object
 
-    $patchedObject = $mockableMethod.MockedObjects[$objectId]
+    $patchedObject = $patchedMethod.PatchedObjects[$objectId]
 
     if ( ! $patchedObject ) {
-        throw [ArgumentException]::new("The specified object is not mocked")
+        throw [ArgumentException]::new("The specified object is not patched or mocked")
     }
 
     $patchedObject
 }
 
-function __PatchedClassMethod_GetMockedObjectScriptblock($mockableMethod, $object) {
+function __PatchedClassMethod_GetMockedObjectScriptblock($patchedMethod, $object) {
     if ( $object | gm __ScriptClassMockedObjectId -erroraction ignore ) {
         $objectId = $object.__ScriptClassMockedObjectId()
-        $mockedObject = if ( $objectId ) {
-            $mockableMethod.MockedObjects[$objectId]
+        $patchedObject = if ( $objectId ) {
+            $patchedMethod.PatchedObjects[$objectId]
         }
 
-        if ( $mockedObject ) {
-            $mockedObject.MockScriptblock
+        if ( $patchedObject ) {
+            $patchedObject.MockScriptblock
         }
     }
 }
@@ -119,28 +119,28 @@ function __PatchedClassMethod_PatchNonstaticMethod($mockFunctionInfo) {
     $mockFunctionInfo.classData.instanceMethods[$mockFunctionInfo.methodName] = $mockFunctionInfo.ReplacementScriptBlock
 }
 
-function __PatchedClassMethod_UnpatchNonstaticMethod($mockedFunctionInfo) {
-    $mockedFunctionInfo.AllInstances = $false
-    if ( $mockedFunctionInfo.MockedObjects.count -eq 0 ) {
-        $mockedFunctionInfo.classData.instanceMethods[$mockedFunctionInfo.methodName] = $mockedFunctionInfo.OriginalScriptBlock
+function __PatchedClassMethod_UnpatchNonstaticMethod($patchedMethod) {
+    $patchedMethod.AllInstances = $false
+    if ( $patchedMethod.PatchedObjects.count -eq 0 ) {
+        $patchedMethod.classData.instanceMethods[$patchedMethod.methodName] = $patchedMethod.OriginalScriptBlock
     }
 }
 
-function __PatchedClassMethod_UnpatchObject($mockedFunctionInfo, $object) {
+function __PatchedClassMethod_UnpatchObject($patchedMethod, $object) {
     if ( ! (__PatchedObject_IsPatched $object) ) {
-        throw [ArgumentException]::new("The specified object is not mocked")
+        throw [ArgumentException]::new("The specified object is not patched or mocked")
     }
 
-    if ( ! (__PatchedClassMethod_IsActive $mockedFunctionInfo $object) ) {
-        throw [ArgumentException]::new("There are no mocked objects for the method '$($mockedFunctionInfo.methodName)'")
+    if ( ! (__PatchedClassMethod_IsActive $patchedMethod $object) ) {
+        throw [ArgumentException]::new("There are no mocked objects for the method '$($patchedMethod.methodName)'")
     }
 
     $objectId = $object.__ScriptClassMockedObjectId()
 
-    $mockedFunctionInfo.MockedObjects.Remove($objectId)
+    $patchedMethod.PatchedObjects.Remove($objectId)
 
-    if ( ! (__PatchedClassMethod_IsActive $mockedFunctionInfo ) ) {
-        $mockedFunctionInfo.classData.instanceMethods[$mockedFunctionInfo.methodName] = $mockedFunctionInfo.OriginalScriptBlock
+    if ( ! (__PatchedClassMethod_IsActive $patchedMethod ) ) {
+        $patchedMethod.classData.instanceMethods[$patchedMethod.methodName] = $patchedMethod.OriginalScriptBlock
     }
 
     $object | add-member -name __ScriptClassMockedObjectId -membertype scriptmethod -value {} -force

@@ -21,21 +21,21 @@ function __MethodMocker_Get {
 }
 
 function __MethodMocker_Mock($mockManager, $className, $methodName, $isStatic, $object, $mockScriptBlock, $parameterFilter, $isVerifiableMock) {
-    $mockedMethod = __MethodPatcher_PatchMethod $mockManager.MethodPatcher $className $MethodName $isStatic $object
+    $patchedMethod = __MethodPatcher_PatchMethod $mockManager.MethodPatcher $className $MethodName $isStatic $object
 
-    __MethodMocker_MockPatchedMethod $mockedMethod $object $mockScriptBlock $parameterFilter $isVerifiableMock
+    __MethodMocker_MockPatchedMethod $patchedMethod $object $mockScriptBlock $parameterFilter $isVerifiableMock
 }
 
-function __MethodMocker_MockPatchedMethod($mockedMethod, $object, $mockScriptBlock, $parameterFilter, $isVerifiableMock) {
+function __MethodMocker_MockPatchedMethod($patchedMethod, $object, $mockScriptBlock, $parameterFilter, $isVerifiableMock) {
     $adjustedParameterFilter = if ( $object ) {
-        $patchedObject = __PatchedClassMethod_GetPatchedObject $mockedMethod $Object
+        $patchedObject = __PatchedClassMethod_GetPatchedObject $patchedMethod $Object
         __PatchedObject_Mock $patchedObject $mockScriptBlock $parameterFilter
         $patchedObject.ParameterFilter
     } else {
         $parameterFilter
     }
 
-    Mock $mockedMethod.FunctionName -parameterfilter $adjustedParameterfilter -Verifiable:$IsVerifiableMock -MockWith $mockScriptBlock
+    Mock $patchedMethod.FunctionName -parameterfilter $adjustedParameterfilter -Verifiable:$IsVerifiableMock -MockWith $mockScriptBlock
 }
 
 function __MethodMocker_Unmock($className, $methodName, $isStatic, $object, $allMocks) {
