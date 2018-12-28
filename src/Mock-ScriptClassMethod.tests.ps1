@@ -62,7 +62,6 @@ Describe 'Mock-ScriptClassObject cmdlet' {
             $testObject = new-so SimpleClass
             { Mock-ScriptClassMethod $testObject nonexistentmethod { 'nothing' } } | Should Throw 'not found'
         }
-
     }
 
     Context 'Mocking instance methods of a class' {
@@ -96,6 +95,139 @@ Describe 'Mock-ScriptClassObject cmdlet' {
 
             ($testClass |=> RealMethod 3 7) | Should Be 5
 
+        }
+
+        It 'should only use the mock if the parameter filter passes' {
+            ScriptClass ParamFilter1 {
+                function mymethod($param1, $param2) {
+                    $param1 + $param2
+                }
+            }
+
+            $testObject = new-so ParamFilter1
+            $testObject |=> mymethod 1 5 | Should Be 6
+            $testObject |=> mymethod 5 1 | Should Be 6
+
+            Mock-ScriptClassMethod ParamFilter1 mymethod { $param1 * $param2 } -parameterfilter { $param2 -eq 1 }
+
+            $testObject |=> mymethod 1 5 | Should Be 6
+            $testObject |=> mymethod 5 1 | Should Be 5
+        }
+
+        It 'should allow the user of multiple parameter mocks' {
+            ScriptClass ParamFilter3 {
+                function mymethod($param1, $param2) {
+                    $param1 + $param2
+                }
+            }
+
+            $testObject = new-so ParamFilter3
+
+            $testObject |=> mymethod 3 7 | Should Be 10
+
+            Mock-ScriptClassMethod ParamFilter3 mymethod { $param1 * $param2 } -parameterfilter { $param1 -eq 2 }
+            Mock-ScriptClassMethod ParamFilter3 mymethod { $param1 * $param2 + 1 } -parameterfilter { $param2 -eq 5 }
+
+            $testObject |=> mymethod 3 7 | Should Be 10
+            $testObject |=> mymethod 2 7 | Should Be 14
+
+            $testObject |=> mymethod 8 5 | Should Be 41
+            $testObject |=> mymethod 2 5 | Should Be 11
+        }
+
+        It 'should allow the use of the $this variable in the parameter filter to filter specific objects' {
+            ScriptClass ParamFilter2 {
+                $state = 0
+                function mymethod($param1, $param2) {
+                    $this.state + $param1 * $param2
+                }
+            }
+
+            $testObject = new-so ParamFilter2
+            $testObject.state = 3
+            $testObject2 = new-so ParamFilter2
+            $testObject2.state = -7
+
+            $testObject |=> mymethod 4 5 | Should Be 23
+            $testObject2 |=> mymethod 4 5 | Should Be 13
+
+            Mock-ScriptClassMethod ParamFilter2 mymethod { $this.state * $param1 * $param2 } -parameterfilter { $this -eq $testObject2 }
+
+            $testObject |=> mymethod 4 5 | Should Be 23
+            $testObject2 |=> mymethod 4 5 | Should Be -140
+        }
+
+        It 'should be mocked if .net method call syntax is used' {
+            ScriptClass TestDotNetCalls {
+                $data = 5
+                function compute($arg1, $arg2) {
+                    $this.data + $arg1 + $arg2
+                }
+            }
+
+            $testObject = new-so TestDotNetCalls
+
+            $testObject |=> compute 4 3 | Should Be 12
+            $testObject.compute(4,3) | Should Be 12
+
+            Mock-ScriptClassMethod TestDotNetCalls compute { -1 }
+
+            $testObject |=> compute 4 3 | Should Be -1
+            $testObject.compute(4,3) | Should Be -1
+        }
+
+        Context 'Mocking methods of multiple classes' {
+            ScriptClass TestClassInstanceMethod3 {
+                $state = 11
+                function MockMe($arg1, $arg2) {
+                    $this.state + $arg1 + $arg2
+                }
+            }
+
+            ScriptClass TestClassInstanceMethod4 {
+                $thisstate = 13
+                $includedObject = $null
+                function __initialize {
+                    $this.includedObject = new-so TestClassInstanceMethod3
+                }
+                function GetData($arg1) {
+                    $this.thisState + ($this.includedObject |=> MockMe $arg1 3)
+                }
+                function GetState {
+                    $this.thisstate
+                }
+            }
+
+            ScriptClass ReplacementClass1 {
+                function GetReplacedValue($otherObject) {
+                    $otherobject.thisstate + 1
+                }
+            }
+
+            It 'When invoking a method that invokes a mocked method, should return a result that reflects the mocked method' {
+                $testObject = new-so TestClassInstanceMethod3
+                $testObject |=> MockMe 4 5 | Should Be 20
+
+                $testObject2 = new-so TestClassInstanceMethod4
+                $testObject2 |=> GetData 4 | Should Be 31
+
+                Mock-ScriptClassMethod TestClassInstanceMethod3 MockMe { -3 }
+
+                $testObject2 |=> GetData 4 | Should Be 10
+            }
+
+            It 'When invoking a mocked method whose replacement mock invokes a mocked method, the result reflects the mocked method in the replacement mock' {
+                $testObject = new-so TestClassInstanceMethod4
+                $testObject.thisstate = 15
+                $testObject |=> GetState | Should Be 15
+
+                Mock-ScriptClassMethod TestClassInstanceMethod4 GetState { $replacer = new-so ReplacementClass1; $replacer |=> GetReplacedValue $this }
+                $testObject |=> GetState | Should Be 16
+
+                Mock-ScriptClassMethod ReplacementClass1 GetReplacedValue { $otherObject.thisstate - 4 }
+
+                $testObject |=> GetState | Should Be 11
+            }
         }
     }
 
