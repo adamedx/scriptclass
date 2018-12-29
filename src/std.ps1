@@ -23,6 +23,7 @@ set-strictmode -version 2
 . (join-path $psscriptroot mock/MethodPatcher.ps1)
 . (join-path $psscriptroot mock/MethodMocker.ps1)
 . (join-path $psscriptroot Mock-ScriptClassMethod.ps1)
+. (join-path $psscriptroot New-ScriptObjectMock.ps1)
 . (join-path $psscriptroot Unmock-ScriptClassMethod.ps1)
 
 set-alias new-so new-scriptobject

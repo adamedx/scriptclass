@@ -112,7 +112,7 @@ function __MethodPatcher_GetMockableMethodFunction(
 
         new-item "function:script:$($functionName)" -value $originalMethodBlock -force | out-null
 
-        $patchedClassMethod = __PatchedClassMethod_New $classDefinition $methodName $isStatic $allInstances
+        $patchedClassMethod = __PatchedClassMethod_New $classDefinition $methodName $isStatic $allInstances $originalMethodBlock $replacementMethodBlock
 
         $patcher.Methods[$patchedClassMethod.FunctionName] = $patchedClassMethod
 

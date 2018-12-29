@@ -36,7 +36,7 @@ function Mock-ScriptClassMethod {
     $ScriptObject = $null
     $ClassName = $MockTarget
 
-    if ( $MockTarget -is [PSCustomObject] ) {
+    if ( test-scriptobject $MockTarget ) {
         if ( $Static.IsPresent ) {
             throw [ArgumentException]::new("Argument 'Static' may not be specified when the type of argument 'MockTarget' is [PSCustomObject]. Specify a ScriptClass class name of type [String] for 'MockTarget' to use 'Static'")
         }
@@ -44,7 +44,7 @@ function Mock-ScriptClassMethod {
         $ScriptObject = $MockTarget
         $ClassName = $MockTarget.PSTypeName
     } elseif ( $MockTarget -isnot [String] ) {
-        throw [ArgumentException]::new("Argument 'MockTarget' of type '$($MockTarget.gettype())' is not of valid type [String] or [PSCustomObject]")
+        throw [ArgumentException]::new("Argument 'MockTarget' of type '$($MockTarget.gettype())' is not of valid type [String] or a [PSCustomObject] ScriptClass object")
     }
 
     $normalizedParameterFilter = if ( $ParameterFilter ) {

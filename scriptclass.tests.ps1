@@ -27,6 +27,7 @@ Describe "ScriptClass module manifest" {
                 'Invoke-Method',
                 'Mock-ScriptClassMethod',
                 'New-ScriptObject',
+                'New-ScriptObjectMock',
                 'Test-ScriptObject',
                 'Unmock-ScriptClassMethod')
 

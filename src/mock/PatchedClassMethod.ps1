@@ -16,7 +16,9 @@ function __PatchedClassMethod_New(
     $classDefinition,
     $methodName,
     $isStatic,
-    $allInstances
+    $allInstances,
+    $unpatchedMethodBlock,
+    $patchedMethodBlock
 ) {
     $className = $classDefinition.prototype.pstypename
     $functionName = __PatchedClassMethod_GetMockableMethodName $className $methodName $isStatic
@@ -33,8 +35,8 @@ function __PatchedClassMethod_New(
         ClassData = $classDefinition
         AllInstances = $allInstances
         PatchedObjects = @{}
-        OriginalScriptBlock = $originalMethodBlock
-        ReplacementScriptBlock = $replacementMethodBlock
+        OriginalScriptBlock = $unpatchedMethodBlock
+        ReplacementScriptBlock = $patchedMethodBlock
     }
 }
 

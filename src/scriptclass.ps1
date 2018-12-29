@@ -105,7 +105,7 @@ function test-scriptobject {
 
         # Does the object's scriptclass object specify a valid type name and does its
         # PSTypeName match?
-        $isClass = (__find-existingclass $objectClassName) -ne $null -and $Object.psobject.typenames.contains($objectClassName)
+        $isClass = ($objectClassName -and (__find-existingclass $objectClassName) -ne $null) -and $Object.psobject.typenames.contains($objectClassName)
 
         if ($isClass -and $ScriptClass -ne $null) {
             # Now find the target type if it was specified -- map any string to
