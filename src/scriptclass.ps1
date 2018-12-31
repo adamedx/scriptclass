@@ -1,4 +1,4 @@
-# Copyright 2017, Adam Edwards
+# Copyright 2019, Adam Edwards
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,7 +16,11 @@ set-strictmode -version 2
 
 set-alias const new-constant
 
+# Initialize these in script scope at the top to ensure no issues with
+# comparing variables before and after script block execution in
+# subsequent class definition functions
 $__classTable = @{}
+$__staticBlockLocalVariablesToRemove = $null
 
 if ( ! (test-path variable:stricttypecheckingtypename) ) {
     new-variable -name StrictTypeCheckingTypename -value '__scriptclass_strict_value__' -Option Readonly
@@ -101,7 +105,7 @@ function test-scriptobject {
 
         # Does the object's scriptclass object specify a valid type name and does its
         # PSTypeName match?
-        $isClass = (__find-existingclass $objectClassName) -ne $null -and $Object.psobject.typenames.contains($objectClassName)
+        $isClass = ($objectClassName -and (__find-existingclass $objectClassName) -ne $null) -and $Object.psobject.typenames.contains($objectClassName)
 
         if ($isClass -and $ScriptClass -ne $null) {
             # Now find the target type if it was specified -- map any string to
@@ -151,8 +155,8 @@ function invoke-method($context, $do) {
     $result
 }
 
-function =>($method) {
-    if ($method -eq $null) {
+function =>($__method__) {
+    if ($__method__ -eq $null) {
         throw "A method must be specified"
     }
 
@@ -169,7 +173,7 @@ function =>($method) {
     $methodargs = $args
     $results = @()
     $objects | foreach {
-        $results += (with $_ $method @methodargs)
+        $results += (with $_ $__method__ @methodargs)
     }
 
     if ( $results.length -eq 1) {
@@ -181,15 +185,15 @@ function =>($method) {
 
 function ::> {
     param(
-        [parameter(valuefrompipeline=$true)] [string] $classSpec,
-        [parameter(position=0)] $method,
-        [parameter(valuefromremainingarguments=$true)] $remaining
+        [parameter(valuefrompipeline=$true)] [string] $__classSpec__,
+        [parameter(position=0)] $__method__,
+        [parameter(valuefromremainingarguments=$true)] $__remaining__
     )
     [cmdletbinding(positionalbinding=$false)]
 
-    $classObject = get-class $classSpec
+    $classObject = get-class $__classSpec__
 
-    $classObject |=> $method @remaining
+    $classObject |=> $__method__ @__remaining__
 }
 
 function __new-class([Hashtable]$classData, [ScriptBlock] $classBlock) {
@@ -241,8 +245,13 @@ function __add-classmember($className, $classDefinition) {
         ScriptClass = $null
     }
 
+    # Add common methods to the class itself
     __add-member $classMember PSTypeData ScriptProperty ([ScriptBlock]::Create("(__find-existingclass '$className').typedata"))
+    __add-member $classMember GetScriptObjectHashCode ScriptMethod { $this.psobject.members.GetHashCode() }
+
+    # Add common methods for each instance
     __add-typemember NoteProperty $className 'ScriptClass' $null $classMember -hidden
+    __add-typemember ScriptMethod $className GetScriptObjectHashCode $null { $this.psobject.members.GetHashCode() }
 }
 
 function __restore-deserializedobjectmethods($existingClass, $object) {
@@ -298,9 +307,10 @@ function __invoke-scriptwithcontext($objectContext, $script) {
     $thisVariable = [PSVariable]::new('this', $objectContext)
     $variables += $thisVariable
 
-    try {
-        $variables += get-variable pscmdlet 2>$null
-    } catch {
+    $pscmdletVariable = get-variable pscmdlet -erroraction ignore
+
+    if ( $pscmdletVariable ) {
+        $variables += $pscmdletVariable
     }
 
     $functions = @{}
@@ -573,11 +583,7 @@ function new-constant {
         [parameter(mandatory=$true)] $value
     )
 
-    $existingVariable = try {
-        get-variable -name $name -scope 1 2> $null
-    } catch {
-        $null
-    }
+    $existingVariable = get-variable -name $name -scope 1 -erroraction ignore
 
     if ( $existingVariable -eq $null ) {
         new-variable -name $name -value $value -scope 1 -option readonly *> (out-null)
@@ -613,6 +619,7 @@ function __get-classproperties($memberData) {
 function static([ScriptBlock] $staticBlock) {
     function static { throw "The 'static' function may not be used from within a static block" }
     $script:__staticBlockLocalVariablesToRemove = @(
+        'input',
         'varsnapshot1',
         'PSScriptRoot',
         'snapshot2'

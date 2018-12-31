@@ -17,7 +17,7 @@
 # RootModule = ''
 
 # Version number of this module.
-ModuleVersion = '0.13.7'
+ModuleVersion = '0.14.0'
 
 # Supported PSEditions
 # CompatiblePSEditions = @()
@@ -77,7 +77,16 @@ ScriptsToProcess = @('src/std.ps1')
 FunctionsToExport = @('=>', '::>')
 
 # Cmdlets to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no cmdlets to export.
-CmdletsToExport = @('add-scriptclass', 'invoke-method', 'test-scriptobject', 'new-scriptobject', 'import-assembly', 'import-script')
+    CmdletsToExport = @(
+        'add-scriptclass',
+        'import-assembly',
+        'import-script',
+        'invoke-method',
+        'Mock-ScriptClassMethod',
+        'new-scriptobject',
+        'New-ScriptObjectMock',
+        'test-scriptobject',
+        'Unmock-ScriptClassMethod')
 
 # Variables to export from this module
 VariablesToExport = @('::')
@@ -92,7 +101,20 @@ AliasesToExport = @('new-so', 'ScriptClass', 'with', 'load-assembly', 'const')
 # ModuleList = @()
 
 # List of all files packaged with this module
-FileList = @('./scriptclass.psd1', './scriptclass.psm1', 'src/scriptclass.ps1', 'src/std.ps1', 'src/include.ps1', 'src/assemblyhelper.ps1')
+    FileList = @(
+        './scriptclass.psd1',
+        './scriptclass.psm1',
+        'src/Mock-ScriptClassMethod.ps1',
+        'src/mock/MethodMocker.ps1',
+        'src/mock/MethodPatcher.ps1',
+        'src/mock/PatchedClassMethod.ps1',
+        'src/mock/PatchedObject.ps1',
+        'src/New-ScriptObjectMock.ps1',
+        'src/scriptclass.ps1',
+        'src/std.ps1',
+        'src/Unmock-ScriptClassMethod.ps1',
+        'src/include.ps1',
+        'src/assemblyhelper.ps1')
 
 # Private data to pass to the module specified in RootModule/ModuleToProcess. This may also contain a PSData hashtable with additional module metadata used by PowerShell.
 PrivateData = @{
@@ -112,7 +134,24 @@ PrivateData = @{
         IconUri = 'https://raw.githubusercontent.com/adamedx/scriptclass/master/assets/ScriptClassIco.png'
 
         # ReleaseNotes of this module
-        # ReleaseNotes = ''
+        ReleaseNotes = @"
+# ScriptClass 0.14.0 Release Notes
+
+In addition to fixes and minor improvements below, this release adds support for mocking -- you can now mock ``ScriptClass`` methods to easily develop comprehensive unit tests for ``ScriptClass`` code.
+
+## New features
+
+* Add ``Mock-ScriptClassMethod`` cmdlet to enable mocking via the [Pester](https:/github.com/pester/pester) test framework
+* Add ``Unmock-ScriptClassMethod`` cmdlet to remove mocks added by ``Mock-ScriptClassMethod``
+* Add ``New-ScriptObjectMock`` cmdlet to created mocked objects for unit testing compatible with the other mock cmdlets in this module
+* Add ``GetScriptHashCode`` method to ScriptClass objects to return unique hash codes since GetHashCode hashes objects of the same class to the same value
+
+## Fixed defects
+
+* Fixed inability to use a parameter named 'method' in a ScriptClass object method due to name collision
+* Object pollution: Removed leaked 'input' static property and '__staticBlockVariablesToRemove' instance property
+* Fixed pollution of error streams with internal errors that were handled and should not be surfaced outside ScriptClass
+"@
 
     } # End of PSData hashtable
 

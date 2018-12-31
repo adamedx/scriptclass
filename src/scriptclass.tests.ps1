@@ -18,12 +18,12 @@ $thismodule = join-path (split-path -parent $here) 'scriptclass.psd1'
 
 Describe "The class definition interface" {
     BeforeAll {
-        remove-module $thismodule -force 2>$null
+        remove-module $thismodule -force -erroraction silentlycontinue
         import-module $thismodule -force
     }
 
     AfterAll {
-        remove-module $thismodule -force 2>$null
+        remove-module $thismodule -force -erroraction silentlycontinue
     }
 
     Context "When declaring a simple class" {
@@ -610,12 +610,12 @@ Describe "The class definition interface" {
 
 Describe "The get-class cmdlet" {
     BeforeAll {
-        remove-module $thismodule -force 2>$null
+        remove-module $thismodule -force -erroraction silentlycontinue
         import-module $thismodule -force
     }
 
     AfterAll {
-        remove-module $thismodule -force 2>$null
+        remove-module $thismodule -force -erroraction silentlycontinue
     }
 
     ScriptClass ClassClass59 {
@@ -639,12 +639,12 @@ Describe "The get-class cmdlet" {
 
 Describe 'The $:: collection' {
     BeforeAll {
-        remove-module $thismodule -force 2>$null
+        remove-module $thismodule -force -erroraction silentlycontinue
         import-module $thismodule -force
     }
 
     AfterAll {
-        remove-module $thismodule -force 2>$null
+        remove-module $thismodule -force -erroraction silentlycontinue
     }
 
     ScriptClass ClassClass60 {}
@@ -681,12 +681,12 @@ Describe 'The $:: collection' {
 
 Describe "'with' function for object-based command context" {
     BeforeAll {
-        remove-module $thismodule -force 2>$null
+        remove-module $thismodule -force -erroraction silentlycontinue
         import-module $thismodule -force
     }
 
     AfterAll {
-        remove-module $thismodule -force 2>$null
+        remove-module $thismodule -force -erroraction silentlycontinue
     }
 
     Context "When invoking an object's method through with" {
@@ -793,12 +793,12 @@ Describe "'with' function for object-based command context" {
 
 Describe 'The => invocation function' {
     BeforeAll {
-        remove-module $thismodule -force 2>$null
+        remove-module $thismodule -force -erroraction silentlycontinue
         import-module $thismodule -force
     }
 
     AfterAll {
-        remove-module $thismodule -force 2>$null
+        remove-module $thismodule -force -erroraction silentlycontinue
     }
 
     Context "When a method is invoked through the => function" {
@@ -872,12 +872,12 @@ Describe 'The => invocation function' {
 
 Describe 'Static functions' {
     BeforeAll {
-        remove-module $thismodule -force 2>$null
+        remove-module $thismodule -force -erroraction silentlycontinue
         import-module $thismodule -force
     }
 
     AfterAll {
-        remove-module $thismodule -force 2>$null
+        remove-module $thismodule -force -erroraction silentlycontinue
     }
 
     ScriptClass ClassClass52 {
@@ -1079,12 +1079,12 @@ Describe 'Static functions' {
 
 Describe 'Static member variables' {
     BeforeAll {
-        remove-module $thismodule -force 2>$null
+        remove-module $thismodule -force -erroraction silentlycontinue
         import-module $thismodule -force
     }
 
     AfterAll {
-        remove-module $thismodule -force 2>$null
+        remove-module $thismodule -force -erroraction silentlycontinue
     }
 
     Context "When declaring a class with static member variables" {
@@ -1198,14 +1198,74 @@ Describe 'Static member variables' {
     }
 }
 
-Describe 'Typed static member variables' {
+Describe 'Internal ScriptClass State' {
     BeforeAll {
-        remove-module $thismodule -force 2>$null
+        # This only happens for the first static class defined by scriptclass, simulate
+        # by removing the variable
+        remove-variable -scope 0 __staticBlockLocalVariablesToRemove -erroraction ignore
+
+        remove-module $thismodule -force -erroraction silentlycontinue
         import-module $thismodule -force
     }
 
     AfterAll {
-        remove-module $thismodule -force 2>$null
+        remove-module $thismodule -force -erroraction silentlycontinue
+    }
+
+    Context "When defining static members" {
+        It "Should not reproduce a defect where an extra instance property from ScriptClass internals was present when a class is dot-sourced and the static function is used" {
+            # Requires the script variable __staticBlockLocalVariablesToRemove to be removed
+            # in beforeall
+            . {
+                ScriptClass DotSourcedClassWithStatic {
+                    static {
+                    }
+                }
+            }
+
+            $NoExtraMembersClass = $:: | select -ExpandProperty DotSourcedClassWithStatic
+
+            $NoExtraMembersClass.InstanceProperties.Count | Should Be 0
+        }
+
+        It "Should only have class members ClassName, InstanceProperties, TypedMembers, ScriptClass, PSTypeData, and the user specified member variables" {
+            $noExtraMemberClass = 'ScriptClassStaticNoExtra'
+            ScriptClass $noExtraMemberClass {
+                static {
+                    const member1 1
+                    $member2 = 2
+                    $member3 = 3
+                }
+            }
+
+            $expectedMembers = @(
+                'ClassName',
+                'InstanceProperties',
+                'TypedMembers',
+                'ScriptClass',
+                'PSTypeData',
+                'member1',
+                'member2',
+                'member3'
+            )
+
+            $NoExtraMembersClassList = ($:: | select -ExpandProperty $noExtraMemberClass |
+              gm -membertype noteproperty, scriptproperty | select -expandproperty name | sort) -join ';'
+            $expectedMembersList = ($expectedMembers | sort) -join ';'
+
+            $noExtramembersClassList | Should Be $expectedMembersList
+        }
+    }
+}
+
+Describe 'Typed static member variables' {
+    BeforeAll {
+        remove-module $thismodule -force -erroraction silentlycontinue
+        import-module $thismodule -force
+    }
+
+    AfterAll {
+        remove-module $thismodule -force -erroraction silentlycontinue
     }
 
     Context 'When declaring typed static members with strict-val' {
@@ -1243,12 +1303,12 @@ Describe 'Typed static member variables' {
 
 Describe 'The test-scriptobject cmdlet' {
     BeforeAll {
-        remove-module $thismodule -force 2>$null
+        remove-module $thismodule -force -erroraction silentlycontinue
         import-module $thismodule -force
     }
 
     AfterAll {
-        remove-module $thismodule -force 2>$null
+        remove-module $thismodule -force -erroraction silentlycontinue
     }
 
     ScriptClass ClassClass64 {}
@@ -1306,23 +1366,19 @@ Describe 'The test-scriptobject cmdlet' {
 
 Describe "The const cmdlet" {
     BeforeAll {
-        remove-module $thismodule -force 2>$null
+        remove-module $thismodule -force -erroraction silentlycontinue
         import-module $thismodule -force
     }
 
     AfterAll {
-        remove-module $thismodule -force 2>$null
+        remove-module $thismodule -force -erroraction silentlycontinue
     }
 
     function clean-variable($name) {
         $existing = $true
 
         @('Script', 'Local', 1) | foreach {
-            $existing = try {
-                get-variable -name $name -scope $_ 2> $null
-            } catch {
-                $null
-            }
+            $existing = get-variable -name $name -scope $_ -erroraction silentlycontinue
 
             if ($existing -ne $null) {
                 $existing | remove-variable -scope $_ -force
@@ -1333,7 +1389,7 @@ Describe "The const cmdlet" {
     }
 
     function variable-exists($name) {
-        (get-variable -name $name 2> $null) -ne $null
+        (get-variable -name $name -erroraction silentlycontinue) -ne $null
     }
 
     BeforeEach {
@@ -1515,3 +1571,80 @@ Describe "The const cmdlet" {
     }
 }
 
+Describe "Hash codes for ScriptClass objects" {
+    BeforeAll {
+        remove-module $thismodule -force -erroraction ignore
+        import-module $thismodule -force
+    }
+
+    ScriptClass FirstClass {
+    }
+
+    ScriptClass SecondClass {
+    }
+
+    $Class1Instance1 = new-so FirstClass
+    $Class1Instance2 = new-so FirstClass
+
+    $Class2Instance1 = new-so SecondClass
+    $Class2Instance2 = new-so SecondClass
+
+    Context "When the GetScriptClassHashCode method is invoked on ScriptClass instance objects" {
+        It "Should return an integer hash code" {
+            $hashcode = $Class1Instance1.GetScriptObjectHashCode()
+            $hashcode -is [int] | Should Be $true
+            $hashcode | Should Not Be 0
+        }
+
+        It "Should return the same value as the first time when it is invoked more than once on the same instance object" {
+            $lastVal = $null
+
+            for ($current = 0; $current -lt 10; $current++ ) {
+                $hashcode = $Class1Instance1.GetScriptObjectHashCode()
+                if ( $lastVal ) {
+                    $hashcode | Should BeExactly $lastVal
+                }
+
+                $lastVal = $hashcode
+            }
+        }
+
+        It "Should have unique hash codes for two ScriptClass instance objects of the same class" {
+            $Class1Instance1.GetScriptObjectHashCode() | Should Not Be $class1Instance2.GetScriptObjectHashCode()
+        }
+
+        It "Should have unique hash codes for two ScriptClass instance objects of different classes" {
+            $Class1Instance1.GetScriptObjectHashCode() | Should Not Be $class2Instance1.GetScriptObjectHashCode()
+        }
+    }
+
+
+    Context "When the GetScriptClassHashCode method is invoked on ScriptClass class objects" {
+        It "Should return a non-zero integer hash code" {
+            $hashcode = $Class1Instance1.scriptclass.GetScriptObjectHashCode()
+            $hashcode -is [int] | Should Be $true
+            $hashcode | Should Not Be 0
+        }
+
+        It "Should return the same value as the first time when it is invoked more than once on the same instance object" {
+            $lastVal = $null
+
+            for ($current = 0; $current -lt 10; $current++ ) {
+                $hashcode = $Class1Instance1.scriptclass.GetScriptObjectHashCode()
+                if ( $lastVal ) {
+                    $hashcode | Should BeExactly $lastVal
+                }
+
+                $lastVal = $hashcode
+            }
+        }
+
+        It "Should have the same codes for the ScriptClass property for two ScriptClass instance objects of the same class" {
+            $Class1Instance1.scriptclass.GetScriptObjectHashCode() | Should BeExactly $class1Instance2.scriptclass.GetScriptObjectHashCode()
+        }
+
+        It "Should have unique hash codes for the ScriptClass property for two ScriptClass instance objects of different classes" {
+            $Class1Instance1.scriptclass.GetScriptObjectHashCode() | Should Not Be $class2Instance1.scriptclass.GetScriptObjectHashCode()
+        }
+    }
+}
