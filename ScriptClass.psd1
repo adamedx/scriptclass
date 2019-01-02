@@ -32,7 +32,7 @@ Author = 'Adam Edwards'
 CompanyName = 'Modulus Group'
 
 # Copyright statement for this module
-Copyright = '(c) 2018 Adam Edwards.'
+Copyright = '(c) 2019 Adam Edwards.'
 
 # Description of the functionality provided by this module
 Description = "Class definition extensions for PowerShell's object-based type system"
