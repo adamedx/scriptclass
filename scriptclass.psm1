@@ -1,4 +1,4 @@
-# Copyright 2017, Adam Edwards
+# Copyright 2019, Adam Edwards
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,7 +18,8 @@ $functions = @('=>', '::>')
 
 $cmdlets = @('add-scriptclass', 'invoke-method',
              'test-scriptobject', 'new-scriptobject',
-             'import-assembly', 'import-script')
+             'import-assembly', 'import-script',
+             'Mock-ScriptClassMethod', 'Unmock-ScriptClassMethod')
 
 $aliases = @('new-so', 'ScriptClass', 'with', 'load-assembly', 'const' )
 

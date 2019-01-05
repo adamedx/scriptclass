@@ -17,7 +17,7 @@
 # RootModule = ''
 
 # Version number of this module.
-ModuleVersion = '0.14.0'
+ModuleVersion = '0.14.1'
 
 # Supported PSEditions
 # CompatiblePSEditions = @()
@@ -32,7 +32,7 @@ Author = 'Adam Edwards'
 CompanyName = 'Modulus Group'
 
 # Copyright statement for this module
-Copyright = '(c) 2018 Adam Edwards.'
+Copyright = '(c) 2019 Adam Edwards.'
 
 # Description of the functionality provided by this module
 Description = "Class definition extensions for PowerShell's object-based type system"
@@ -135,22 +135,14 @@ PrivateData = @{
 
         # ReleaseNotes of this module
         ReleaseNotes = @"
-# ScriptClass 0.14.0 Release Notes
-
-In addition to fixes and minor improvements below, this release adds support for mocking -- you can now mock ``ScriptClass`` methods to easily develop comprehensive unit tests for ``ScriptClass`` code.
+# ScriptClass 0.14.1 Release Notes
 
 ## New features
 
-* Add ``Mock-ScriptClassMethod`` cmdlet to enable mocking via the [Pester](https:/github.com/pester/pester) test framework
-* Add ``Unmock-ScriptClassMethod`` cmdlet to remove mocks added by ``Mock-ScriptClassMethod``
-* Add ``New-ScriptObjectMock`` cmdlet to created mocked objects for unit testing compatible with the other mock cmdlets in this module
-* Add ``GetScriptHashCode`` method to ScriptClass objects to return unique hash codes since GetHashCode hashes objects of the same class to the same value
-
 ## Fixed defects
 
-* Fixed inability to use a parameter named 'method' in a ScriptClass object method due to name collision
-* Object pollution: Removed leaked 'input' static property and '__staticBlockVariablesToRemove' instance property
-* Fixed pollution of error streams with internal errors that were handled and should not be surfaced outside ScriptClass
+* Fixed intermittent errors in mock functions involving non-existent variables such as '`$script:__MethodMocker' fixed by defining script scope variables just-in-time inside functions
+
 "@
 
     } # End of PSData hashtable

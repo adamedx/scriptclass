@@ -12,10 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-$__MethodPatcher_Singleton = $null
-
 function __MethodPatcher_Get {
-    if ( $script:__MethodPatcher_Singleton ) {
+    $patcher = try {
+        $script:__MethodPatcher_Singleton
+    } catch {
+    }
+
+    if ( $patcher ) {
         return $script:__MethodPatcher_Singleton
     }
 
