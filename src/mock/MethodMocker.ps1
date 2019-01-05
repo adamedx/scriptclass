@@ -12,12 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-$__MethodMocker = [PSCustomObject] @{
-    MethodPatcher = __MethodPatcher_Get
-}
-
 function __MethodMocker_Get {
-    $script:__MethodMocker
+    $mocker = try {
+        $script:__MethodMocker
+    } catch {
+    }
+
+    if ( ! $mocker ) {
+        $mocker = [PSCustomObject] @{
+            MethodPatcher = __MethodPatcher_Get
+        }
+
+        $script:__MethodMocker = $mocker
+    }
+
+    $mocker
 }
 
 function __MethodMocker_Mock($mockManager, $className, $methodName, $isStatic, $object, $mockScriptBlock, $parameterFilter, $isVerifiableMock) {
