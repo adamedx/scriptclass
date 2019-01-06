@@ -12,11 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-$__patchedObjectState = [PSCustomObject] @{
-    SerialStart = $null
-    SerialCurrent = $null
-}
-
 function __PatchedObject_New($object) {
     @{
         Object = $object
@@ -44,7 +39,17 @@ function __PatchedObject_IsPatched($object) {
 }
 
 function __PatchedObject_AllocateUniqueId {
-    if ( $script:__patchedObjectState.SerialCurrent -eq $null ) {
+    $patchState = try {
+        $script:__patchedObjectState
+    } catch {
+        $script:__patchedObjectState = [PSCustomObject] @{
+            SerialStart = $null
+            SerialCurrent = $null
+        }
+        $script:__patchedObjectState
+    }
+
+    if ( $patchState.SerialCurrent -eq $null ) {
         $random = [Random]::new()
         # The next method returns a positive signed [int32]
         $idStart = [uint64] $random.next()
@@ -53,19 +58,19 @@ function __PatchedObject_AllocateUniqueId {
         $idStart += [uint64] $random.next()
         $idStart += [uint64] $random.next()
 
-        $script:__patchedObjectState.SerialStart = $idStart
-        $script:__patchedObjectState.SerialCurrent = $idStart
-    } elseif ( $script:__patchedObjectState.SerialCurrent -eq $script:__patchedObjectState.SerialStart ) {
+        $patchState.SerialStart = $idStart
+        $patchState.SerialCurrent = $idStart
+    } elseif ( $patchState.SerialCurrent -eq $patchState.SerialStart ) {
         throw 'Maximum mock object count exceeded'
     }
 
-    $nextId = if ( $script:__patchedObjectState.SerialCurrent -eq [uint64]::MaxValue ) {
+    $nextId = if ( $patchState.SerialCurrent -eq [uint64]::MaxValue ) {
         0
     } else {
-        $script:__patchedObjectState.SerialCurrent + [uint64] 1
+        $patchState.SerialCurrent + [uint64] 1
     }
 
-    $script:__patchedObjectState.SerialCurrent = $nextId
+    $patchState.SerialCurrent = $nextId
     $nextId
 }
 
