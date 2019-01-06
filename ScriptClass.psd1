@@ -17,7 +17,7 @@
 # RootModule = ''
 
 # Version number of this module.
-ModuleVersion = '0.14.1'
+ModuleVersion = '0.14.2'
 
 # Supported PSEditions
 # CompatiblePSEditions = @()
@@ -135,13 +135,16 @@ PrivateData = @{
 
         # ReleaseNotes of this module
         ReleaseNotes = @"
-# ScriptClass 0.14.1 Release Notes
+# ScriptClass 0.14.2 Release Notes
+
+Bug-fix release for object mocking scenarios
 
 ## New features
+None.
 
 ## Fixed defects
 
-* Fixed intermittent errors in mock functions involving non-existent variables such as '`$script:__MethodMocker' fixed by defining script scope variables just-in-time inside functions
+* Fixed another intermittent errors in mock functions, this time specific to object mocks, involving non-existent variables such as '`$script:__patchedObjectState' fixed by defining script scope variables just-in-time inside functions
 
 "@
 
