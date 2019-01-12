@@ -82,7 +82,7 @@ function __PatchedClassMethod_GetMockedObjectScriptblock($patchedMethod, $object
         }
 
         if ( $patchedObject ) {
-            $patchedObject.MockScriptblock
+            $patchedObject.MockScriptBlock
         }
     }
 }
