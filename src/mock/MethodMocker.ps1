@@ -44,7 +44,13 @@ function __MethodMocker_MockPatchedMethod($patchedMethod, $object, $mockScriptBl
         $parameterFilter
     }
 
-    Mock $patchedMethod.FunctionName -parameterfilter $adjustedParameterfilter -Verifiable:$IsVerifiableMock -MockWith $mockScriptBlock
+    $parameterFilterArgument = if ( $adjustedParameterFilter ) {
+        @{ParameterFilter=$adjustedParameterFilter}
+    } else {
+        @{}
+    }
+
+    Mock $patchedMethod.FunctionName @parameterFilterArgument -Verifiable:$IsVerifiableMock -MockWith $mockScriptBlock
 }
 
 function __MethodMocker_Unmock($className, $methodName, $isStatic, $object, $allMocks) {

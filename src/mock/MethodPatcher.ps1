@@ -176,7 +176,7 @@ function __MethodPatcher_GetPatchedMethodByFunctionName($patcher, $functionName)
 function __MethodPatcher_Unpatch($patcher, $patchedMethod, $object) {
     __PatchedClassMethod_Unpatch $patchedMethod $object
     if ( ! ( __PatchedClassMethod_IsActive $patchedMethod ) ) {
-        gi "function:$($_.functionname)" | rm
+        gi "function:$($_.functionname)" | remove-item
         $patcher.Methods.Remove($patchedMethod.functionname)
     }
 }

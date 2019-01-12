@@ -14,7 +14,7 @@
 
 $here = Split-Path -Parent $MyInvocation.MyCommand.Path
 $sut = (Split-Path -Leaf $MyInvocation.MyCommand.Path) -replace '\.Tests\.', '.'
-$thismodule = join-path (split-path -parent $here) 'scriptclass.psd1'
+$thismodule = join-path (split-path -parent $here) 'ScriptClass.psd1'
 
 Describe "The class definition interface" {
     BeforeAll {
@@ -83,8 +83,8 @@ Describe "The class definition interface" {
                 $mydescription = $null
             }
 
-            $typeData = $::.ClassClass63.PSTypedata
-            $typeData.members.keys -contains 'mydescription' | Should BeExactly $true
+            $typeProperties = $::.ClassClass63.InstanceProperties
+            $typeProperties.keys -contains 'mydescription' | Should BeExactly $true
         }
 
         It "throws an exception if you fail to initialize a property" {

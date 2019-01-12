@@ -13,9 +13,14 @@
 # limitations under the License.
 
 $here = Split-Path -Parent $MyInvocation.MyCommand.Path
+$thisshell = if ( $PSEdition -eq 'Desktop' ) {
+    'powershell'
+} else {
+    'pwsh'
+}
 
 Describe "ScriptClass module manifest" {
-    $manifestLocation   = Join-Path $here 'scriptclass.psd1'
+    $manifestLocation   = Join-Path $here 'ScriptClass.psd1'
     $manifest = Test-ModuleManifest -Path $manifestlocation -ErrorAction Stop -WarningAction SilentlyContinue
 
     Context "When loading the manifest" {
@@ -75,19 +80,19 @@ Describe "ScriptClass module manifest" {
     Context "When dot sourcing a script that imports library" {
         $scriptentry = (get-item "$here\test\assets\simpletestclient.ps1").fullname
         It "Should dot source without errors" {
-            iex "& powershell -noprofile -command { `$erroractionpreference = 'stop'; . '$scriptentry' }"
+            iex "& $thisshell -noprofile -command { `$erroractionpreference = 'stop'; . '$scriptentry' }"
             $lastexitcode | Should BeExactly 0
         }
 
         It "Should dot source without errors and allow the definition of a class" {
-            $uniqueReturnValue = 23609
-            iex "& powershell -noprofile -command { `$erroractionpreference = 'stop'; . '$scriptentry'; ScriptClass ClassTest { `$data = $uniqueReturnValue; function testfunc() { `$this.data }}; `$obj = new-so ClassTest; exit (`$obj |=> testfunc)}"
+            $uniqueReturnValue = 26 # Note that to keep from breaking Linux, this must be an 8 bit #
+            $result = iex "& $thisshell -noprofile -command { `$erroractionpreference = 'stop'; . '$scriptentry'; ScriptClass ClassTest { `$data = $uniqueReturnValue; function testfunc() { `$this.data }}; `$obj = new-so ClassTest; exit (`$obj |=> testfunc)}"
             $lastexitcode | Should BeExactly $uniqueReturnValue
         }
 
 
         It "Should dot source twice in the same session without errors" {
-            iex "& powershell -noprofile -command { `$erroractionpreference = 'stop'; . '$scriptentry'; . '$scriptentry'; }"
+            iex "& $thisshell -noprofile -command { `$erroractionpreference = 'stop'; . '$scriptentry'; . '$scriptentry'; }"
             $lastexitcode | Should BeExactly 0
         }
     }

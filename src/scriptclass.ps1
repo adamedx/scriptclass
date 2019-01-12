@@ -56,6 +56,7 @@ function add-scriptclass {
 
     try {
         $classDefinition = __new-class $classData $classBlock
+
         __add-classmember $className $classDefinition
         __define-class $classDefinition | out-null
         __remove-publishedclass $className
@@ -207,6 +208,7 @@ function __new-class([Hashtable]$classData, [ScriptBlock] $classBlock) {
 
     $prototype = [PSCustomObject]@{PSTypeName=$className}
     $classDefinition = @{typedata=$typeSystemData;prototype=$prototype;classblock=$classblock;instancemethods=@{}}
+
     $__classTable[$className] = $classDefinition
     $classDefinition
 }
@@ -464,7 +466,7 @@ function __add-typemember($memberType, $className, $memberName, $typeName, $init
 }
 
 function __get-classmembers($classDefinition) {
-    $__functions__ = ls function:
+    $__functions__ = get-childitem function:
     $__variables__ = @{}
 
     $__classvariables__ = @{}
@@ -542,7 +544,7 @@ function __get-classmembers($classDefinition) {
     }
 
     $__classfunctions__ = @{}
-    ls function: | foreach { $__classfunctions__[$_.name] = $_ }
+    get-childitem function: | foreach { $__classfunctions__[$_.name] = $_ }
     $__functions__ | foreach {
         if ( $_.scriptblock -eq $__classfunctions__[$_.name].scriptblock) {
             $__classfunctions__.remove($_.name)
@@ -628,10 +630,10 @@ function static([ScriptBlock] $staticBlock) {
         'PSCommandPath'
         'args'
     )
-    $snapshot1 = ls function:
+    $snapshot1 = get-childitem function:
     $varsnapshot1 = get-variable -scope 0
     . $staticBlock
-    $snapshot2 = ls function:
+    $snapshot2 = get-childitem function:
     $varsnapshot2 = get-variable -scope 0
     $delta = @{}
     $varDelta = @{}
@@ -704,14 +706,14 @@ invoke-method $this $existingClass.instancemethods['{0}'] @args
 function __define-class($classDefinition) {
     $aliases = @((get-item alias:with), (get-item 'alias:new-so'), (get-item alias:const))
     pushd function:
-    $functions = ls invoke-method, '=>', new-scriptobject, new-constant, __invoke-methodwithcontext, __invoke-scriptwithcontext, __get-classmembers, static
+    $functions = get-childitem invoke-method, '=>', new-scriptobject, new-constant, __invoke-methodwithcontext, __invoke-scriptwithcontext, __get-classmembers, static
     popd
 
     $memberData = $null
     $classDefinitionException = $null
 
     try {
-        $memberData = new-module -ascustomobject -scriptblock (gi function:modulefunc).scriptblock -argumentlist $functions, $aliases, $classDefinition.typeData.TypeName, $classDefinition.classBlock
+        $memberData = new-module -ascustomobject -scriptblock (gi function:modulefunc).scriptblock -argumentlist $functions, $aliases, $classDefinition.typeData.TypeName, $classDefinition.classblock
         $classDefinitionException = $memberData.__exception__
     } catch {
         $classDefinitionException = $_
@@ -735,7 +737,7 @@ function __define-class($classDefinition) {
         if ($nextFunctions[$_.name] -is [System.Management.Automation.FunctionInfo] -and $functions -notcontains $_.name) {
             $methodBlockWrapper = [ScriptBlock]::Create($__instanceWrapperTemplate -f $_.name)
             __add-typemember ScriptMethod $classDefinition.typeData.TypeName $_.name $null $methodBlockWrapper
-            $classDefinition.InstanceMethods[$_.name] = $_.value.scriptblock
+            $classDefinition.instancemethods[$_.name] = $_.value.scriptblock
         }
     }
 

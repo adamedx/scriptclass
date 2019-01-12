@@ -82,7 +82,7 @@ function __PatchedClassMethod_GetMockedObjectScriptblock($patchedMethod, $object
         }
 
         if ( $patchedObject ) {
-            $patchedObject.MockScriptblock
+            $patchedObject.MockScriptBlock
         }
     }
 }
@@ -118,13 +118,13 @@ function __PatchedClassMethod_PatchStaticMethod($mockFunctionInfo) {
 }
 
 function __PatchedClassMethod_PatchNonstaticMethod($mockFunctionInfo) {
-    $mockFunctionInfo.classData.instanceMethods[$mockFunctionInfo.methodName] = $mockFunctionInfo.ReplacementScriptBlock
+    $mockFunctionInfo.classData.instancemethods[$mockFunctionInfo.methodName] = $mockFunctionInfo.ReplacementScriptBlock
 }
 
 function __PatchedClassMethod_UnpatchNonstaticMethod($patchedMethod) {
     $patchedMethod.AllInstances = $false
     if ( $patchedMethod.PatchedObjects.count -eq 0 ) {
-        $patchedMethod.classData.instanceMethods[$patchedMethod.methodName] = $patchedMethod.OriginalScriptBlock
+        $patchedMethod.classData.instancemethods[$patchedMethod.methodName] = $patchedMethod.OriginalScriptBlock
     }
 }
 
@@ -142,7 +142,7 @@ function __PatchedClassMethod_UnpatchObject($patchedMethod, $object) {
     $patchedMethod.PatchedObjects.Remove($objectId)
 
     if ( ! (__PatchedClassMethod_IsActive $patchedMethod ) ) {
-        $patchedMethod.classData.instanceMethods[$patchedMethod.methodName] = $patchedMethod.OriginalScriptBlock
+        $patchedMethod.classData.instancemethods[$patchedMethod.methodName] = $patchedMethod.OriginalScriptBlock
     }
 
     $object | add-member -name __ScriptClassMockedObjectId -membertype scriptmethod -value {} -force
