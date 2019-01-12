@@ -17,7 +17,7 @@
 # RootModule = ''
 
 # Version number of this module.
-ModuleVersion = '0.14.2'
+ModuleVersion = '0.15.0'
 
 # Supported PSEditions
 # CompatiblePSEditions = @()
@@ -135,16 +135,15 @@ PrivateData = @{
 
         # ReleaseNotes of this module
         ReleaseNotes = @"
-# ScriptClass 0.14.2 Release Notes
+# ScriptClass 0.15.0 Release Notes
 
-Bug-fix release for object mocking scenarios
+Support for loading .net core assemblies
 
 ## New features
-None.
+
+* ``Import-Assembly`` supports loading assemblies of any platform spec, not just 'net45'
 
 ## Fixed defects
-
-* Fixed another intermittent errors in mock functions, this time specific to object mocks, involving non-existent variables such as '`$script:__patchedObjectState' fixed by defining script scope variables just-in-time inside functions
 
 "@
 

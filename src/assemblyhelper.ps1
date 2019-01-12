@@ -13,9 +13,9 @@
 # limitations under the License.
 
 
-function FindAssembly($assemblyRoot, $assemblyName) {
-    write-verbose "Looking for matching assembly for '$assemblyName' under path '$assemblyRoot'"
-    $matchingAssemblyPaths = ls -r $assemblyRoot -Filter $assemblyName | sort -descending lastwritetime | where {$components = $_.fullname -split "\\"; $components[$components.length - 2] -eq 'net45' }
+function FindAssembly($assemblyRoot, $assemblyName, $platformSpec) {
+    write-verbose "Looking for matching assembly for '$assemblyName' under path '$assemblyRoot' with platform '$platformSpec'"
+    $matchingAssemblyPaths = ls -r $assemblyRoot -Filter $assemblyName | sort -descending lastwritetime | where {$components = $_.fullname -split "\\"; $components[$components.length - 2] -eq $platformSpec }
 
     if ($matchingAssemblyPaths -eq $null -or $matchingAssemblyPaths.length -lt 1) {
         throw "Unable to find assembly '$assemblyName' under root directory '$assemblyRoot'. Please re-run the installation command for this application and retry."
@@ -26,13 +26,13 @@ function FindAssembly($assemblyRoot, $assemblyName) {
     $matchingAssemblyPaths[0].fullname
 }
 
-function LoadAssemblyFromRoot($assemblyRoot, $assemblyName) {
-    $assemblyPath = FindAssembly $assemblyRoot $assemblyName
+function LoadAssemblyFromRoot($assemblyRoot, $assemblyName, $platformSpec) {
+    $assemblyPath = FindAssembly $assemblyRoot $assemblyName $platformSpec
     write-verbose "Requested assembly '$assemblyName', loading assembly '$assemblyPath'"
     [System.Reflection.Assembly]::LoadFrom($assemblyPath) | Out-Null
 }
 
-function import-assembly($assemblyName, $assemblyRoot = $null) {
+function Import-Assembly($AssemblyName, $AssemblyRoot = $null, $TargetFrameworkMoniker = 'net45') {
     $searchRoot = if ( $assemblyRoot -ne $null ) {
         $assemblyRoot
     } else {
@@ -53,7 +53,7 @@ function import-assembly($assemblyName, $assemblyRoot = $null) {
 
     write-verbose "Using fully qualified assembly root '$searchRootFullyQualified' to find assembly '$assemblyFile'..."
 
-    LoadAssemblyFromRoot $searchRootFullyQualified  $assemblyFile
+    LoadAssemblyFromRoot $searchRootFullyQualified  $assemblyFile $TargetFrameworkMoniker
 }
 
 
