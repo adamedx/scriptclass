@@ -83,8 +83,8 @@ Describe "The class definition interface" {
                 $mydescription = $null
             }
 
-            $typeData = $::.ClassClass63.PSTypedata
-            $typeData.members.keys -contains 'mydescription' | Should BeExactly $true
+            $typeProperties = $::.ClassClass63.InstanceProperties
+            $typeProperties.keys -contains 'mydescription' | Should BeExactly $true
         }
 
         It "throws an exception if you fail to initialize a property" {
