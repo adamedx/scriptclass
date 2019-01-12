@@ -13,8 +13,8 @@
 # limitations under the License.
 
 $here = Split-Path -Parent $MyInvocation.MyCommand.Path
-$thismodule = join-path (split-path -parent $here) 'scriptclass.psd1'
-
+$thismodule = join-path (split-path -parent $here) 'ScriptClass.psd1'
+invo
 Describe 'Mock-ScriptClassObject cmdlet' {
     BeforeAll {
         remove-module $thismodule -force -erroraction silentlycontinue

@@ -13,7 +13,7 @@
 # limitations under the License.
 
 $here = Split-Path -Parent $MyInvocation.MyCommand.Path
-import-module "$here/../scriptclass.psd1" -force
+import-module "$here/../ScriptClass.psd1" -force
 
 ScriptClass Complex {
     const ZERO_COORDINATE 0.0

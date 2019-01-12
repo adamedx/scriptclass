@@ -102,7 +102,7 @@ AliasesToExport = @('new-so', 'ScriptClass', 'with', 'load-assembly', 'const')
 
 # List of all files packaged with this module
     FileList = @(
-        './scriptclass.psd1',
+        './ScriptClass.psd1',
         './scriptclass.psm1',
         'src/Mock-ScriptClassMethod.ps1',
         'src/mock/MethodMocker.ps1',

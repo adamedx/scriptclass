@@ -15,7 +15,7 @@
 $here = Split-Path -Parent $MyInvocation.MyCommand.Path
 
 Describe "ScriptClass module manifest" {
-    $manifestLocation   = Join-Path $here 'scriptclass.psd1'
+    $manifestLocation   = Join-Path $here 'ScriptClass.psd1'
     $manifest = Test-ModuleManifest -Path $manifestlocation -ErrorAction Stop -WarningAction SilentlyContinue
 
     Context "When loading the manifest" {

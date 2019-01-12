@@ -15,7 +15,12 @@
 set-strictmode -version 2
 
 $here = Split-Path -Parent $MyInvocation.MyCommand.Path
-$thismodule = join-path (split-path -parent $here) 'scriptclass.psd1'
+$thismodule = join-path (split-path -parent $here) 'ScriptClass.psd1'
+$thisshell = if ( $PSEdition -eq 'Desktop' ) {
+    'powershell'
+} else {
+    'pwsh'
+}
 
 Describe "The import-script cmdlet" {
     remove-module $thismodule -force 2>$null
@@ -30,7 +35,7 @@ Describe "The import-script cmdlet" {
         remove-module $thismodule -force 2>$null
     }
 
-    $importCommand = "import-module -force '" + (join-path $here "..\scriptclass.psd1") + "'"
+    $importCommand = "import-module -force '" + (join-path $here "..\ScriptClass.psd1") + "'"
     $simpleClientScriptPath = "TestDrive:\simplesclientcript.ps1"
     $parameterizedClientScriptFile = "parameterizedclientscript.ps1"
     $parameterizedClientScriptPath = join-path "TestDrive:" $parameterizedClientScriptFile
@@ -42,29 +47,29 @@ Describe "The import-script cmdlet" {
     $includeOncePath = join-path "TestDrive:" $includeoncefile
     $indirectFile = "indirect.ps1"
     $indirectPath = join-path TestDrive: $indirectFile
-    $subdirfile = join-path (mkdir "TestDrive:\subdir").fullname subdirfile.ps1
-    $subdirfile2 = join-path (mkdir -f "TestDrive:\subdir2\subdir2a").fullname subdirfile.ps1
+    $subdirfile = join-path (new-item -Type Directory "TestDrive:\subdir").fullname subdirfile.ps1
+    $subdirfile2 = join-path (new-item -Type Directory -f "TestDrive:\subdir2\subdir2a").fullname subdirfile.ps1
     $appfile = "TestDrive:\appfile.ps1"
-    $app2dir = mkdir "TestDrive:\appdir" | select -expandproperty fullname
+    $app2dir = new-item -Type Directory "TestDrive:\appdir" | select -expandproperty fullname
 
-    $moduledir = (mkdir "TestDrive:\moduledir").fullname
+    $moduledir = (new-item -Type Directory "TestDrive:\moduledir").fullname
     $modulefile = 'modulefile.psm1'
     $modulefileinclude = 'moduleincludefile.psm1'
     $modulePath = join-path $moduledir $modulefile
     $modulePathinclude = join-path $moduledir $modulefileinclude
     $modulescriptdir1name = 'src/dir1'
-    $modulescriptdir1path = (mkdir (join-path $moduledir src/dir1)).fullname
+    $modulescriptdir1path = (new-item -Type Directory (join-path $moduledir src/dir1)).fullname
     $modulescriptfile1 = 'file1cmdlets.ps1'
     $modulescriptfile1include = 'file1cmdletsincludevar.ps1'
     $modulescriptpath1 = join-path $modulescriptdir1path $modulescriptfile1
     $modulescriptpath1include = join-path $modulescriptdir1path $modulescriptfile1include
     $modulescriptdir2name = 'src/dir2'
-    $modulescriptdirpath2 = (mkdir (join-path $moduledir src/dir2)).fullname
+    $modulescriptdirpath2 = (new-item -Type Directory (join-path $moduledir src/dir2)).fullname
     $modulescriptfile2 = 'file2common.ps1'
     $modulescriptfile2include = 'file2commoninclude.ps1'
     $modulescriptpath2 = join-path $modulescriptdirpath2 $modulescriptfile2
     $modulescriptpath2include = join-path $modulescriptdirpath2 $modulescriptfile2include
-    $moduleclientdir = (mkdir "TestDrive:\moduleclientdir").fullname
+    $moduleclientdir = (new-item -Type Directory "TestDrive:\moduleclientdir").fullname
     $moduleclientFile = 'moduleclientapp.ps1'
     $moduleclientFileinclude = 'moduleclientincludeapp.ps1'
     $moduleclientPath = join-path $moduleclientdir $moduleclientfile
@@ -82,7 +87,7 @@ Describe "The import-script cmdlet" {
     }
 
     function run-command([string] $command) {
-        powershell -noprofile -command "`$erroractionpreference = 'stop'; exit (iex '$command')" | out-null
+        & $thisshell -noprofile -command "`$erroractionpreference = 'stop'; exit (iex '$command')" | out-null
         $lastexitcode
     }
 
