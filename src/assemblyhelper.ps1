@@ -15,7 +15,8 @@
 
 function FindAssembly($assemblyRoot, $assemblyName, $platformSpec) {
     write-verbose "Looking for matching assembly for '$assemblyName' under path '$assemblyRoot' with platform '$platformSpec'"
-    $matchingAssemblyPaths = ls -r $assemblyRoot -Filter $assemblyName | sort -descending lastwritetime | where {$components = $_.fullname -split "\\"; $components[$components.length - 2] -eq $platformSpec }
+    # For OS compatibility, canonicalize path separators below by replacing '\' with '/'
+    $matchingAssemblyPaths = get-childitem -r $assemblyRoot -Filter $assemblyName | sort-object -descending lastwritetime | where {$components = $_.fullname.replace("\\", "/") -split "//"; $components[$components.length - 2] -eq $platformSpec }
 
     if ($matchingAssemblyPaths -eq $null -or $matchingAssemblyPaths.length -lt 1) {
         throw "Unable to find assembly '$assemblyName' under root directory '$assemblyRoot'. Please re-run the installation command for this application and retry."
