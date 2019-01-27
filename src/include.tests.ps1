@@ -230,5 +230,24 @@ testvalue `$arg1 `$arg2
             { iex "& '$parameterizedClientScriptPath' '\$includeOnceFile'" } | Should Throw "Path specified to include-source '\$(remove-ext $includeOnceFile)' started with a path separator which is not allowed -- only relative paths may be specified"
         }
     }
+
+    Context "When finding scripts in the file system" {
+        BeforeAll {
+            $scriptDir = md -path TestDrive:\ -name 'ScriptParent'
+            $scriptNextDir = md -path $scriptDir.fullname -name 'ThisDirHasMixedCase'
+            $scriptFileBaseName = 'tHisScriptFileHasMixedCase'
+            $scriptFileContainingFile = join-path $scriptNextDir.fullname "Containing.ps1"
+            $scriptFilePath = join-path $scriptNextDir.fullname "$scriptFileBaseName.ps1"
+            set-content -path $scriptFilePath -value 'echo hello'
+            set-content -path $scriptFileContainingFile -value 'import-script $scriptFileBaseName'
+        }
+
+        It "Should preserve the case of all characters in the script file path" {
+            $scriptFilePath.tolower() | Should Not BeExactly $scriptFilePath
+            $scriptPathToLoad = iex "& '$scriptFileContainingFile'"
+            $scriptPathToLoad.tolower() | Should Not BeExactly $scriptPathToLoad
+            $scriptPathToLoad | Should BeExactly $scriptFilePath
+        }
+    }
 }
 

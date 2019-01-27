@@ -17,7 +17,7 @@
 # RootModule = ''
 
 # Version number of this module.
-ModuleVersion = '0.15.0'
+ModuleVersion = '0.16.0'
 
 # Supported PSEditions
 # CompatiblePSEditions = @()
@@ -135,15 +135,22 @@ PrivateData = @{
 
         # ReleaseNotes of this module
         ReleaseNotes = @"
-# ScriptClass 0.15.0 Release Notes
+# ScriptClass 0.16.0 Release Notes
 
-Support for loading .net core assemblies
+Compatibility fixes for Linux
 
 ## New features
 
-* ``Import-Assembly`` supports loading assemblies of any platform spec, not just 'net45'
+* Import-Assembly syntax is more sane -- assembly name without dll is specified
+* Import-Assembly now supports a platform precedence and will search for compatible platforms in a priority order among netstandard1.3, netstandard1.1, and netcoreapp1.0 monikers (in that order)
+* Added common parameters to Import-Assembly through cmdletbinding attribute
 
 ## Fixed defects
+
+* Fix ``Import-Assembly`` so that it handles Linux paths with '/' characters
+* Fix break in Import-Assembly by replacing use of ``ls`` alias with 'Get-ChildItem' to avoid collision with Linux ``ls`` command
+* Fix path case sensitivity issue with ``Import-Script`` where entire path of script file was lower-cased before attempting to load the file, which breaks on case-sensitive file systems like Linux
+* Added missing test coverage for Import-Assembly
 
 "@
 
