@@ -29,19 +29,6 @@ function new-directory {
 
 set-alias psmd new-directory -erroraction ignore
 
-$___lastAttemptedLoadedAssembly = $null
-function ___AttemptAssemblyLoad($assemblyPath) {
-    $script:___lastAttemptedLoadedAssembly = $assemblyPath
-}
-
-function ___GetLastAttemptedAssembly {
-    $script:___lastAttemptedLoadedAssembly
-}
-
-function ___AtLeastOneAssemblyWasLoadedInThisExample {
-    ___GetLastAttemptedAssembly -ne $null
-}
-
 $assemblyRoot = $null
 $assemblyWithAllCommonPlatform = 'Assembly1AllCommonPlatforms'
 $assemblyWithNonCommonPlatform = 'Assembly5WithUAP'
@@ -95,15 +82,10 @@ Describe "Assembly helper cmdlets" {
         }
     }
 
-    BeforeEach {
-        ___AttemptAssemblyLoad $null
-    }
-
     Mock __LoadAssembly {
         param($assemblyPath)
-        ___AttemptAssemblyLoad $assemblyPath
         if ( test-path $assemblyPath ) {
-            $assemblyPath
+            [PSCustomObject]@{Location=$assemblyPath}
         } else {
             throw "Assembly '$assemblyPath' not found"
         }
@@ -128,12 +110,10 @@ Describe "Assembly helper cmdlets" {
             $assemblyVersion = $assemblyWithVersion.Version
             $assemblyWithMixedCase.Directory.fullname.tolower() | Should Not BeExactly $assemblyWithMixedCase.Directory.fullname
             $assemblyWithMixedCase.AssemblyName.tolower() | Should Not BeExactly $assemblyWithMixedCase.AssemblyName
-
             $targetPlatform = $assemblyWithMixedCase.Platforms[0]
-            Import-Assembly $assemblyWithMixedCase.AssemblyName $null $assemblyRoot -TargetFrameworkMoniker $targetPlatform
 
-            $lastAssemblyPath = ___GetLastAttemptedAssembly
-            $lastAssemblyPath | Should BeExactly "$assemblyRoot/$($assemblyWithMixedCase.AssemblyName).$($assemblyVersion)/lib/$targetPlatform/$assemblyWithAllCommonPlatform.dll".replace("`\", '/')
+            $importedAssembly = Import-Assembly $assemblyWithMixedCase.AssemblyName $null $assemblyRoot -TargetFrameworkMoniker $targetPlatform
+            $importedAssembly.Location | Should BeExactly "$assemblyRoot/$($assemblyWithMixedCase.AssemblyName).$($assemblyVersion)/lib/$targetPlatform/$assemblyWithAllCommonPlatform.dll".replace("`\", '/')
         }
     }
 
@@ -155,47 +135,43 @@ Describe "Assembly helper cmdlets" {
         }
 
         It "Should load assemblies that support 'net45' when no TargetFrameworkMoniker is specified" {
+            $importedAssembly = $null
             $assemblyNamesAndVersions | foreach {
                 if ( $_.Platforms -contains 'net45' ) {
-                    { Import-Assembly $_.Name $null $assemblyRoot } | Should Not Throw
-
-                    $lastAssemblyPath = ___GetLastAttemptedAssembly
-
-                    $lastAssemblyPath | Should BeExactly "$assemblyRoot/$($_.Name).$($_.Version)/lib/net45/$($_.Name).dll".replace("`\", '/')
-                    $content = (get-content $lastAssemblyPath | out-string).trimend()
+                    $importedAssembly = Import-Assembly $_.Name $null $assemblyRoot
+                    $importedAssembly.Location | Should BeExactly "$assemblyRoot/$($_.Name).$($_.Version)/lib/net45/$($_.Name).dll".replace("`\", '/')
+                    $content = (get-content $importedAssembly.Location | out-string).trimend()
                     $content | Should Be 'net45'
                 }
             }
 
-            ___AtLeastOneAssemblyWasLoadedInThisExample | Should Not Be $null
+            $importedAssembly | Should Not Be $null
         }
 
         It "Should attempt to load a netcoreapp1.0 assembly on desktop if the assembly supports netcoreapp1.0 if TargetFrameworkMoniker is set to netcoreapp1.0" {
+            $importedAssembly = $null
             $assemblyNamesAndVersions | foreach {
                 if ( $_.Platforms -contains 'netcoreapp1.0' ) {
-                    { Import-Assembly $_.Name $null $assemblyRoot -TargetFrameworkMoniker 'netcoreapp1.0' } | Should Not Throw
-
-                    $lastAssemblyPath = ___GetLastAttemptedAssembly
-
-                    $lastAssemblyPath | Should BeExactly "$assemblyRoot/$($_.Name).$($_.Version)/lib/netcoreapp1.0/$($_.Name).dll".replace("`\", '/')
-                    $content = (get-content $lastAssemblyPath | out-string).trimend()
+                    $importedAssembly = Import-Assembly $_.Name $null $assemblyRoot -TargetFrameworkMoniker 'netcoreapp1.0'
+                    $importedAssembly.Location | Should BeExactly "$assemblyRoot/$($_.Name).$($_.Version)/lib/netcoreapp1.0/$($_.Name).dll".replace("`\", '/')
+                    $content = (get-content $importedAssembly.Location | out-string).trimend()
                     $content | Should Be 'netcoreapp1.0'
                 }
             }
 
-
-            ___AtLeastOneAssemblyWasLoadedInThisExample | Should Not Be $null
+            $importedAssembly | Should Not Be $null
         }
 
 
         It "Should not load assemblies that do not support 'net45' when no TargetFrameworkMoniker is specified" {
+            $importedAssembly = $null
             $assemblyNamesAndVersions | foreach {
                 if ( $_.Platforms -notcontains 'net45' ) {
-                    { Import-Assembly $_.Name $null $assemblyRoot } | Should Throw "Unable to find assembly"
+                    { $importedAssemblyResult = Import-Assembly $_.Name $null $assemblyRoot; set-variable -scope 1 importedAssembly -value $importedAssemblyResult } | Should Throw "Unable to find assembly"
                 }
             }
 
-            ___AtLeastOneAssemblyWasLoadedInThisExample | Should Be $null
+            $importedAssembly | Should Be $null
         }
     }
 
@@ -233,46 +209,43 @@ Describe "Assembly helper cmdlets" {
         }
 
         It "Should not load assemblies that only support 'net45' when no TargetFrameworkMoniker is specified" {
+            $importedAssembly = $null
             $assemblyNamesAndVersions | foreach {
                 if ( $_.Platforms.length -eq 1 -and $_.Platforms[0] -eq 'net45' ) {
-                    { Import-Assembly $_.Name $null $assemblyRoot } | Should Throw "Unable to find assembly"
+                    { $importedAssemblyResult = Import-Assembly $_.Name $null $assemblyRoot ;set-variable -scope 1 importedAssembly -value $importedAssemblyResult } | Should Throw "Unable to find assembly"
                 }
             }
 
-            ___AtLeastOneAssemblyWasLoadedInThisExample | Should Be $null
+            $importedAssembly | Should Be $null
         }
 
         It "Should attempt to load a net45 assembly on core if the assembly supports net45 if TargetFrameworkMoniker is set to net45" {
+            $importedAssembly = $null
             $assemblyNamesAndVersions | foreach {
                 if ( $_.Platforms -contains 'net45' ) {
-                    { Import-Assembly $_.Name $null $assemblyRoot -TargetFrameworkMoniker net45 } | Should Not Throw
-
-                    $lastAssemblyPath = ___GetLastAttemptedAssembly
-
-                    $lastAssemblyPath | Should BeExactly "$assemblyRoot/$($_.Name).$($_.Version)/lib/net45/$($_.Name).dll".replace("`\", '/')
-                    $content = (get-content $lastAssemblyPath | out-string).trimend()
+                    $importedAssembly = Import-Assembly $_.Name $null $assemblyRoot -TargetFrameworkMoniker net45
+                    $importedAssembly.Location | Should BeExactly "$assemblyRoot/$($_.Name).$($_.Version)/lib/net45/$($_.Name).dll".replace("`\", '/')
+                    $content = (get-content $importedAssembly.Location | out-string).trimend()
                     $content | Should Be 'net45'
                 }
             }
 
-            ___AtLeastOneAssemblyWasLoadedInThisExample | Should Not Be $null
+            $importedAssembly | Should Not Be $null
         }
 
         It "Should load core assemblies of the correct platform according to precedence when a valid core assembly is available" {
+            $importedAssembly = $null
             $assemblyNamesAndVersions | foreach {
                 $corePlatform = __GetCorePlatform $_.Platforms
                 if ( $corePlatform ) {
-                    { Import-Assembly $_.Name $null $assemblyRoot } | Should Not Throw
-
-                    $lastAssemblyPath = ___GetLastAttemptedAssembly
-
-                    $lastAssemblyPath | Should BeExactly "$assemblyRoot/$($_.Name).$($_.Version)/lib/$corePlatform/$($_.Name).dll".replace("`\", '/')
-                    $content = (get-content $lastAssemblyPath | out-string).trimend()
+                    $importedAssembly = Import-Assembly $_.Name $null $assemblyRoot
+                    $importedAssembly.Location | Should BeExactly "$assemblyRoot/$($_.Name).$($_.Version)/lib/$corePlatform/$($_.Name).dll".replace("`\", '/')
+                    $content = (get-content $importedAssembly.Location | out-string).trimend()
                     $content | Should Be $corePlatform
                 }
             }
 
-            ___AtLeastOneAssemblyWasLoadedInThisExample | Should Not Be $null
+            $importedAssembly | Should Not Be $null
         }
     }
 }
