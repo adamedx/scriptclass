@@ -13,6 +13,22 @@
 # limitations under the License.
 set-strictmode -version 2
 
+function new-directory {
+    param(
+        [Parameter(mandatory=$true)]
+        $Name,
+        $Path)
+    $fullPath = if ( $Path ) {
+        join-path $Path $Name
+    } else {
+        $Name
+    }
+
+    new-item -ItemType Directory $fullPath
+}
+
+set-alias psmd new-directory -erroraction ignore
+
 $___lastAttemptedLoadedAssembly = $null
 function ___AttemptAssemblyLoad($assemblyPath) {
     $script:___lastAttemptedLoadedAssembly = $assemblyPath
@@ -47,11 +63,11 @@ $sut = (Split-Path -Leaf $MyInvocation.MyCommand.Path) -replace '\.Tests\.', '.'
 
 Describe "Assembly helper cmdlets" {
     BeforeAll {
-        $assemblyRoot = md TestDrive:\Assemblies
+        $assemblyRoot = psmd TestDrive:\Assemblies
         $assemblyDirectories = . {
             $assemblyNamesAndVersions | foreach {
                 $AssemblyDirectory = $_.Name, $_.Version -join '.'
-                @{Directory=(md -path $assemblyRoot -name $AssemblyDirectory);AssemblyName = $_.Name;Platforms=$_.Platforms}
+                @{Directory=(psmd -path $assemblyRoot -name $AssemblyDirectory);AssemblyName = $_.Name;Platforms=$_.Platforms}
             }
         }
 
@@ -68,9 +84,9 @@ Describe "Assembly helper cmdlets" {
         $assemblyDirectories | foreach {
             $assemblyDirectory = $_
             $assemblyName = $assemblyDirectory.Directory.name
-            $libParent = md -path $assemblyDirectory.Directory.FullName -name lib
+            $libParent = psmd -path $assemblyDirectory.Directory.FullName -name lib
             $allPlatforms | foreach {
-                $assemblyParent = md -path $libParent.fullname -name $_
+                $assemblyParent = psmd -path $libParent.fullname -name $_
                 $assemblyPath = join-path $assemblyParent.fullname $assemblyDirectory.AssemblyName
                 if ( $assemblyDirectory.Platforms -contains $_ ) {
                     set-content "$assemblyPath.dll" -value $_
@@ -98,7 +114,7 @@ Describe "Assembly helper cmdlets" {
             $assemblyData = $assemblyDirectories | where AssemblyName -eq $assemblyWithNonCommonPlatform
             $targetAssemblyDirPath = $assemblyData.Directory.fullname
             $targetAssemblyLibPath = join-path $targetAssemblyDirPath lib
-            $newRefDirectory = md -path $targetAssemblyDirPath -name ref
+            $newRefDirectory = psmd -path $targetAssemblyDirPath -name ref
             copy-item -r $targetAssemblyLibPath $newRefDirectory.fullname
         }
 
@@ -145,7 +161,7 @@ Describe "Assembly helper cmdlets" {
 
                     $lastAssemblyPath = ___GetLastAttemptedAssembly
 
-                    $lastAssemblyPath | Should BeExactly "$assemblyRoot/$($_.name).$($_.version)/lib/net45/$($_.name).dll".replace("`\", '/')
+                    $lastAssemblyPath | Should BeExactly "$assemblyRoot/$($_.Name).$($_.Version)/lib/net45/$($_.Name).dll".replace("`\", '/')
                     $content = (get-content $lastAssemblyPath | out-string).trimend()
                     $content | Should Be 'net45'
                 }
@@ -161,7 +177,7 @@ Describe "Assembly helper cmdlets" {
 
                     $lastAssemblyPath = ___GetLastAttemptedAssembly
 
-                    $lastAssemblyPath | Should BeExactly "$assemblyRoot/$($_.name).$($_.version)/lib/netcoreapp1.0/$($_.name).dll".replace("`\", '/')
+                    $lastAssemblyPath | Should BeExactly "$assemblyRoot/$($_.Name).$($_.Version)/lib/netcoreapp1.0/$($_.Name).dll".replace("`\", '/')
                     $content = (get-content $lastAssemblyPath | out-string).trimend()
                     $content | Should Be 'netcoreapp1.0'
                 }
@@ -218,7 +234,7 @@ Describe "Assembly helper cmdlets" {
 
         It "Should not load assemblies that only support 'net45' when no TargetFrameworkMoniker is specified" {
             $assemblyNamesAndVersions | foreach {
-                if ( $_.Platforms.length -eq 1 -and $_.platforms[0] -eq 'net45' ) {
+                if ( $_.Platforms.length -eq 1 -and $_.Platforms[0] -eq 'net45' ) {
                     { Import-Assembly $_.Name $null $assemblyRoot } | Should Throw "Unable to find assembly"
                 }
             }
@@ -233,7 +249,7 @@ Describe "Assembly helper cmdlets" {
 
                     $lastAssemblyPath = ___GetLastAttemptedAssembly
 
-                    $lastAssemblyPath | Should BeExactly "$assemblyRoot/$($_.name).$($_.version)/lib/net45/$($_.name).dll".replace("`\", '/')
+                    $lastAssemblyPath | Should BeExactly "$assemblyRoot/$($_.Name).$($_.Version)/lib/net45/$($_.Name).dll".replace("`\", '/')
                     $content = (get-content $lastAssemblyPath | out-string).trimend()
                     $content | Should Be 'net45'
                 }
@@ -250,7 +266,7 @@ Describe "Assembly helper cmdlets" {
 
                     $lastAssemblyPath = ___GetLastAttemptedAssembly
 
-                    $lastAssemblyPath | Should BeExactly "$assemblyRoot/$($_.name).$($_.version)/lib/$corePlatform/$($_.name).dll".replace("`\", '/')
+                    $lastAssemblyPath | Should BeExactly "$assemblyRoot/$($_.Name).$($_.Version)/lib/$corePlatform/$($_.Name).dll".replace("`\", '/')
                     $content = (get-content $lastAssemblyPath | out-string).trimend()
                     $content | Should Be $corePlatform
                 }

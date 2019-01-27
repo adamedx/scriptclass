@@ -22,6 +22,22 @@ $thisshell = if ( $PSEdition -eq 'Desktop' ) {
     'pwsh'
 }
 
+function new-directory {
+    param(
+        [Parameter(mandatory=$true)]
+        $Name,
+        $Path)
+    $fullPath = if ( $Path ) {
+        join-path $Path $Name
+    } else {
+        $Name
+    }
+
+    new-item -ItemType Directory $fullPath
+}
+
+set-alias psmd new-directory -erroraction ignore
+
 Describe "The import-script cmdlet" {
     remove-module $thismodule -force 2>$null
     import-module $thismodule -force
@@ -233,8 +249,8 @@ testvalue `$arg1 `$arg2
 
     Context "When finding scripts in the file system" {
         BeforeAll {
-            $scriptDir = md -path TestDrive:\ -name 'ScriptParent'
-            $scriptNextDir = md -path $scriptDir.fullname -name 'ThisDirHasMixedCase'
+            $scriptDir = psmd -path TestDrive:\ -name 'ScriptParent'
+            $scriptNextDir = psmd -path $scriptDir.fullname -name 'ThisDirHasMixedCase'
             $scriptFileBaseName = 'tHisScriptFileHasMixedCase'
             $scriptFileContainingFile = join-path $scriptNextDir.fullname "Containing.ps1"
             $scriptFilePath = join-path $scriptNextDir.fullname "$scriptFileBaseName.ps1"
