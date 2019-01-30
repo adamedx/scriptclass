@@ -39,16 +39,16 @@ function new-directory {
 set-alias psmd new-directory -erroraction ignore
 
 Describe "The import-script cmdlet" {
-    remove-module $thismodule -force 2>$null
+    remove-module $thismodule -force -erroraction ignore
     import-module $thismodule -force
 
     BeforeAll {
-        remove-module $thismodule -force 2>$null
+        remove-module $thismodule -force -erroraction ignore
         import-module $thismodule -force
     }
 
     AfterAll {
-        remove-module $thismodule -force 2>$null
+        remove-module $thismodule -force -erroraction ignore
     }
 
     $importCommand = "import-module -force '" + (join-path $here "..\ScriptClass.psd1") + "'"

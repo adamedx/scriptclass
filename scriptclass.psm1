@@ -16,12 +16,16 @@ $variables = @('::')
 
 $functions = @('=>', '::>')
 
-$cmdlets = @('add-scriptclass', 'invoke-method',
-             'test-scriptobject', 'new-scriptobject',
-             'import-assembly', 'import-script',
-             'Mock-ScriptClassMethod', 'Unmock-ScriptClassMethod')
+$cmdlets = @('Add-ScriptClass',
+             'Invoke-Method',
+             'Import-Assembly',
+             'Import-Script',
+             'Mock-ScriptClassMethod',
+             'New-ScriptObject',
+             'Test-ScriptObject',
+             'Unmock-ScriptClassMethod')
 
-$aliases = @('new-so', 'ScriptClass', 'with', 'load-assembly', 'const' )
+$aliases = @('new-so', 'scriptclass', 'with', 'const' )
 
 export-modulemember -variable $variables -cmdlet $cmdlets -function $functions -alias $aliases
 

@@ -78,21 +78,21 @@ FunctionsToExport = @('=>', '::>')
 
 # Cmdlets to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no cmdlets to export.
     CmdletsToExport = @(
-        'add-scriptclass',
-        'import-assembly',
-        'import-script',
-        'invoke-method',
+        'Add-ScriptClass',
+        'Import-Assembly',
+        'Import-Script',
+        'Invoke-Method',
         'Mock-ScriptClassMethod',
-        'new-scriptobject',
+        'New-ScriptObject',
         'New-ScriptObjectMock',
-        'test-scriptobject',
+        'Test-ScriptObject',
         'Unmock-ScriptClassMethod')
 
 # Variables to export from this module
 VariablesToExport = @('::')
 
 # Aliases to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no aliases to export.
-AliasesToExport = @('new-so', 'ScriptClass', 'with', 'load-assembly', 'const')
+AliasesToExport = @('new-so', 'scriptclass', 'with', 'const')
 
 # DSC resources to export from this module
 # DscResourcesToExport = @()
@@ -122,7 +122,7 @@ PrivateData = @{
     PSData = @{
 
         # Tags applied to this module. These help with module discovery in online galleries.
-         Tags = @('class', 'object', 'PSCustomObject')
+        Tags = @('class', 'object', 'PSCustomObject', 'netcore')
 
         # A URL to the license for this module.
         LicenseUri = 'http://www.apache.org/licenses/LICENSE-2.0'

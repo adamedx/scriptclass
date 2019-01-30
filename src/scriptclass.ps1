@@ -42,7 +42,8 @@ function __clear-typedata($className) {
 
 __clear-typedata $scriptClassTypeName
 
-function add-scriptclass {
+function Add-ScriptClass {
+    [cmdletbinding()]
     param(
         [parameter(mandatory=$true)] [string] $className,
         [scriptblock] $classBlock
@@ -69,7 +70,7 @@ function add-scriptclass {
     }
 }
 
-function new-scriptobject {
+function New-ScriptObject {
     [cmdletbinding()]
     param(
         [parameter(mandatory=$true)] [string] $className,
@@ -88,7 +89,7 @@ function get-class([string] $className) {
     $existingClass.prototype.scriptclass
 }
 
-function test-scriptobject {
+function Test-ScriptObject {
     [cmdletbinding()]
     param(
         [parameter(valuefrompipeline=$true, mandatory=$true)] $Object,
@@ -127,7 +128,7 @@ function test-scriptobject {
     $isClass
 }
 
-function invoke-method($context, $do) {
+function Invoke-Method($context, $do) {
     $action = $do
     $result = $null
 
