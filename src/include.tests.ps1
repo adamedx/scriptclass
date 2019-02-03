@@ -22,17 +22,33 @@ $thisshell = if ( $PSEdition -eq 'Desktop' ) {
     'pwsh'
 }
 
+function new-directory {
+    param(
+        [Parameter(mandatory=$true)]
+        $Name,
+        $Path)
+    $fullPath = if ( $Path ) {
+        join-path $Path $Name
+    } else {
+        $Name
+    }
+
+    new-item -ItemType Directory $fullPath
+}
+
+set-alias psmd new-directory -erroraction ignore
+
 Describe "The import-script cmdlet" {
-    remove-module $thismodule -force 2>$null
+    remove-module $thismodule -force -erroraction ignore
     import-module $thismodule -force
 
     BeforeAll {
-        remove-module $thismodule -force 2>$null
+        remove-module $thismodule -force -erroraction ignore
         import-module $thismodule -force
     }
 
     AfterAll {
-        remove-module $thismodule -force 2>$null
+        remove-module $thismodule -force -erroraction ignore
     }
 
     $importCommand = "import-module -force '" + (join-path $here "..\ScriptClass.psd1") + "'"
@@ -228,6 +244,25 @@ testvalue `$arg1 `$arg2
         It 'should throw an exception if the include path starts with a pathsep' {
             { iex "& '$parameterizedClientScriptPath' '/$includeOnceFile'" } | Should Throw "Path specified to include-source '/$(remove-ext $includeOnceFile)' started with a path separator which is not allowed -- only relative paths may be specified"
             { iex "& '$parameterizedClientScriptPath' '\$includeOnceFile'" } | Should Throw "Path specified to include-source '\$(remove-ext $includeOnceFile)' started with a path separator which is not allowed -- only relative paths may be specified"
+        }
+    }
+
+    Context "When finding scripts in the file system" {
+        BeforeAll {
+            $scriptDir = psmd -path TestDrive:\ -name 'ScriptParent'
+            $scriptNextDir = psmd -path $scriptDir.fullname -name 'ThisDirHasMixedCase'
+            $scriptFileBaseName = 'tHisScriptFileHasMixedCase'
+            $scriptFileContainingFile = join-path $scriptNextDir.fullname "Containing.ps1"
+            $scriptFilePath = join-path $scriptNextDir.fullname "$scriptFileBaseName.ps1"
+            set-content -path $scriptFilePath -value 'echo hello'
+            set-content -path $scriptFileContainingFile -value 'import-script $scriptFileBaseName'
+        }
+
+        It "Should preserve the case of all characters in the script file path" {
+            $scriptFilePath.tolower() | Should Not BeExactly $scriptFilePath
+            $scriptPathToLoad = iex "& '$scriptFileContainingFile'"
+            $scriptPathToLoad.tolower() | Should Not BeExactly $scriptPathToLoad
+            $scriptPathToLoad | Should BeExactly $scriptFilePath
         }
     }
 }

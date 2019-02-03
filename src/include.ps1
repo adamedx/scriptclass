@@ -41,15 +41,6 @@ function ValidateIncludePath($includePath) {
     }
 }
 
-function get-includepath($appRelativePath) {
-    ValidateIncludePath($appRelativePath)
-    $relativePath = "$($appRelativePath).ps1"
-    $relativeNormal = $relativePath.ToLower()
-    $fullPath = (join-path (CallerScriptRoot) $relativePath | get-item).Fullname
-    $canonical = $fullPath.ToLower()
-    $canonical
-}
-
 function import-script
 {
     [cmdletbinding()]
@@ -68,7 +59,7 @@ function import-script
     if ( $included[$canonical] -eq $null ) {
         $included[$canonical] = @(($appRoot), $relativeNormal)
         $includes[$canonical] = $false
-        $canonical
+        $fullPath
     } else {
         {}
     }

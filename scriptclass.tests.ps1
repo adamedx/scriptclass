@@ -67,13 +67,12 @@ Describe "ScriptClass module manifest" {
             $manifest.exportedvariables.keys -contains '::' | Should BeExactly $true
         }
 
-        It "should, PENDING fix, export the 'new-so', 'ScriptClass', 'const', 'load-assembly', and 'with' aliases and only those aliases" {
-            $manifest.exportedaliases.count | Should BeExactly 5
+        It "should, PENDING fix, export the 'new-so', 'ScriptClass', 'const', and 'with' aliases and only those aliases" {
+            $manifest.exportedaliases.count | Should BeExactly 4
             $manifest.exportedaliases.keys -contains 'new-so' | Should BeExactly $true
             $manifest.exportedaliases.keys -contains 'ScriptClass' | Should BeExactly $true
             $manifest.exportedaliases.keys -contains 'with' | Should BeExactly $true
             $manifest.exportedaliases.keys -contains 'const' | Should BeExactly $true
-            $manifest.exportedaliases.keys -contains 'load-assembly' | Should BeExactly $true
         }
     }
 

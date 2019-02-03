@@ -12,38 +12,96 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+function __IsDesktopEdition {
+    $PSVersionTable.PSEdition -eq 'Desktop'
+}
 
 function FindAssembly($assemblyRoot, $assemblyName, $platformSpec) {
     write-verbose "Looking for matching assembly for '$assemblyName' under path '$assemblyRoot' with platform '$platformSpec'"
-    $matchingAssemblyPaths = ls -r $assemblyRoot -Filter $assemblyName | sort -descending lastwritetime | where {$components = $_.fullname -split "\\"; $components[$components.length - 2] -eq $platformSpec }
+    # For OS compatibility, canonicalize path separators below by replacing '\' with '/'
+    $matchingAssemblyPaths = get-childitem -r $assemblyRoot -Filter "$assemblyName.dll" | where {
+        $assemblyDirectory = $_.fullname
+        $components = $assemblyDirectory.replace("`\", "/") -split "/"
 
-    if ($matchingAssemblyPaths -eq $null -or $matchingAssemblyPaths.length -lt 1) {
-        throw "Unable to find assembly '$assemblyName' under root directory '$assemblyRoot'. Please re-run the installation command for this application and retry."
+        if ( $components.length -ge 3 ) {
+            ($components[$components.length - 2] -eq $platformSpec) -and ($components[$components.length - 3] -eq 'lib')
+        }
     }
 
-    $matchingAssemblyPaths | foreach { write-verbose "Found possible assembly match for '$assemblyName' in '$_'" }
+    if ( $matchingAssemblyPaths -and $matchingAssemblyPaths -is [object[]] -and $matchingAssemblyPaths.length -gt 1 ) {
+        throw ("More than one assembly was found to match assembly '$assemblyName' -- update assembly directory to have only one of the following assemblies: {0}" -f (($matchingAssemblyPaths | foreach { "'$($_.fullname)'" }) -join ', '))
+    }
 
-    $matchingAssemblyPaths[0].fullname
+    if ($matchingAssemblyPaths) {
+        write-verbose "Found possible assembly match for '$assemblyName' in '$($matchingAssemblyPaths[0])'"
+        $matchingAssemblyPaths[0].fullname.replace("`\", "/")
+    }
 }
 
 function LoadAssemblyFromRoot($assemblyRoot, $assemblyName, $platformSpec) {
-    $assemblyPath = FindAssembly $assemblyRoot $assemblyName $platformSpec
+    $specs = if ( $platformSpec ) {
+        , @($platformSpec)
+    } elseif ( __IsDesktopEdition ) {
+        , @('net45')
+    } else {
+        @('netstandard1.3', 'netstandard1.1', 'netcoreapp1.0')
+    }
+
+    $assemblyPath = $null
+
+    write-verbose ("Looking for assemblies with candidate platforms {0}" -f ( $specs -join ',' ) )
+
+    for ( $specIndex = 0; $specIndex -lt $specs.length; $specIndex++ ) {
+        $spec = $specs[$specIndex]
+        $assemblyPath = FindAssembly $assemblyRoot $assemblyName $spec
+        if ( $assemblyPath ) {
+            break
+        }
+
+        write-verbose "Assembly '$assemblyName' not found"
+    }
+
+    if ( ! $assemblyPath ) {
+        throw "Unable to find assembly '$assemblyName' under root directory '$assemblyRoot'. Please re-run the installation command for this application and retry."
+    }
+
     write-verbose "Requested assembly '$assemblyName', loading assembly '$assemblyPath'"
-    [System.Reflection.Assembly]::LoadFrom($assemblyPath) | Out-Null
+    __LoadAssembly $assemblyPath
 }
 
-function Import-Assembly($AssemblyName, $AssemblyRoot = $null, $TargetFrameworkMoniker = 'net45') {
-    $searchRoot = if ( $assemblyRoot -ne $null ) {
+function __LoadAssembly($assemblyPath) {
+    [System.Reflection.Assembly]::LoadFrom($assemblyPath)
+}
+
+function Import-Assembly {
+    [cmdletbinding()]
+    param(
+        [parameter(mandatory=$true)]
+        [string] $AssemblyName,
+        [string] $AssemblyRelativePath = $null,
+        [string] $AssemblyRoot = $null,
+        [string] $TargetFrameworkMoniker = $null
+    )
+    $searchRoot = if ( $assemblyRoot ) {
         $assemblyRoot
     } else {
         split-path -parent (get-pscallstack)[1].scriptname
     }
     write-verbose "Using assembly root '$searchRoot'..."
 
-    $assemblyNameParent = split-path -parent $assemblyName
     $assemblyFile = split-path -leaf $assemblyName
-    $searchRootDirectory = join-path $searchRoot $assemblyNameParent
-    $searchRootItem = get-item $searchRootDirectory 2>$null
+
+    if ( $assemblyFile -ne $assemblyName ) {
+        throw "Parameter 'AssemblyName' must be a single name -- the specified value '$AssemblyName' contains path separators and is not valid."
+    }
+
+    $searchRootDirectory = if ( $AssemblyRelativePath ) {
+        join-path $searchRoot $AssemblyRelativePath
+    } else {
+        $searchRoot
+    }
+
+    $searchRootItem = get-item $searchRootDirectory -erroraction ignore
 
     if ( $searchRootItem -eq $null ) {
         throw "Unable to find assembly '$assemblyName' because given search directory '$searchRootDirectory' was not accessible"
