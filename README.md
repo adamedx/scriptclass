@@ -1,5 +1,8 @@
 ScriptClass Extension for PowerShell
 ====================================
+
+[![Build Status](https://adamedx.visualstudio.com/AutoGraphPS/_apis/build/status/adamedx.scriptclass?branchName=master)](https://adamedx.visualstudio.com/AutoGraphPS/_build/latest?definitionId=2&branchName=master)
+
 The ScriptClass extension module provides code re-use and syntactic affordances for PowerShell similar to comparable dynamic languages such as Python and Ruby. The overall aim is to facilitate the development of PowerShell-based applications and libraries rather than just scripts or utilities that comprise the typical PowerShell use case.
 
 ```powershell
@@ -45,6 +48,9 @@ PS> $complexNumber |=> Magnitude
 5
 ```
 
+## System requirements
+
+On the Windows operating system, PowerShell 5.1 and higher are supported. On Linux, PowerShell 6.1.2 and higher are at a pre-release support level. MacOS has not been tested, but may work with PowerShell 6.1.2 and higher.
 
 ## Installation
 
@@ -107,7 +113,7 @@ import scriptclass
 
 License and Authors
 -------------------
-Copyright:: Copyright (c) 2018 Adam Edwards
+Copyright:: Copyright (c) 2019 Adam Edwards
 
 License:: Apache License, Version 2.0
 
