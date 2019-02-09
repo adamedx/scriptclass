@@ -1,5 +1,11 @@
 pkg/*
 lib/*
+bin/*
+.psrepo/*
+.devmodule/*
+NuGet.Config
+localnuget.config
+poshgraph.psd1.tmp.psd1
 *~
 .chef
 .#*
