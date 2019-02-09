@@ -19,6 +19,10 @@ jobs:
         VM_IMAGE: 'vs2017-win2016'
         OS_PLATFORM: 'windows'
         USE_POWERSHELL_CORE: true
+      PowerShellCoreUbuntu:
+        VM_IMAGE: 'ubuntu-16.04'
+        OS_PLATFORM: 'ubuntu'
+        USE_POWERSHELL_CORE: true
   pool:
     vmImage: $(VM_IMAGE)
   steps:
@@ -73,13 +77,23 @@ jobs:
       pwsh: $(USE_POWERSHELL_CORE)
   - task: powershell@2
     displayName: 'Publish module for local testing'
+    condition: eq(variables.OS_PLATFORM, 'windows')
     inputs:
       targetType: inline
       script: './build/configure-tools.ps1; ./build/publish-moduletodev.ps1'
       pwsh: $(USE_POWERSHELL_CORE)
   - task: powershell@2
     displayName: 'Run tests'
+    condition: eq(variables.OS_PLATFORM, 'windows')
     inputs:
       targetType: inline
       script: "./build/import-devmodule.ps1 -initialcommand 'Invoke-Pester' -Wait -ReuseConsole"
       pwsh: $(USE_POWERSHELL_CORE)
+  - task: powershell@2
+    displayName: 'Run tests directly'
+    condition: eq(variables.OS_PLATFORM, 'ubuntu')
+    inputs:
+      targetType: inline
+      script: 'Invoke-Pester'
+      pwsh: $(USE_POWERSHELL_CORE)
+
