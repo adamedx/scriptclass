@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+[cmdletbinding()]
 param([switch] $clean)
 
 . "$psscriptroot/common-build-functions.ps1"
@@ -24,13 +25,13 @@ function InstallDependencies($clean) {
 
     if ( $clean -and (test-path $packagesDestination) ) {
         write-host -foregroundcolor cyan "Clean install specified -- deleting '$packagesDestination'"
-        rm -r -force $packagesDestination
+        remove-item -r -force $packagesDestination
     }
 
     write-host "Installing dependencies to '$appRoot'"
 
     if ( ! (test-path $packagesDestination) ) {
-        mkdir $packagesDestination | out-null
+        psmkdir $packagesDestination | out-null
     }
 
     $configFilePath = join-path $appRoot 'NuGet.Config'
@@ -42,20 +43,51 @@ function InstallDependencies($clean) {
         ''
     }
     $packagesConfigFile = join-path -path (join-path $psscriptroot ..) -child packages.config
-    iex "& nuget restore '$packagesConfigFile' $nugetConfigFileArgument -packagesDirectory '$packagesDestination'" | out-host
-
-    # Rename any powershell modules so they can be imported from the containing folder
-    ls $packagesDestination -r '*.psd1' | foreach {
-        $source = $_.directory.fullname
-        $destination = (join-path (split-path -parent $_.directory.fullname) $_.basename)
-        if ( ! (test-path $destination) ) {
-            write-host -foregroundcolor cyan "Moving '$source' to '$destination'"
-            mv $source $destination
-            mkdir $source | out-null
-        } else {
-            write-host "Skipping move of '$source' to '$destination' because it already exists"
-        }
+    ls ./lib | out-host
+    if ( ! ( test-path $packagesConfigFile ) ) {
+        return
     }
+
+    $restoreCommand = if ( $PSVersionTable.PSEdition -eq 'Desktop' ) {
+        "& nuget restore '$packagesConfigFile' $nugetConfigFileArgument -packagesDirectory '$packagesDestination' -packagesavemode nuspec"
+    } else {
+        $psCorePackagesCSProj = New-DotNetCoreProjFromPackagesConfig $packagesConfigFile $packagesDestination
+        "dotnet restore '$psCorePackagesCSProj' --packages '$packagesDestination' /verbosity:normal --no-cache"
+    }
+    write-host "Executing command: $restoreCommand"
+    iex $restoreCommand | out-host
+
+    $nuspecFile = get-childitem -path $approot -filter '*.nuspec' | select -expandproperty fullname
+
+    if ( $nuspecFile -is [object[]] ) {
+        throw "More than one nuspec file found in directory '$appRoot'"
+    }
+
+    Normalize-LibraryDirectory $packagesConfigFile $packagesDestination
+
+    $allowedLibraryDirectories = get-allowedlibrarydirectoriesfromnuspec $nuspecFile
+
+    # Remove nupkg files
+    get-childitem -r $packagesDestination -filter '*.nupkg' | remove-item -erroraction ignore
+
+    # Remove everything that is not listed as an allowed library directory in the nuspec
+    $allowedFiles = $allowedLibraryDirectories | foreach {
+        $allowedPath = join-path '.' $_
+        get-childitem -path $allowedPath -filter *.dll
+    }
+
+    $allObjects = get-childitem ./lib -r
+    $filesToRemove = $allObjects | where PSIsContainer -eq $false | where {
+        ! $allowedFiles -or $allowedFiles.FullName -notcontains $_.FullName
+    }
+
+    $filesToRemove | remove-item
+
+    $directoriesToRemove = $allObjects | where PSIsContainer -eq $true | where {
+        $children = get-childitem -r $_.fullname | where PSISContainer -eq $false
+        $null -eq $children
+    }
+    $directoriesToRemove | foreach { if ( test-path $_.fullname ) { $_ | remove-item -r -force } }
 }
 
 InstallDependencies $clean
