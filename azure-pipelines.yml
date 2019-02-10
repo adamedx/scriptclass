@@ -97,7 +97,7 @@ jobs:
     condition: eq(variables.OS_PLATFORM, 'windows')
     inputs:
       targetType: inline
-      script: "./build/import-devmodule.ps1 -initialcommand 'Invoke-Pester' -Wait -ReuseConsole"
+      script: si env:TEST_OUTPUT_PATH "$($env:TEST_OUTPUT_DIRECTORY)/$($env:TEST_OUTPUT_FILE)"; ./build/import-devmodule.ps1 -initialcommand 'Invoke-Pester -OutputFile $env:TEST_OUTPUT_PATH -OutputFormat NUnitXml' -Wait -ReuseConsole
       pwsh: $(USE_POWERSHELL_CORE)
   - task: powershell@2
     displayName: 'Run tests directly'
@@ -106,4 +106,8 @@ jobs:
       targetType: inline
       script: 'Invoke-Pester -OutputFile "$($env:TEST_OUTPUT_DIRECTORY)/$($env:TEST_OUTPUT_FILE)" -OutputFormat NUnitXml'
       pwsh: $(USE_POWERSHELL_CORE)
-
+  - task: PublishTestResults@2
+    inputs:
+      testResultsFormat: NUnit
+      testResultsFiles: $(TEST_OUTPUT_DIRECTORY)/$(TEST_OUTPUT_FILE)
+      failTaskOnFailedTests: true
