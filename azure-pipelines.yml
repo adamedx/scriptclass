@@ -90,7 +90,7 @@ jobs:
     displayName: 'Create test output directory'
     inputs:
       targetType: inline
-      script: '. (./build/common-build-functions.ps1);psmkdir -name $env:TEST_OUTPUT_DIRECTORY'
+      script: '. ./build/common-build-functions.ps1;psmkdir -name $env:TEST_OUTPUT_DIRECTORY'
       pwsh: $(USE_POWERSHELL_CORE)
   - task: powershell@2
     displayName: 'Run tests'
