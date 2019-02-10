@@ -8,7 +8,7 @@ trigger:
 
 variables:
   TEST_OUTPUT_DIRECTORY: './test/results'
-  TEST_OUTPUT_FILE: format('{0}/{1}', variables.TEST_OUTPUT_DIRECTORY, 'pester-testresults.xml')
+  TEST_OUTPUT_FILE: pester-testresults.xml
 
 jobs:
 - job: BuildWithTests
@@ -104,6 +104,6 @@ jobs:
     condition: eq(variables.OS_PLATFORM, 'ubuntu')
     inputs:
       targetType: inline
-      script: 'Invoke-Pester -OutputFile $env:TEST_OUTPUT_FILE -OutputFormat NUnitXml'
+      script: 'Invoke-Pester -OutputFile "$($env:TEST_OUTPUT_DIRECTORY)/$($env:TEST_OUTPUT_FILE)" -OutputFormat NUnitXml'
       pwsh: $(USE_POWERSHELL_CORE)
 
