@@ -139,6 +139,11 @@ function Clean-BuildDirectories {
         join-path $psscriptroot '../lib' | remove-item -r -force
     }
 
+    $testResultsPath = join-path $psscriptroot '../test/results'
+    if (test-path $testResultsPath) {
+        remove-item -r -force $testResultsPath
+    }
+
     $outputDirectory = Get-OutputDirectory
 
     if (test-path $outputDirectory) {
