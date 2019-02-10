@@ -7,8 +7,8 @@ trigger:
   - master
 
 variables:
-  - TEST_OUTPUT_DIRECTORY: './test/results'
-  - TEST_OUTPUT_FILE: format('{0}/{1}', variables.TEST_OUTPUT_DIRECTORY, 'pester-testresults.xml')
+  TEST_OUTPUT_DIRECTORY: './test/results'
+  TEST_OUTPUT_FILE: format('{0}/{1}', variables.TEST_OUTPUT_DIRECTORY, 'pester-testresults.xml')
 
 jobs:
 - job: BuildWithTests
