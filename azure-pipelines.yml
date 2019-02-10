@@ -6,10 +6,6 @@
 trigger:
   - master
 
-variables:
-  - TEST_OUTPUT_DIRECTORY: './test/results'
-  - TEST_OUTPUT_FILE: format('{0}/{1}', variables.TEST_OUTPUT_DIRECTORY, 'pester-testresults.xml')
-
 jobs:
 - job: BuildWithTests
   displayName: 'Build and test PowerShell module'
@@ -87,12 +83,6 @@ jobs:
       script: './build/configure-tools.ps1; ./build/publish-moduletodev.ps1'
       pwsh: $(USE_POWERSHELL_CORE)
   - task: powershell@2
-    displayName: 'Create test output directory'
-    inputs:
-      targetType: inline
-      script: '. (./build/common-build-functions.ps1);psmkdir -name $env:TEST_OUTPUT_DIRECTORY'
-      pwsh: $(USE_POWERSHELL_CORE)
-  - task: powershell@2
     displayName: 'Run tests'
     condition: eq(variables.OS_PLATFORM, 'windows')
     inputs:
@@ -104,6 +94,6 @@ jobs:
     condition: eq(variables.OS_PLATFORM, 'ubuntu')
     inputs:
       targetType: inline
-      script: 'Invoke-Pester -OutputFile $env:TEST_OUTPUT_FILE -OutputFormat NUnitXml'
+      script: 'Invoke-Pester'
       pwsh: $(USE_POWERSHELL_CORE)
 
