@@ -14,10 +14,10 @@
 # a scriptclass.psm1 in a parent directory, and then it will publish
 # the parent directory rather than something nested underneath as the
 # output of a build! Do not precede with '.'!
-# RootModule = ''
+RootModule = 'scriptclass.psm1'
 
 # Version number of this module.
-ModuleVersion = '0.16.0'
+ModuleVersion = '0.20.0'
 
 # Supported PSEditions
 CompatiblePSEditions = @('Desktop', 'Core')
@@ -62,7 +62,7 @@ PowerShellVersion = '5.1'
 # RequiredAssemblies = @()
 
 # Script files (.ps1) that are run in the caller's environment prior to importing this module.
-ScriptsToProcess = @('src/std.ps1')
+# ScriptsToProcess = @()
 
 # Type files (.ps1xml) to be loaded when importing this module
 # TypesToProcess = @()
@@ -74,25 +74,30 @@ ScriptsToProcess = @('src/std.ps1')
 # NestedModules = @()
 
 # Functions to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no functions to export.
-FunctionsToExport = @('=>', '::>')
+FunctionsToExport = @(
+    '=>',
+    '::>',
+    'Add-MockInScriptClassScope',
+    'Add-ScriptClassMock',
+    'Get-ScriptClass',
+    'Import-Assembly',
+    'Import-Script',
+    'Initialize-ScriptClassTest',
+    'Invoke-Method',
+    'New-ScriptClass',
+    'New-ScriptObject',
+    'New-ScriptObjectMock',
+    'Remove-ScriptClassMock',
+    'Test-ScriptObject')
 
 # Cmdlets to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no cmdlets to export.
-    CmdletsToExport = @(
-        'Add-ScriptClass',
-        'Import-Assembly',
-        'Import-Script',
-        'Invoke-Method',
-        'Mock-ScriptClassMethod',
-        'New-ScriptObject',
-        'New-ScriptObjectMock',
-        'Test-ScriptObject',
-        'Unmock-ScriptClassMethod')
+# CmdletsToExport = @()
 
 # Variables to export from this module
-VariablesToExport = @('::')
+VariablesToExport = @(':', 'mymanager') # This is actually $::
 
 # Aliases to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no aliases to export.
-AliasesToExport = @('new-so', 'scriptclass', 'with', 'const')
+AliasesToExport = @('new-so', 'scriptclass', 'withobject', 'Mock-ScriptClassMethod', 'Unmock-ScriptClassMethod')
 
 # DSC resources to export from this module
 # DscResourcesToExport = @()
@@ -104,17 +109,31 @@ AliasesToExport = @('new-so', 'scriptclass', 'with', 'const')
     FileList = @(
         './ScriptClass.psd1',
         './scriptclass.psm1',
+        'src/assemblyhelper.ps1',
+        'src/include.ps1',
+        'src/Initialize-ScriptClassTest.ps1',
+        'src/New-ScriptObjectMock.ps1',
+        'src/PreModuleInitialization.ps1',
+        'src/scriptclass.ps1',
+        'src/std.ps1',
+        'src/Add-MockInScriptClassScope.ps1',
+        'src/Unmock-ScriptClassMethod.ps1',
         'src/Mock-ScriptClassMethod.ps1',
         'src/mock/MethodMocker.ps1',
         'src/mock/MethodPatcher.ps1',
+        'src/mock/InitializeNonModuleMockFunctions.ps1',
         'src/mock/PatchedClassMethod.ps1',
         'src/mock/PatchedObject.ps1',
-        'src/New-ScriptObjectMock.ps1',
-        'src/scriptclass.ps1',
-        'src/std.ps1',
-        'src/Unmock-ScriptClassMethod.ps1',
-        'src/include.ps1',
-        'src/assemblyhelper.ps1')
+        'src/scriptobject/Get-ScriptClass.ps1',
+        'src/scriptobject/Invoke-Method.ps1',
+        'src/scriptobject/New-ScriptClass.ps1',
+        'src/scriptobject/New-ScriptObject.ps1',
+        'src/scriptobject/Test-ScriptObject.ps1',
+        'src/scriptobject/dsl/ClassDsl.ps1',
+        'src/scriptobject/dsl/MethodDsl.ps1',
+        'src/scriptobject/model/ClassDefinition.ps1',
+        'src/scriptobject/model/ClassTable.ps1',
+        'src/scriptobject/model/MethodInvocation.ps1')
 
 # Private data to pass to the module specified in RootModule/ModuleToProcess. This may also contain a PSData hashtable with additional module metadata used by PowerShell.
 PrivateData = @{
@@ -135,23 +154,13 @@ PrivateData = @{
 
         # ReleaseNotes of this module
         ReleaseNotes = @"
-# ScriptClass 0.16.0 Release Notes
+# ScriptClass 0.17.0 Release Notes
 
 Compatibility fixes for Linux
 
 ## New features
 
-* ``Import-Assembly`` syntax is more sane -- assembly name without '.dll' extension must be specified
-* ``Import-Assembly`` now supports a platform precedence and will search for compatible platforms in a priority order among netstandard1.3, netstandard1.1, and netcoreapp1.0 monikers (in that order)
-* ``Import-Assembly`` now returns a `System.Reflection.Assembly` if it loads an assembly successfully
-* Added common parameters to Import-Assembly through cmdletbinding attribute
-
 ## Fixed defects
-
-* Fix ``Import-Assembly`` so that it handles Linux paths with '/' characters
-* Fix break in ``Import-Assembly`` by replacing use of ``ls`` alias with ``Get-ChildItem`` to avoid collision with Linux ``ls`` command
-* Fix path case sensitivity issue with ``Import-Script`` where entire path of script file was lower-cased before attempting to load the file, which breaks on case-sensitive file systems like Linux
-* Added missing test coverage for Import-Assembly
 
 "@
 

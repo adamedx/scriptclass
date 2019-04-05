@@ -12,7 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-function Mock-ScriptClassMethod {
+set-alias Mock-ScriptClassMethod Add-ScriptClassMock
+
+function Add-ScriptClassMock {
     [cmdletbinding(positionalbinding=$false)]
     param(
         [parameter(position=0, mandatory=$true)]
@@ -27,16 +29,20 @@ function Mock-ScriptClassMethod {
         [parameter(position=3)]
         [ScriptBlock] $ParameterFilter,
 
+        $MockContext,
+
         [parameter(parametersetname='static')]
         [Switch] $Static,
 
-        [Switch] $Verifiable
+        [Switch] $Verifiable,
+
+        [String] $ModuleName
     )
 
     $ScriptObject = $null
     $ClassName = $MockTarget
 
-    if ( test-scriptobject $MockTarget ) {
+    if ( __ScriptClass__IsScriptClass $MockTarget ) {
         if ( $Static.IsPresent ) {
             throw [ArgumentException]::new("Argument 'Static' may not be specified when the type of argument 'MockTarget' is [PSCustomObject]. Specify a ScriptClass class name of type [String] for 'MockTarget' to use 'Static'")
         }
@@ -55,6 +61,6 @@ function Mock-ScriptClassMethod {
 
     $mocker = __MethodMocker_Get
 
-    __MethodMocker_Mock $mocker $className  $methodName $Static.IsPresent $ScriptObject $MockWith $normalizedParameterFilter $Verifiable.IsPresent
+    __MethodMocker_Mock $mocker $className  $methodName $Static.IsPresent $ScriptObject $MockWith $normalizedParameterFilter $Verifiable.IsPresent $ModuleName $MockContext
 }
 

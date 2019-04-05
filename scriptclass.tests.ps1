@@ -20,35 +20,27 @@ $thisshell = if ( $PSEdition -eq 'Desktop' ) {
 }
 
 Describe "ScriptClass module manifest" {
-    $manifestLocation   = Join-Path $here 'ScriptClass.psd1'
+    $manifestLocation  = Join-Path $here 'ScriptClass.psd1'
     $manifest = Test-ModuleManifest -Path $manifestlocation -ErrorAction Stop -WarningAction SilentlyContinue
 
     Context "When loading the manifest" {
-        It "should export the exact same set of cmdlets as are in the set of expected cmdlets" {
-            $expectedCmdlets = @(
-                'Add-ScriptClass',
-                'Import-Assembly',
-                'Import-Script',
-                'Invoke-Method',
-                'Mock-ScriptClassMethod',
-                'New-ScriptObject',
-                'New-ScriptObjectMock',
-                'Test-ScriptObject',
-                'Unmock-ScriptClassMethod')
-
-            $manifest.ExportedCmdlets.count | Should BeExactly $expectedCmdlets.length
-
-            $verifiedExportsCount = 0
-            $expectedCmdlets | foreach {
-                if ( $manifest.exportedcmdlets[$_] -ne $null ) {
-                    $verifiedExportsCount++
-                }
-            }
-            $verifiedExportsCount -eq $expectedcmdlets.length | Should BeExactly $true
-        }
-
         It "should export the exact same set of functions as are in the set of expected functions" {
-            $expectedFunctions = @('=>', '::>')
+            $expectedFunctions = @(
+                '=>'
+                '::>'
+                'Add-MockInScriptClassScope'
+                'Add-ScriptClassMock'
+                'Get-ScriptClass'
+                'Import-Assembly'
+                'Import-Script'
+                'Initialize-ScriptClassTest'
+                'Invoke-Method'
+                'New-ScriptClass'
+                'New-ScriptObject'
+                'New-ScriptObjectMock'
+                'Remove-ScriptClassMock'
+                'Test-ScriptObject'
+            )
 
             $manifest.ExportedFunctions.count | Should BeExactly $expectedFunctions.length
 
@@ -58,21 +50,22 @@ Describe "ScriptClass module manifest" {
                     $verifiedExportsCount++
                 }
             }
+
             $verifiedExportsCount -eq $expectedFunctions.length | Should BeExactly $true
         }
 
-
         It "should export the '::' variable and only that variable" {
             $manifest.exportedvariables.count | Should BeExactly 1
-            $manifest.exportedvariables.keys -contains '::' | Should BeExactly $true
+            $manifest.exportedvariables.keys -contains ':' | Should BeExactly $true
         }
 
-        It "should, PENDING fix, export the 'new-so', 'ScriptClass', 'const', and 'with' aliases and only those aliases" {
-            $manifest.exportedaliases.count | Should BeExactly 4
+        It "should export the 'new-so', 'ScriptClass', 'withobject', Mock-ScriptClassMethod, and 'Unmock-ScriptClassMethod' aliases and only those aliases" {
+            $manifest.exportedaliases.count | Should BeExactly 5
             $manifest.exportedaliases.keys -contains 'new-so' | Should BeExactly $true
             $manifest.exportedaliases.keys -contains 'ScriptClass' | Should BeExactly $true
-            $manifest.exportedaliases.keys -contains 'with' | Should BeExactly $true
-            $manifest.exportedaliases.keys -contains 'const' | Should BeExactly $true
+            $manifest.exportedaliases.keys -contains 'withobject' | Should BeExactly $true
+            $manifest.exportedaliases.keys -contains 'Mock-ScriptClassMethod' | Should BeExactly $true
+            $manifest.exportedaliases.keys -contains 'Unmock-ScriptClassMethod' | Should BeExactly $true
         }
     }
 

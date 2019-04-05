@@ -15,20 +15,8 @@
 
 set-strictmode -version 2
 
-. (join-path $psscriptroot scriptclass.ps1)
 . (join-path $psscriptroot include.ps1)
 . (join-path $psscriptroot assemblyhelper.ps1)
-. (join-path $psscriptroot mock/PatchedObject.ps1)
-. (join-path $psscriptroot mock/PatchedClassMethod.ps1)
-. (join-path $psscriptroot mock/MethodPatcher.ps1)
-. (join-path $psscriptroot mock/MethodMocker.ps1)
-. (join-path $psscriptroot Mock-ScriptClassMethod.ps1)
-. (join-path $psscriptroot New-ScriptObjectMock.ps1)
-. (join-path $psscriptroot Unmock-ScriptClassMethod.ps1)
 
-set-alias new-so new-scriptobject
-set-alias ScriptClass add-scriptclass
-set-alias with invoke-method
-set-alias const new-constant
-
+. (join-path $psscriptroot scriptclass.ps1)
 

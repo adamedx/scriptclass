@@ -85,6 +85,10 @@ function Import-Assembly {
     $searchRoot = if ( $assemblyRoot ) {
         $assemblyRoot
     } else {
+        $callerScriptFile = (get-pscallstack)[1].scriptname
+        if ( ! $callerScriptFile ) {
+            throw [ArgumentException]::new("Cannot load assembly '$AssemblyName' using the specified relative path '$AssemblyRelativePath' because the script file path of the caller cannot be determined; it may be a dynamic script block. Use the AssemblyRoot parameter to specify an absolute search path instead")
+        }
         split-path -parent (get-pscallstack)[1].scriptname
     }
     write-verbose "Using assembly root '$searchRoot'..."

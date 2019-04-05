@@ -29,13 +29,21 @@ function __MethodMocker_Get {
     $mocker
 }
 
-function __MethodMocker_Mock($mockManager, $className, $methodName, $isStatic, $object, $mockScriptBlock, $parameterFilter, $isVerifiableMock) {
+function __MethodMocker_Mock($mockManager, $className, $methodName, $isStatic, $object, $mockScriptBlock, $parameterFilter, $isVerifiableMock, $moduleName, $mockContext) {
     $patchedMethod = __MethodPatcher_PatchMethod $mockManager.MethodPatcher $className $MethodName $isStatic $object
 
-    __MethodMocker_MockPatchedMethod $patchedMethod $object $mockScriptBlock $parameterFilter $isVerifiableMock
+    $objectModule = if ( $object ) {
+        (__ScriptClass__GetClass $object.scriptclass.classname).classModule
+#        $object.scriptclass.Module
+    } else {
+        $classModule = (__ScriptClass__GetClass $classname).classModule
+        $classModule
+    }
+
+    __MethodMocker_MockPatchedMethod $patchedMethod $object $mockScriptBlock $parameterFilter $isVerifiableMock $objectModule.Name $objectModule $mockContext
 }
 
-function __MethodMocker_MockPatchedMethod($patchedMethod, $object, $mockScriptBlock, $parameterFilter, $isVerifiableMock) {
+function __MethodMocker_MockPatchedMethod($patchedMethod, $object, $mockScriptBlock, $parameterFilter, $isVerifiableMock, $moduleName, $module, $mockContext) {
     $adjustedParameterFilter = if ( $object ) {
         $patchedObject = __PatchedClassMethod_GetPatchedObject $patchedMethod $Object
         __PatchedObject_Mock $patchedObject $mockScriptBlock $parameterFilter
@@ -50,7 +58,31 @@ function __MethodMocker_MockPatchedMethod($patchedMethod, $object, $mockScriptBl
         @{}
     }
 
-    Mock $patchedMethod.FunctionName @parameterFilterArgument -Verifiable:$IsVerifiableMock -MockWith $mockScriptBlock
+    $moduleArgument = @{moduleName=$module.Name}
+
+    . $module.newboundscriptblock(
+        {
+            param($patchedMethod, $parameterFilterArgument, $IsVerifiableMock, $mockScriptBlock, $moduleArgument, $Context)
+            import-module $patchedmethod.originalscriptblock.module -warningaction ignore | out-null
+            $MockContext = $Context
+            Mock $patchedMethod.FunctionName @parameterFilterArgument -Verifiable:$IsVerifiableMock -MockWith $mockScriptBlock $patchedmethod.originalscriptblock.module.name
+        }
+    ) $patchedMethod $parameterFilterArgument $IsVerifiableMock $mockScriptBlock $moduleArgument $mockContext
+
+
+#    if ( ! $module ) {
+#    Mock $patchedMethod.FunctionName @parameterFilterArgument -Verifiable:$IsVerifiableMock -MockWith $mockScriptBlock @moduleArgument
+    <#
+    } else {
+        . $module.newboundscriptblock(
+            {
+                param($patchedMethod, $parameterFilterArgument, $IsVerifiableMock, $mockScriptBlock, $moduleArgument)
+                import-module $patchedmethod.originalscriptblock.module -warningaction ignore | out-null
+                Mock $patchedMethod.FunctionName @parameterFilterArgument -Verifiable:$IsVerifiableMock -MockWith $mockScriptBlock $patchedmethod.originalscriptblock.module.name
+            }
+        ) $patchedMethod $parameterFilterArgument $IsVerifiableMock $mockScriptBlock $moduleArgument
+    }
+#>
 }
 
 function __MethodMocker_Unmock($className, $methodName, $isStatic, $object, $allMocks) {

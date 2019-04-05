@@ -39,23 +39,23 @@ Describe 'Mock-ScriptClassObject cmdlet' {
         }
 
         It "Should not throw an exception when mocking an existing class static method" {
-            { Mock-ScriptClassMethod SimpleClass StaticMethod -static } | Should Not Throw
+            { Mock-ScriptClassMethod SimpleClass StaticMethod -static -ModuleName ScriptClass } | Should Not Throw
         }
 
         It "Should not throw an exception when mocking an existing object method" {
-            { Mock-ScriptClassMethod SimpleClass StaticMethod -static } | Should Not Throw
+            { Mock-ScriptClassMethod SimpleClass StaticMethod -static -ModuleName ScriptClass } | Should Not Throw
         }
 
         It "Should throw an exception with a specific message when attempting to mock a class that does not exist" {
-            { Mock-ScriptClassMethod ClassThatDoesNotExist nonexistentmethod { 'nothing' } } | Should Throw 'not found'
+            { Mock-ScriptClassMethod ClassThatDoesNotExist nonexistentmethod { 'nothing' } -ModuleName ScriptClass } | Should Throw 'not found'
         }
 
         It "Should throw an exception with a specific message when attempting to mock a class instance method that does not exist on a class that exists" {
-            { Mock-ScriptClassMethod SimpleClass nonexistentmethod { 'nothing' } } | Should Throw 'not found'
+            { Mock-ScriptClassMethod SimpleClass nonexistentmethod { 'nothing' } -ModuleName ScriptClass } | Should Throw 'not found'
         }
 
         It "Should throw an exception with a specific message when attempting to mock a static method that does not exist on a class that exists" {
-            { Mock-ScriptClassMethod SimpleClass nonexistentstaticmethod { 'nothing' } } | Should Throw 'not found'
+            { Mock-ScriptClassMethod SimpleClass nonexistentstaticmethod { 'nothing' } -ModuleName ScriptClass } | Should Throw 'not found'
         }
 
         It "Should throw an exception with a specific message when attempting to mock an instance method of a particular object with a method name that does not exist on that object" {
@@ -73,7 +73,7 @@ Describe 'Mock-ScriptClassObject cmdlet' {
                 }
             }
 
-            Mock-ScriptClassMethod TestClassInstanceMethod RealMethod { 5 }
+            Mock-ScriptClassMethod TestClassInstanceMethod RealMethod { 5 } -ModuleName ScriptClass
 
             $testClass = new-so TestClassInstanceMethod
 
@@ -91,10 +91,27 @@ Describe 'Mock-ScriptClassObject cmdlet' {
             $testClass = new-so TestClassInstanceMethod2
             ($testClass |=> RealMethod 3 7) | Should Be ($testClass.data + 3 + 7)
 
-            Mock-ScriptClassMethod TestClassInstanceMethod2 RealMethod { 5 }
+            Mock-ScriptClassMethod TestClassInstanceMethod2 RealMethod { 5 } -ModuleName ScriptClass
 
             ($testClass |=> RealMethod 3 7) | Should Be 5
 
+        }
+
+        It "Should allow context to be passed to the mock function with the MockContext parameter" {
+            ScriptClass TestClassInstanceMethodParam1 {
+                $data = 9
+                function RealMethod($parameter1, $parameter2) {
+                    $this.data + $parameter1 + $parameter2
+                }
+            }
+
+            $testClass = new-so TestClassInstanceMethodParam1
+            ($testClass |=> RealMethod 3 7) | Should Be ($testClass.data + 3 + 7)
+
+            $mockValue = 17
+            Mock-ScriptClassMethod TestClassInstanceMethodParam1 RealMethod { $MockContext } -ModuleName ScriptClass -MockContext $mockValue
+
+            ($testClass |=> RealMethod 3 7) | Should Be $mockValue
         }
 
         It 'should only use the mock if the parameter filter passes' {
@@ -108,7 +125,7 @@ Describe 'Mock-ScriptClassObject cmdlet' {
             $testObject |=> mymethod 1 5 | Should Be 6
             $testObject |=> mymethod 5 1 | Should Be 6
 
-            Mock-ScriptClassMethod ParamFilter1 mymethod { $param1 * $param2 } -parameterfilter { $param2 -eq 1 }
+            Mock-ScriptClassMethod ParamFilter1 mymethod { $param1 * $param2 } -parameterfilter { $param2 -eq 1 } -ModuleName ScriptClass
 
             $testObject |=> mymethod 1 5 | Should Be 6
             $testObject |=> mymethod 5 1 | Should Be 5
@@ -125,8 +142,8 @@ Describe 'Mock-ScriptClassObject cmdlet' {
 
             $testObject |=> mymethod 3 7 | Should Be 10
 
-            Mock-ScriptClassMethod ParamFilter3 mymethod { $param1 * $param2 } -parameterfilter { $param1 -eq 2 }
-            Mock-ScriptClassMethod ParamFilter3 mymethod { $param1 * $param2 + 1 } -parameterfilter { $param2 -eq 5 }
+            Mock-ScriptClassMethod ParamFilter3 mymethod { $param1 * $param2 } -parameterfilter { $param1 -eq 2 } -ModuleName ScriptClass
+            Mock-ScriptClassMethod ParamFilter3 mymethod { $param1 * $param2 + 1 } -parameterfilter { $param2 -eq 5 } -ModuleName ScriptClass
 
             $testObject |=> mymethod 3 7 | Should Be 10
             $testObject |=> mymethod 2 7 | Should Be 14
@@ -135,7 +152,7 @@ Describe 'Mock-ScriptClassObject cmdlet' {
             $testObject |=> mymethod 2 5 | Should Be 11
         }
 
-        It 'should allow the use of the $this variable in the parameter filter to filter specific objects' {
+        It 'should allow the use of the $this variable in the parameter filter to filter specific objects' -Pending {
             ScriptClass ParamFilter2 {
                 $state = 0
                 function mymethod($param1, $param2) {
@@ -151,7 +168,7 @@ Describe 'Mock-ScriptClassObject cmdlet' {
             $testObject |=> mymethod 4 5 | Should Be 23
             $testObject2 |=> mymethod 4 5 | Should Be 13
 
-            Mock-ScriptClassMethod ParamFilter2 mymethod { $this.state * $param1 * $param2 } -parameterfilter { $this -eq $testObject2 }
+            Mock-ScriptClassMethod ParamFilter2 mymethod { $this.state * $param1 * $param2 } -parameterfilter { $this -eq $testObject2 } -ModuleName ScriptClass
 
             $testObject |=> mymethod 4 5 | Should Be 23
             $testObject2 |=> mymethod 4 5 | Should Be -140
@@ -170,7 +187,7 @@ Describe 'Mock-ScriptClassObject cmdlet' {
             $testObject |=> compute 4 3 | Should Be 12
             $testObject.compute(4,3) | Should Be 12
 
-            Mock-ScriptClassMethod TestDotNetCalls compute { -1 }
+            Mock-ScriptClassMethod TestDotNetCalls compute { -1 } -ModuleName ScriptClass
 
             $testObject |=> compute 4 3 | Should Be -1
             $testObject.compute(4,3) | Should Be -1
@@ -211,7 +228,7 @@ Describe 'Mock-ScriptClassObject cmdlet' {
                 $testObject2 = new-so TestClassInstanceMethod4
                 $testObject2 |=> GetData 4 | Should Be 31
 
-                Mock-ScriptClassMethod TestClassInstanceMethod3 MockMe { -3 }
+                Mock-ScriptClassMethod TestClassInstanceMethod3 MockMe { -3 } -ModuleName ScriptClass
 
                 $testObject2 |=> GetData 4 | Should Be 10
             }
@@ -221,10 +238,10 @@ Describe 'Mock-ScriptClassObject cmdlet' {
                 $testObject.thisstate = 15
                 $testObject |=> GetState | Should Be 15
 
-                Mock-ScriptClassMethod TestClassInstanceMethod4 GetState { $replacer = new-so ReplacementClass1; $replacer |=> GetReplacedValue $this }
+                Mock-ScriptClassMethod TestClassInstanceMethod4 GetState { $replacer = new-so ReplacementClass1; $replacer |=> GetReplacedValue $this } -ModuleName ScriptClass
                 $testObject |=> GetState | Should Be 16
 
-                Mock-ScriptClassMethod ReplacementClass1 GetReplacedValue { $otherObject.thisstate - 4 }
+                Mock-ScriptClassMethod ReplacementClass1 GetReplacedValue { $otherObject.thisstate - 4 } -ModuleName ScriptClass
 
                 $testObject |=> GetState | Should Be 11
             }
@@ -245,9 +262,26 @@ Describe 'Mock-ScriptClassObject cmdlet' {
 
             ($::.TestClassStaticMethod |=> StaticRealMethod 3 7) | Should Be ( $::.TestClassStaticMethod.staticdata + 3 * 7 )
 
-            Mock-ScriptClassMethod TestClassStaticMethod StaticRealMethod { 3 } -static
+            Mock-ScriptClassMethod TestClassStaticMethod StaticRealMethod { 3 } -static -ModuleName ScriptClass
 
             ($::.TestClassStaticMethod |=> StaticRealMethod 3 7) | Should Be 3
+        }
+
+        It "Should allow context to be passed to the mock function with the MockContext parameter" {
+            ScriptClass TestClassInstanceMethodParam2 {
+                static {
+                    function RealMethod($parameter1, $parameter2) {
+                        $parameter1 + $parameter2
+                    }
+                }
+            }
+
+            $::.TestClassInstanceMethodParam2 |=> RealMethod 3 7 | Should Be (3 + 7)
+
+            $mockValue = 18
+            Mock-ScriptClassMethod TestClassInstanceMethodParam2 RealMethod { $MockContext } -Static -MockContext $mockValue
+
+            $::.TestClassInstanceMethodParam2 |=> RealMethod 3 7 | Should Be $mockValue
         }
     }
 
@@ -265,7 +299,7 @@ Describe 'Mock-ScriptClassObject cmdlet' {
 
             ($testObject |=> RealObjectMethod 3 7) | Should Be ( $testObject.objectData + 3 * 7  + 1 )
 
-            Mock-ScriptClassMethod $testObject RealObjectMethod { 2 }
+            Mock-ScriptClassMethod $testObject RealObjectMethod { 2 } -ModuleName ScriptClass
 
             ($testObject |=> RealObjectMethod 3 7) | Should Be 2
         }
@@ -283,11 +317,34 @@ Describe 'Mock-ScriptClassObject cmdlet' {
 
             ($testObject |=> RealObjectMethod 3 7 2) | Should Be ( $testObject.objectData + 3 * 7 * 2 + 1 )
 
-            Mock-ScriptClassMethod $testObject RealObjectMethod { 9 }
+            Mock-ScriptClassMethod $testObject RealObjectMethod { 9 } -ModuleName ScriptClass
 
             ($testObject |=> RealObjectMethod 3 7 2) | Should Be 9
 
             $testObject2 = new-so TestClassObjectMethod2
+
+            ($testObject2 |=> RealObjectMethod 3 7 2) | Should Be ( $testObject.objectData + 3 * 7 * 2 + 1 )
+        }
+
+        It "Should allow context to be passed to the mock function with the MockContext parameter" {
+            ScriptClass TestClassObjectMethodContext2 {
+                $objectdata = 29
+
+                function RealObjectMethod($parameter1, $parameter2, $parameter3) {
+                    $this.objectdata + $parameter1 * $parameter2 * $parameter3 + 1
+                }
+            }
+
+            $testObject = new-so TestClassObjectMethodContext2
+
+            ($testObject |=> RealObjectMethod 3 7 2) | Should Be ( $testObject.objectData + 3 * 7 * 2 + 1 )
+
+            $mockOutput = 37
+            Mock-ScriptClassMethod $testObject RealObjectMethod { $MockContext } -MockContext $mockOutput
+
+            ($testObject |=> RealObjectMethod 3 7 2) | Should Be $mockOutput
+
+            $testObject2 = new-so TestClassObjectMethodContext2
 
             ($testObject2 |=> RealObjectMethod 3 7 2) | Should Be ( $testObject.objectData + 3 * 7 * 2 + 1 )
         }

@@ -325,16 +325,15 @@ function publish-modulebuild {
         [switch] $force)
 
     $manifestPaths = get-childitem $moduleSourceDirectory -filter *.psd1
-    if ( $manifestPaths.length -lt 1 ) {
+    if ( ! $manifestPaths -or (, $manifestPaths).length -lt 1 ) {
         throw "No '.psd1' PowerShell module manifest files found at path '$moduleSourceDirectory'"
     }
 
     if ( $manifestPaths -is [Object[]] ) {
-        $manifestPaths | fl
         throw "More than one '.psd1' PowerShell module manifest files found at path '$moduleSourceDirectory'"
     }
 
-    if ( (get-psrepository $destinationRepositoryName 2>$null) -eq $null ) {
+    if ( (get-psrepository $destinationRepositoryName -erroraction ignore) -eq $null ) {
         throw "Unable to find destination repository '$destinationRepositoryName' -- supply the correct repository name or register one with register-psrepository"
     }
 

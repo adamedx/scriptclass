@@ -12,23 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+set-strictmode -version 2
+
 $here = Split-Path -Parent $MyInvocation.MyCommand.Path
 $sut = (Split-Path -Leaf $MyInvocation.MyCommand.Path) -replace '\.Tests\.', '.'
 $thismodule = join-path (split-path -parent $here) 'ScriptClass.psd1'
 
 Describe "The class definition interface" {
     BeforeAll {
-        remove-module $thismodule -force -erroraction silentlycontinue
+        remove-module $thismodule -force -erroraction ignore
         import-module $thismodule -force
     }
 
     AfterAll {
-        remove-module $thismodule -force -erroraction silentlycontinue
+        remove-module $thismodule -force -erroraction ignore
     }
 
     Context "When declaring a simple class" {
         It "succeeds with trivial parameters for the new-class cmdlet" {
-            $result = add-scriptclass SimpleClass1 {}
+            $result = New-ScriptClass SimpleClass1 {}
             $result | Should BeExactly $null
         }
 
@@ -55,12 +57,70 @@ Describe "The class definition interface" {
             ($newInstance.typeandval).gettype() | Should BeExactly 'double'
         }
 
-        It "Does not throw an exception if add-scriptclass is used inside an add-scriptclass definition of a function" {
+        It "Does not throw an exception if New-ScriptClass is used inside an New-ScriptClass definition of a function" {
             {
-                add-scriptclass ClassClassOuter72 {
-                    add-scriptclass ClassClassOuter73 {}
+                New-ScriptClass ClassClassOuter72 {
+                    New-ScriptClass ClassClassOuter73 {}
                 }
             } | Should Not Throw
+        }
+
+        It "Allows parameters to be passed to the class definition block that may be aassigned to instance members" {
+            ScriptClass ParameterizedClass1 -ArgumentList 5 {
+                param($classParam)
+                $classData = $classParam
+
+                function GetParam {
+                    $this.classData
+                }
+            }
+
+            $instance = new-so ParameterizedClass1
+
+            $instance |=> GetParam | Should Be 5
+        }
+
+        It "Allows parameters to be passed to the class definition block that may be assigned to static members" {
+            ScriptClass ParameterizedClass2 -ArgumentList 4 {
+                param($classParam)
+
+                static {
+                    $staticData = $classParam
+                    function GetParam {
+                        $this.staticData
+                    }
+                }
+            }
+
+            $::.ParameterizedClass2 |=> GetParam | Should Be 4
+        }
+
+        It "Should return the value of the parameter passed to a class definition if an instance method attempts to access that parameter and return it in the pipelinne" {
+            ScriptClass ParameterizedClass3 -ArgumentList 6 {
+                param($classParam)
+
+                function GetParam {
+                    $classParam
+                }
+            }
+
+            $instance = new-so ParameterizedClass3
+
+            $instance |=> GetParam | Should Be 6
+        }
+
+        It "Should throw an exception if an instance method attempts to access a parameter as a property of the instance using the this variable" {
+            ScriptClass ParameterizedClass4 -ArgumentList 7 {
+                param($classParam)
+
+                function GetParam {
+                    $this.classParam
+                }
+            }
+
+            $instance = new-so ParameterizedClass4
+
+            { $instance |=> GetParam } | Should Throw "The property 'classParam' cannot be found"
         }
     }
 
@@ -83,7 +143,7 @@ Describe "The class definition interface" {
                 $mydescription = $null
             }
 
-            $typeProperties = $::.ClassClass63.InstanceProperties
+            $typeProperties = (Get-ScriptClass ClassClass63 -detailed).classdefinition.InstanceProperties
             $typeProperties.keys -contains 'mydescription' | Should BeExactly $true
         }
 
@@ -142,10 +202,9 @@ Describe "The class definition interface" {
             $newInstance.scriptclass.scriptclass | Should BeExactly $null
         }
 
-        It "has a 'scriptclass' member that has exactly four noteproperty properties and one scriptproperty property" {
+        It "has a 'scriptclass' member that has exactly three noteproperty properties" {
             $newInstance = new-scriptobject ClassClass53
-            ($newInstance.scriptclass | gm -membertype noteproperty).count | Should BeExactly 4
-            ($newInstance.scriptclass | gm -membertype scriptproperty) -is [Microsoft.PowerShell.Commands.MemberDefinition] | Should BeExactly $true
+            ($newInstance.scriptclass | gm -membertype noteproperty).count | Should BeExactly 3
         }
 
         It "has a 'scriptclass' member that is the same object instance as the 'scriptclass' member of a another object of the same scriptclass" {
@@ -213,11 +272,15 @@ Describe "The class definition interface" {
             $value2 = [int32]
 
             ScriptClass $className {
-                $property1 = strict-val [int32] $value1
-                $property2 = strict-val [Type] $value2
+                $property1 = strict-val [int32]
+                $property2 = strict-val [Type]
+                function __initialize($arg1, $arg2) {
+                    $this.property1 = $arg1
+                    $this.property2 = $arg2
+                }
             }
 
-            $newInstance = new-scriptobject $className
+            $newInstance = new-scriptobject $className $value1 $value2
             $newInstance.$prop1 | Should BeExactly $value1
             $newInstance.$prop2 | Should BeExactly $value2
         }
@@ -241,8 +304,8 @@ Describe "The class definition interface" {
 
             ($newInstance.psobject.members | select Name).name -contains $function1 | Should BeExactly $true
             ($newInstance.psobject.members | select Name).name -contains $function2 | Should BeExactly $true
-            with $newInstance $function1 | Should BeExactly $function1Result
-            with $newInstance $function2 4 5 | Should BeExactly 9
+            withobject $newInstance $function1 | Should BeExactly $function1Result
+            withobject $newInstance $function2 4 5 | Should BeExactly 9
         }
 
 
@@ -251,15 +314,19 @@ Describe "The class definition interface" {
             $identityResult = "me"
 
             ScriptClass $className {
-                $identity = $identityResult
+                $identity = $null
+
+                function __initialize($resultArg) {
+                    $this.identity = $resultArg
+                }
 
                 function showme {
                     $this.identity
                 }
             }
 
-            $newInstance = new-scriptobject $className
-            with $newInstance showme | should BeExactly $identityResult
+            $newInstance = new-scriptobject $className $identityResult
+            withobject $newInstance showme | should BeExactly $identityResult
         }
 
         It "throws an exception in class definition if a typed property of the class is initialized with a value of an incompatible type" {
@@ -347,7 +414,7 @@ Describe "The class definition interface" {
             ScriptClass $className {
                 $objectState = $null
                 function __initialize($arg1, $arg2) {
-                    with $this sum $arg1 $arg2
+                    withobject $this sum $arg1 $arg2
                 }
 
                 function sum($first, $second) {
@@ -383,7 +450,7 @@ Describe "The class definition interface" {
 
             ScriptClass $className {
                 function outer {
-                    with $this inner
+                    withobject $this inner
                 }
 
                 function inner {
@@ -392,7 +459,7 @@ Describe "The class definition interface" {
             }
 
             $newInstance = new-scriptobject $className
-             with $newInstance outer | Should BeExactly 'nested'
+             withobject $newInstance outer | Should BeExactly 'nested'
         }
 
         It "can invoke other methods in the object that return properties referenced from the `$this variable" {
@@ -402,7 +469,7 @@ Describe "The class definition interface" {
             ScriptClass $className {
                 $objectState = 'nestedthis'
                 function outer {
-                    with $this inner
+                    withobject $this inner
                 }
 
                 function inner {
@@ -412,7 +479,7 @@ Describe "The class definition interface" {
 
             $newInstance = new-scriptobject $className
 
-            with $newInstance outer | Should BeExactly $nestedThisResult
+            withobject $newInstance outer | Should BeExactly $nestedThisResult
         }
 
         It "can take multiple arguments and invoke other methods in the object that take multiple arguments and return results using properties referenced from the `$this variable" {
@@ -425,7 +492,7 @@ Describe "The class definition interface" {
                 $innerBracket = '('
                 $innerBracketRight = ')'
                 function sum($arg1, $arg2, $arg3, $arg4) {
-                    $inner = with $this product $arg3 $arg4
+                    $inner = withobject $this product $arg3 $arg4
                     "$($this.outerBracket)$arg1 + $inner + $($arg2)$($this.outerBracketRight)"
                 }
 
@@ -436,16 +503,16 @@ Describe "The class definition interface" {
 
             $newInstance = new-scriptobject $className
 
-            with $newInstance sum 1 2 3 4 | Should BeExactly $bracketResult
+            withobject $newInstance sum 1 2 3 4 | Should BeExactly $bracketResult
         }
 
-        It "can invoke other methods in the object using 'with' with the `$this variable" {
+        It "can invoke other methods in the object using 'withobject' with the `$this variable" {
             $className = 'ClassClass23'
 
             ScriptClass $className {
                 $mainValue = 7
                 function outer($arg1, $arg2, $arg3) {
-                    with $this inner $arg3 ($arg1 + $arg2)
+                    withobject $this inner $arg3 ($arg1 + $arg2)
                 }
 
                 function inner($first, $second) {
@@ -454,17 +521,17 @@ Describe "The class definition interface" {
             }
 
             $newInstance = new-scriptobject $className
-            with $newInstance outer 4 5 6 | Should BeExactly 22
+            withobject $newInstance outer 4 5 6 | Should BeExactly 22
         }
 
-        It "can invoke other methods in the object using the 'with' alias with the `$this variable and passing variable arguments using @args" {
+        It "can invoke other methods in the object using the 'withobject' alias with the `$this variable and passing variable arguments using @args" {
 
             $className = 'ClassClass24'
 
             ScriptClass $className {
                 $mainValue = 7
                 function outer {
-                    with $this inner @args
+                    withobject $this inner @args
                 }
 
                 function inner($first, $second, $third) {
@@ -473,10 +540,10 @@ Describe "The class definition interface" {
             }
 
             $newInstance = new-scriptobject $className
-            with $newInstance outer 4 5 6 | Should BeExactly 22
+            withobject $newInstance outer 4 5 6 | Should BeExactly 22
         }
 
-        It "can invoke other methods in the object using 'with' without the `$this variable by implying it" {
+        It "can invoke other methods in the object using 'withobject' without the `$this variable by implying it" {
             $className = 'ClassClass42'
 
             ScriptClass $className {
@@ -491,7 +558,7 @@ Describe "The class definition interface" {
             }
 
             $newInstance = new-scriptobject $className
-            with $newInstance outer 4 5 6 | Should BeExactly 22
+            withobject $newInstance outer 4 5 6 | Should BeExactly 22
         }
 
         It "can invoke other methods in the object using normal cmdlet call syntax against methods and implied `$this variable" {
@@ -510,10 +577,10 @@ Describe "The class definition interface" {
             }
 
             $newInstance = new-scriptobject $className
-            with $newInstance outer 4 5 6 | Should BeExactly 22
+            withobject $newInstance outer 4 5 6 | Should BeExactly 22
         }
 
-        It "can use the -do parameter to specify a method or scriptblock" {
+        It "can use the -action parameter to specify a method or scriptblock" {
 
             $className = 'ClassClass44'
 
@@ -529,8 +596,8 @@ Describe "The class definition interface" {
             }
 
             $newInstance = new-scriptobject $className
-            with $newInstance -do outer 4 5 6 | Should BeExactly 22
-            with $newInstance -do { outer 3 2 1 } | Should BeExactly 13
+            withobject $newInstance -action outer 4 5 6 | Should BeExactly 22
+            withobject $newInstance -action { outer 3 2 1 } | Should BeExactly 13
         }
 
     }
@@ -554,13 +621,13 @@ Describe "The class definition interface" {
             }
 
             function getvalue($base, $exp) {
-                with $this.evaluator Eval $base $exp
+                withobject $this.evaluator Eval $base $exp
             }
         }
 
         It "Should have instances that can call methods of one class from another class" {
             $newInstance = new-scriptobject Outer 5
-            with $newInstance getvalue 2 3 | Should BeExactly 13
+            withobject $newInstance getvalue 2 3 | Should BeExactly 13
         }
     }
 
@@ -593,7 +660,7 @@ Describe "The class definition interface" {
 
             $newInstance = new-scriptobject ClassClass51
 
-            { $newInstance.prop1 | out-null } | Should Throw
+            $newInstance | gm prop1 | Should Be $null
             $newInstance.prop2 | Should BeExactly 21
             $newInstance.prop3 | Should BeExactly '31'
             $newInstance.prop4 | Should BeExactly 4
@@ -608,7 +675,7 @@ Describe "The class definition interface" {
     }
 }
 
-Describe "The get-class cmdlet" {
+Describe "The Get-ScriptClass cmdlet" {
     BeforeAll {
         remove-module $thismodule -force -erroraction silentlycontinue
         import-module $thismodule -force
@@ -622,17 +689,17 @@ Describe "The get-class cmdlet" {
     }
 
     Context "When getting information about a class" {
-        It "should return an object equal to the class's scriptclass property" {
+        It "should return an object with a 'prototype' property equal to the class's scriptclass property" {
             $newInstance = new-scriptobject ClassClass59
-            (get-class ClassClass59) | Should BeExactly $newInstance.scriptclass
+            (Get-ScriptClass ClassClass59) | Should BeExactly $newInstance.scriptclass
         }
 
         It "should return an object with a null scriptclass" {
-            (get-class ClassClass59).scriptclass | Should BeExactly $null
+            (Get-ScriptClass ClassClass59).scriptclass | Should BeExactly $null
         }
 
         It "should throw an exception if the class does not exist" {
-            { get-class idontexist } | Should Throw
+            { Get-ScriptClass idontexist } | Should Throw
         }
     }
 }
@@ -654,32 +721,33 @@ Describe 'The $:: collection' {
     Context 'When accessing the $:: collection' {
         It "should return a class object when the name of the class is specified on it after '.'" {
             $result1 = $::.ClassClass60
-            $result1 | Should BeExactly (get-class ClassClass60)
+            $result1 | Should BeExactly (Get-ScriptClass ClassClass60)
             $result2 = $::.ClassClass60a
-            $result2 | Should BeExactly (get-class ClassClass60a)
+            $result2 | Should BeExactly (Get-ScriptClass ClassClass60a)
             $result3 = $::.ClassClass60b
-            $result3 | Should BeExactly (get-class ClassClass60b)
+            $result3 | Should BeExactly (Get-ScriptClass ClassClass60b)
         }
 
-        It "should throw an exception when a non-existent class name is specified after '.'" {
-            { $::.idontexist } | Should Throw
+        It "should throw an exception when a non-existent class name is specified after '.' when strict mode is enabled" {
+            { set-strictmode -version 2; $::.idontexist } | Should Throw
         }
 
-        It "should return a class object that has a pstypedata property" {
+        It "should return a class object that has a pstypedata property" -pending {
             $::.ClassClass60.pstypedata | Should Not Be $null
         }
 
         It "should return a class object that has a $null scriptclass property" {
+            $::.ClassClass60 | gm scriptclass | Should Not Be $null
             $::.ClassClass60.scriptclass | Should Be $null
         }
 
-        It "should throw an exception on an attempt to access a nonexistent property of the class object " {
-            { $::.ClassClass60.idontexist } | Should Throw
+        It "should throw an exception on an attempt to access a nonexistent property of the class object when strict mode is enabled" {
+            { set-strictmode -version 2; $::.ClassClass60.idontexist } | Should Throw
         }
     }
 }
 
-Describe "'with' function for object-based command context" {
+Describe "'withobject' alias for object-based command context" {
     BeforeAll {
         remove-module $thismodule -force -erroraction silentlycontinue
         import-module $thismodule -force
@@ -689,13 +757,13 @@ Describe "'with' function for object-based command context" {
         remove-module $thismodule -force -erroraction silentlycontinue
     }
 
-    Context "When invoking an object's method through with" {
+    Context "When invoking an object's method through withobject" {
         $className = 'ClassClass32'
 
         ScriptClass $className {
             $mainValue = 7
             function outer {
-                with $this inner @args
+                withobject $this inner @args
             }
 
             function inner($first, $second, $third) {
@@ -705,56 +773,65 @@ Describe "'with' function for object-based command context" {
             function singlearg($first) {
                 $this.mainValue + $first
             }
+
+            function invokeme($myblock) {
+                (. $myblock)
+            }
         }
 
         $newInstance = new-scriptobject $className
 
         It "throws an exception if a null object is specified" {
-            { with $null inner } | Should Throw
+            { withobject $null inner } | Should Throw
         }
 
         It "throws an exception if a non-string or non-scriptblock type is passed as the action" {
-           { with $newInstance 3.0 } | Should Throw
+           { withobject $newInstance 3.0 } | Should Throw
         }
 
         It "throws an exception the context object is of a type cannot be cast as a PSCustomObject" {
-            { with 3 'tostring' } | Should Throw
+            { withobject 3 'tostring' } | Should Throw
         }
 
         It "successfully executes a method that takes no arguments" {
-            with $newInstance outer | Should BeExactly 7
+            withobject $newInstance outer | Should BeExactly 7
         }
 
         It "successfully executes a method that takes 1 argument" {
-            with $newInstance singlearg 4 | Should BeExactly 11
+            withobject $newInstance singlearg 4 | Should BeExactly 11
         }
 
         It "successfully executes a method that takes more than one argument" {
-            with $newInstance outer 5 6 7 | Should BeExactly 25
+            withobject $newInstance outer 5 6 7 | Should BeExactly 25
         }
 
         It "throws an exception if a non-existent method for the object is specified" {
-            { with $newInstance idontexist } | Should Throw
+            { withobject $newInstance idontexist } | Should Throw
         }
 
         It "successfully executes a block that takes no arguments" {
-            with $newInstance {$this.mainValue} | Should BeExactly 7
+            withobject $newInstance {$this.mainValue} | Should BeExactly 7
         }
 
         It "successfully executes a block that takes at least one argument" {
-            with $newInstance {$this.mainValue + $args[0]} 2 | Should BeExactly 9
+            withobject $newInstance {$this.mainValue + $args[0]} 2 | Should BeExactly 9
         }
 
         It "successfully executes a block that uses a method like a function" {
-            with $newInstance { outer 10 20 30 } | Should BeExactly 67
+            withobject $newInstance { outer 10 20 30 } | Should BeExactly 67
+#            $myscript = { $newInstance.outer(10, 20, 30) }
+#            withobject $newInstance { $newinstance.InvokeScript( $myScript, @() ) } | Should BeExactly 67
+#            withobject $newInstance { $newInstance.InvokeScript($myscript, @()) } | Should BeExactly 67
+#            $newInstance.InvokeScript($$myscript, @()) | Should BeExactly 67
+#            withobject $newInstance { $this.InvokeMe( $myScript ) } | Should BeExactly 67
         }
 
         It "successfully executes a block that uses a method like a function and passes arguments to it through @args" {
-            with $newInstance { outer @args } 10 20 40 | Should BeExactly 77
+            withobject $newInstance { outer @args } 10 20 40 | Should BeExactly 77
         }
     }
 
-    Context "When invoking an pscustomobject's method through with" {
+    Context "When invoking an pscustomobject's method through 'withobject'" {
         $newInstance = [PSCustomObject]@{first=1;second=2;third=3}
         $summethod = @{name='sum';memberType='ScriptMethod';value={$this.first + $this.second + $this.third}}
         $addmethod = @{name='add';memberType='ScriptMethod';value={param($firstarg, $secondarg) $firstarg + $secondarg}}
@@ -765,28 +842,28 @@ Describe "'with' function for object-based command context" {
         $newInstance | add-member @addtomethod
 
         It "successfully executes a method that takes no arguments" {
-            with $newInstance { sum } | Should BeExactly 6
+            withobject $newInstance { sum } | Should BeExactly 6
         }
 
         It "successfully executes a method that takes 1 argument" {
-            with $newInstance { addto 10 } Should Be Exactly 16
+            withobject $newInstance { addto 10 } Should Be Exactly 16
         }
 
         It "successfully executes a method that takes more than one argument" {
-            with $newInstance { add 5 7 } Should Be Exactly 12
+            withobject $newInstance { add 5 7 } Should Be Exactly 12
         }
 
         It "throws an exception if a non-existent method for the object is specified" {
-            { with $newInstance { run } } | Should Throw
+            { withobject $newInstance { run } } | Should Throw
         }
 
         It "successfully executes a block that takes no arguments" {
-           with $newInstance { $this.first } | Should BeExactly 1
+           withobject $newInstance { $this.first } | Should BeExactly 1
         }
 
         It "successfully executes a block that takes at least one argument" {
-            with $newInstance { add @args } 4 6 | Should BeExactly 10
-            with $newInstance { addto @args } 7 | Should BeExactly 13
+            withobject $newInstance { add @args } 4 6 | Should BeExactly 10
+            withobject $newInstance { addto @args } 7 | Should BeExactly 13
         }
     }
 }
@@ -804,7 +881,12 @@ Describe 'The => invocation function' {
     Context "When a method is invoked through the => function" {
         $initialValue = 10
         ScriptClass ClassClass43 {
-            $sum = $initialValue
+            $sum = 3
+
+            function __initialize($startVal) {
+                $this.sum = $startVal
+            }
+
             function add($first, $second) {
                 $first + $second
             }
@@ -824,9 +906,9 @@ Describe 'The => invocation function' {
             }
         }
 
-        $newInstance = new-scriptobject ClassClass43
-        $newInstance2 = new-scriptobject ClassClass43
-        $newInstance3 = new-scriptobject ClassClass43
+        $newInstance = new-scriptobject ClassClass43 $initialValue
+        $newInstance2 = new-scriptobject ClassClass43 $initialValue
+        $newInstance3 = new-scriptobject ClassClass43 $initialValue
 
         It "Should execute a method with no arguments" {
             $newInstance | => current | Should BeExactly $initialValue
@@ -867,6 +949,23 @@ Describe 'The => invocation function' {
         It "Should invoke static methods when used on an instance's scriptclass property" {
             $newInstance.scriptclass |=> staticmethod 25 31 Should BeExactly 56
         }
+
+        It "Should throw an exception if the method attempts to access the PSCmdlet variable when invoked by a cmdlet attributed with CmdletBinding" {
+            ScriptClass ClassUsingPsCmdlet {
+                function Get {
+                    $PSCmdlet
+                }
+            }
+
+            function Get-PSCmdlet {
+                [cmdletbinding()]
+                $myobj = new-so ClassUsingPsCmdlet
+
+                $myobj |=> Get
+            }
+
+            { Get-PSCmdlet } | Should Throw
+        }
     }
 }
 
@@ -901,7 +1000,7 @@ Describe 'Static functions' {
 
         It "should accept the scriptclass property of an instance as a way to invoke the static method" {
             $newInstance = new-scriptobject ClassClass52
-            with $newInstance.scriptclass staticmethod 20 50 Should BeExactly 70
+            withobject $newInstance.scriptclass staticmethod 20 50 Should BeExactly 70
         }
 
         It "should be accessible from within the class initializer" {
@@ -945,29 +1044,43 @@ Describe 'Static functions' {
     }
 
     Context "When a static method is invoked through invoke-method or with or =>" {
-        It 'Should accept the result of get-class as the class on which to call the method for invoke-methodwithcontext' {
-            invoke-method (get-class ClassClass52) staticmethod 2 3 | Should BeExactly 5
+        It 'Should accept the result of Get-ScriptClass as the class on which to call the method for invoke-methodwithcontext' {
+            invoke-method (Get-ScriptClass ClassClass52) staticmethod 2 3 | Should BeExactly 5
         }
 
-        It 'Should accept the result of get-class as the class on which to call the method for "with"' {
-            with (get-class ClassClass52) staticmethod 2 3 | Should BeExactly 5
+        It 'Should accept the result of Get-ScriptClass as the class on which to call the method for "with"' {
+            withobject (Get-ScriptClass ClassClass52) staticmethod 2 3 | Should BeExactly 5
         }
 
-        It 'Should allow invocation of the static method by supplying "with" with a block' {
-            with (get-class ClassClass52) { staticmethod 10 40 } Should BeExactly 50
+        It 'Should allow invocation of the static method by supplying "withobject" with a block' {
+            withobject (Get-ScriptClass ClassClass52) { staticmethod 10 40 } Should BeExactly 50
         }
 
         It 'Should allow invocation of the static method by supplying scriptclass method as the object' {
             $newInstance = new-scriptobject ClassClass52
-            with $newInstance.scriptclass staticmethod 20 50 Should BeExactly 70
+            withobject $newInstance.scriptclass staticmethod 20 50 Should BeExactly 70
         }
 
         It "Should accept the `$:: variable's property named by the class as the class on which to call the method using =>" {
             $::.ClassClass52 |=> staticmethod 10 4 | Should BeExactly 14
         }
 
-        It 'Should accept the result of get-class as the class on which to call the method using =>' {
-            (get-class ClassClass52) |=> staticmethod 2 3 | Should BeExactly 5
+        It 'Should accept the result of Get-ScriptClass as the class on which to call the method using =>' {
+            (Get-ScriptClass ClassClass52) |=> staticmethod 2 3 | Should BeExactly 5
+        }
+
+        It "Should allow arguments to a static scriptclass method to be passed by name" {
+            ScriptClass MethodByNameClass {
+                static {
+                    function NameMethod($arg1 = 0, $arg2 = 0, $arg3 = 0) {
+                        $arg3 + $arg2 * 10 + $arg1 * 100
+                    }
+                }
+            }
+
+            $::.MethodByNameClass |=> NameMethod 6 4 5 | Should Be 645
+
+            $::.MethodByNameClass |=> NameMethod -Arg2 9 | Should Be 90
         }
     }
 
@@ -1128,13 +1241,13 @@ Describe 'Static member variables' {
             { 'ClassClass75' |::> var3 | out-null } | Should Throw
         }
 
-        It 'should throw an exception if a static variable that was not defined is accessed as a member of $::' {
-            { $::.ClassClass75.var3 | out-null } | Should Throw
+        It 'should throw an exception if a static variable that was not defined is accessed as a member of $:: when strict-mode is 2 or higher' {
+            { set-strictmode -version 2; $::.ClassClass75.var3 | out-null } | Should Throw
         }
 
-        It 'should throw an exception if a static variable that was not defined is accessed as a member of an instance scriptclass member' {
+        It 'should throw an exception if a static variable that was not defined is accessed as a member of an instance scriptclass member when strict-mode is 2 or higher' {
             $newInstance = new-so ClassClass75
-            { $newInstance.var3 | out-null } | Should Throw
+            { set-strictmode -version2; $newInstance.var3 | out-null } | Should Throw
         }
 
         It 'should update the value of the variable when it is assigned by accessing the class member of $::' {
@@ -1223,16 +1336,15 @@ Describe 'Internal ScriptClass State' {
                 }
             }
 
-            $NoExtraMembersClass = $:: | select -ExpandProperty DotSourcedClassWithStatic
-
-            $NoExtraMembersClass.InstanceProperties.Count | Should Be 0
+            $classInfo = Get-ScriptClass -detailed DotSourcedClassWithStatic
+            $classInfo.classDefinition.instanceproperties.count | Should Be 0
         }
 
-        It "Should only have class members ClassName, InstanceProperties, TypedMembers, ScriptClass, PSTypeData, and the user specified member variables" {
+        It "Should only have class members ClassName, ScriptClass, Module, and the user specified member variables" {
             $noExtraMemberClass = 'ScriptClassStaticNoExtra'
             ScriptClass $noExtraMemberClass {
                 static {
-                    const member1 1
+                    $member1 = 2
                     $member2 = 2
                     $member3 = 3
                 }
@@ -1240,10 +1352,8 @@ Describe 'Internal ScriptClass State' {
 
             $expectedMembers = @(
                 'ClassName',
-                'InstanceProperties',
-                'TypedMembers',
                 'ScriptClass',
-                'PSTypeData',
+                'Module',
                 'member1',
                 'member2',
                 'member3'
@@ -1348,8 +1458,8 @@ Describe 'The test-scriptobject cmdlet' {
         test-scriptobject 3 ClassClass64 | Should BeExactly $false
     }
 
-    It 'Should throw an exception if the scriptclass parameter is a string that is not the name of defined scriptclass' {
-        { test-scriptobject $newInstance 'idontexist' } | Should Throw
+    It 'Should return false if the scriptclass parameter is a string that is not the name of defined scriptclass' {
+        test-scriptobject $newInstance 'idontexist' | Should Be $false
     }
 
     It 'Should throw an exception if the scriptclass parameter is not a PSCustomObject' {
@@ -1648,3 +1758,4 @@ Describe "Hash codes for ScriptClass objects" {
         }
     }
 }
+

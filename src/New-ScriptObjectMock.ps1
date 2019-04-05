@@ -20,10 +20,12 @@ function New-ScriptObjectMock {
 
         [HashTable] $MethodMocks,
 
-        [HashTable] $PropertyValues
+        [HashTable] $PropertyValues,
+
+        [string] $ModuleName
     )
 
-    $classDefinition = __find-class $ClassName
+    $classDefinition = __ScriptClass__FindClass $ClassName
 
     if ( ! $classDefinition ) {
         throw [ArgumentException]::new("The specified class '$ClassName' does not exist")
@@ -66,7 +68,7 @@ function New-ScriptObjectMock {
         $mocker = __MethodMocker_Get
 
         $MethodMocks.keys | foreach {
-            __MethodMocker_Mock $mocker $className $_ $false $mockedObject $MethodMocks[$_] { $true } $false
+            __MethodMocker_Mock $mocker $className $_ $false $mockedObject $MethodMocks[$_] { $true } $false $ModuleName
         }
     }
 
