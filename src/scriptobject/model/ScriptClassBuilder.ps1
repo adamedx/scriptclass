@@ -21,10 +21,14 @@ class ScriptClassBuilder : ClassBuilder {
     base($className, $classBlock, [ScriptClassSpecification]::Parameters.Language.ConstructorName) {
     }
 
+    ScriptClassBuilder([ClassDefinitionContext] $context) :
+    base($context) {
+    }
+
     [ClassInfo] ToClassInfo([object[]] $classArguments) {
         $classMemberParameters = [ScriptClassSpecification]::Parameters.Schema.ClassMember
-        $this.staticTarget = [NativeObjectBuilder]::CopyFrom($this::classMemberPrototype)
-        $this.AddSystemProperty($classMemberParameters.Name, $null, $this.staticTarget)
+        $staticTarget = [NativeObjectBuilder]::CopyFrom($this::classMemberPrototype)
+        $this.AddSystemProperty($classMemberParameters.Name, $null, $staticTarget)
 
         foreach ( $methodname in $this::commonMethods.keys ) {
             $this.AddSystemMethod($methodName, $this::commonMethods[$methodName] )
@@ -32,34 +36,48 @@ class ScriptClassBuilder : ClassBuilder {
 
         $classInfo = ([ClassBuilder]$this).ToClassInfo($classArguments)
 
-        $classInfo.classDefinition.CopyPrototype($true, $this.staticTarget)
+        $classInfo.classDefinition.CopyPrototype($true, $staticTarget)
 
-        $classMemberBuilder = [NativeObjectBuilder]::new($null, $this.staticTarget, [NativeObjectBuilderMode]::Modify)
+#        $classMemberBuilder = [NativeObjectBuilder]::new($null, $staticTarget, [NativeObjectBuilderMode]::Modify)
 <#
         foreach ( $methodname in $this::commonMethods.keys ) {
-            $methodScript = ($classInfo.prototype.psobject.methods | where name -eq $methodName).script
+
+$methodScript = ($classInfo.prototype.psobject.methods | where name -eq $methodName).script
             $classMemberBuilder.AddMethod($methodName, $methodScript)
         }
 #>
-        $this.staticTarget.$($classMemberParameters.Structure.ClassNameMemberName) = $this.className
-        $this.staticTarget.$($classMemberParameters.Structure.ModuleMemberName) = $this.classBlock.Module
+        $module = if ( $this.classBlock ) {
+            $this.classBlock.module
+        } else {
+            ([ClassBuilder]$this).definitionContext.module
+        }
+
+#        $staticModule = ($staticTarget.psobject.methods | where name -eq InvokeScript).script.module
+        $definitionContext = ([ClassBuilder]$this).definitionContext
+        $staticModule = if ( $definitionContext ) {
+            $definitionContext.staticModule
+        }
+#        $staticModule = ($staticTarget.psobject.methods | where name -eq InvokeScript).script.module
+
+        $staticTarget.$($classMemberParameters.Structure.ClassNameMemberName) = $this.className
+        $staticTarget.$($classMemberParameters.Structure.ModuleMemberName) = $staticModule
 
         <#
         write-host -fore yello 'summary'
         write-host -fore cyan prototype
         $classInfo.prototype | fl * | out-host
         $classInfo.prototype | gm | out-host
-#        $classInfo.prototype.scriptclass = $this.staticTarget
+#        $classInfo.prototype.scriptclass = $staticTarget
 
         write-host -fore cyan scriptclass
         $classInfo.prototype.scriptclass | fl * | out-host
         $classInfo.prototype.scriptclass | gm | out-host
-#        $this.staticTarget | fl * | out-host
+#        $staticTarget | fl * | out-host
 #>
         $excludedMethodNames = $this::commonMethods.keys
         $filteredClassDefinition = [ClassDefinition]::GetFilteredDefinition($classInfo.classDefinition, $excludedMethodNames, $null)
 
-        return [ClassInfo]::new($filteredClassDefinition, $classInfo.prototype)
+        return [ClassInfo]::new($filteredClassDefinition, $classInfo.prototype, $classInfo.module)
     }
 
     static [void] Initialize() {
@@ -118,8 +136,6 @@ class ScriptClassBuilder : ClassBuilder {
             $this.psobject.members.GetHashCode()
         }
     }
-
-    $staticTarget = $null
 }
 
 [ScriptClassBuilder]::Initialize()

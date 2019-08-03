@@ -75,6 +75,7 @@ PowerShellVersion = '5.1'
 
 # Functions to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no functions to export.
 FunctionsToExport = @(
+#    'Get-ClassMan',
     '=>',
     '::>',
     'Add-MockInScriptClassScope',
@@ -94,7 +95,7 @@ FunctionsToExport = @(
 # CmdletsToExport = @()
 
 # Variables to export from this module
-VariablesToExport = @(':', 'mymanager') # This is actually $::
+VariablesToExport = @(':') # This is actually $::
 
 # Aliases to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no aliases to export.
 AliasesToExport = @('new-so', 'scriptclass', 'withobject', 'Mock-ScriptClassMethod', 'Unmock-ScriptClassMethod')

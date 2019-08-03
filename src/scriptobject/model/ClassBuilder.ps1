@@ -17,6 +17,9 @@
 class ClassBuilder {
     ClassBuilder([string] $className, [ScriptBlock] $classblock, [string] $constructorName) {
         $this.className = $className
+        if ( ! $this.className ) {
+            throw 'anger4'
+        }
         $this.classBlock = $classBlock
         $this.systemMethodBlocks = @{}
         $this.systemProperties = @{}
@@ -25,16 +28,41 @@ class ClassBuilder {
         $this.AddSystemProperty([NativeObjectBuilder]::NativeTypeMemberName, $null, $className)
     }
 
-    [ClassInfo] ToClassInfo([object[]] $classArguments) {
-        $dsl = [ClassDsl]::new($false, $this.systemMethodBlocks, $this.constructorName)
-        $classDefinition = $dsl.NewClassDefinition($this.className, $this.classBlock, $classArguments, $null)
+    ClassBuilder([ClassDefinitionContext] $context) {
+        $this.definitionContext = $context
+        if ( $context.module -eq $null ) {
+            throw 'anger2'
+        }
+        $this.className = $context.classDefinition.name
+        if ( ! $this.className ) {
+            throw 'anger'
+        }
+        $this.classBlock = $null
+        $this.systemMethodBlocks = @{}
+        $this.systemProperties = @{}
+        $this.constructorName = $context.classDefinition.constructorMethodName
 
-        $basePrototype = $classDefinition.ToPrototype($false)
+        $this.AddSystemProperty([NativeObjectBuilder]::NativeTypeMemberName, $null, $this.className)
+    }
+
+
+    [ClassInfo] ToClassInfo([object[]] $classArguments) {
+        $context = if ( $this.definitionContext ) {
+            if ( $classArguments ) {
+                throw 'Class arguments may not be specified when generating class information from an existing definition'
+            }
+            $this.definitionContext
+        } else {
+            $dsl = [ClassDsl]::new($false, $this.systemMethodBlocks, $this.constructorName)
+            $this.definitionContext = $dsl.NewClassDefinitionContext($this.className, $this.classBlock, $classArguments, $null)
+            $this.definitionContext
+        }
+
+        $basePrototype = $context.classDefinition.ToPrototype($false)
         $prototype = $this.GetPrototypeObject($basePrototype)
  #       $prototype = $this.GetPrototypeObject()
-        $systemNames = $this.systemMethodBlocks.keys
 
-        $classInfo = [ClassInfo]::new($classDefinition, $prototype)
+        $classInfo = [ClassInfo]::new($context.classDefinition, $prototype, $context.module)
         return $classInfo
     }
 
@@ -63,4 +91,5 @@ class ClassBuilder {
     [ScriptBlock] $classBlock = $null
     [HashTable] $systemMethodBlocks = $null
     [HashTable] $systemProperties = $null
+    [ClassDefinitionContext] $definitionContext = $null
 }

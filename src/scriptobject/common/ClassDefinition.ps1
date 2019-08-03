@@ -64,17 +64,29 @@ class TypedValue {
 }
 
 class ClassInfo {
-    ClassInfo([ClassDefinition] $classDefinition, $prototype) {
+    ClassInfo([ClassDefinition] $classDefinition, $prototype, $module) {
         $this.classDefinition = $classDefinition
         $this.prototype = $prototype
+        $this.module = $module
     }
+
+    [ClassInfo] NewCopy() {
+        $newDefinition = $this.classDefinition.NewCopy()
+        $newPrototype = $this.prototype.psobject.copy()
+
+        return [ClassInfo]::new($newDefinition, $newPrototype, $this.module)
+    }
+
     [ClassDefinition] $classDefinition
-    $prototype
+    $prototype = $null
+    $module = $null
 }
 
 class ClassDefinition {
     ClassDefinition([string] $name, [Method[]] $instanceMethods, [Method[]] $staticMethods, [Property[]] $instanceProperties, [Property[]] $staticProperties, $constructorMethodName) {
         $this.name = $name
+
+        $this.constructorMethodName = $constructorMethodName
 
         foreach ( $instanceMethod in $instanceMethods ) {
             if ( $constructorMethodName -and $instanceMethod.Name -eq $constructorMethodName ) {
@@ -155,6 +167,25 @@ class ClassDefinition {
         return $this.staticProperties.values
     }
 
+    [ClassDefinition] NewCopy() {
+        $_instanceMethods = $this.CopyClassData($this.InstanceMethods).values
+        $_instanceProperties = $this.CopyClassData($this.InstanceProperties).values
+        $_staticMethods = $this.CopyClassData($this.StaticMethods).values
+        $_staticProperties = $this.CopyClassData($this.StaticProperties).values
+
+        return $this::new($this.name, $_instanceMethods, $_staticMethods, $_instanceProperties, $_staticProperties, $this.constructorMethodName)
+    }
+
+    hidden [HashTable] CopyClassData([HashTable] $data) {
+        $newData = @{}
+
+        foreach ( $elementName in $data.keys ) {
+            $newData.Add($elementName, $data[$elementName].psobject.copy())
+        }
+
+        return $newData
+    }
+
     hidden [void] WritePrototype([NativeObjectBuilder] $builder, [bool] $staticContext) {
         $methods = if ( $staticContext ) {
             $this.staticMethods.values
@@ -192,6 +223,7 @@ class ClassDefinition {
     }
 
     [string] $name = $null
+    [string] $constructorMethodName = $null
     [ScriptBlock] $constructor = $null
     [HashTable] $instanceMethods = @{}
     [HashTable] $instanceproperties = @{}

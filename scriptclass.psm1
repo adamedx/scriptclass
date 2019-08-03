@@ -35,9 +35,15 @@ $aliases = foreach ( $functionName in $functionsToAliases.keys ) {
     }
 }
 
-$variables = @([ScriptClassSpecification]::Parameters.Language.ClassCollectionName, 'mymanager')
+$variables = @([ScriptClassSpecification]::Parameters.Language.ClassCollectionName) # , 'mymanager')
 
+<#
+function Get-ClassMan {
+    [ClassManager]::Get()
+}
+#>
 $functions += @(
+#    'Get-ClassMan',
     'Add-MockInScriptClassScope',
     'Add-ScriptClassMock',
     'Import-Assembly',

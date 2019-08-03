@@ -39,25 +39,34 @@ function Add-MockInScriptClassScope {
         { $true }
     }
 
-    $classModule = (__ScriptClass__GetClass $ClassName).classModule
+    $classInfo = (Get-ScriptClass $ClassName -detailed)
+    $classModule = $classInfo.Module
+    $staticModule = $classInfo.prototype.scriptclass.module
+
+    $mockBlock = {
+        param(
+            $Module,
+            [string] $CommandNameToMock,
+            [ScriptBlock] $MockWithScriptBlock,
+            [ScriptBlock] $ParameterFilterBlock,
+            [bool] $IsVerifiable,
+            $Context
+        )
+
+        $Module | import-module -warningaction ignore -force
+
+        $MockContext = $Context
+
+        Mock -CommandName $CommandNameToMock -ModuleName $Module.name -ParameterFilter $ParameterFilterBlock -MockWith $MockWithScriptBlock -Verifiable:$IsVerifiable
+    }
 
     . $classModule.newboundscriptblock(
-        {
-            param(
-                $Module,
-                [string] $CommandNameToMock,
-                [ScriptBlock] $MockWithScriptBlock,
-                [ScriptBlock] $ParameterFilterBlock,
-                [bool] $IsVerifiable,
-                $Context
-            )
-
-            $Module | import-module -warningaction ignore
-
-            $MockContext = $Context
-            Mock -CommandName $CommandNameToMock -ModuleName $Module.name -ParameterFilter $ParameterFilterBlock -MockWith $MockWithScriptBlock -Verifiable:$IsVerifiable
-        }
+        $mockBlock
     ) $classModule $CommandName $MockWith $normalizedParameterFilter $Verifiable.IsPresent $MockContext
+
+    . $classModule.newboundscriptblock(
+        $mockBlock
+    ) $staticModule $CommandName $MockWith $normalizedParameterFilter $Verifiable.IsPresent $MockContext
 }
 
 

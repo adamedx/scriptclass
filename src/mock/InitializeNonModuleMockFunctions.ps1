@@ -12,6 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-. (join-path $psscriptroot ../PreModuleInitialization.ps1)
+function global:__ScriptClass__NewMethodBlock($scriptblock) {
+    [ScriptBlock]::Create($scriptblock.tostring())
+}
+
+$nonModuleClasses = new-module {}
+$nonModuleClasses | import-module
+function global:__ScriptClass__NewBoundScriptBlock($scriptblock) {
+    $nonModuleClasses.NewBoundScriptBlock($scriptblock)
+}
+
 . (join-path $psscriptroot ../std.ps1)
 

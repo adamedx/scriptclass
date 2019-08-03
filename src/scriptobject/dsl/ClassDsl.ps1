@@ -12,6 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+class ClassDefinitionContext {
+    ClassDefinitionContext([ClassDefinition] $classDefinition, $module, $staticModule) {
+        $this.classDefinition = $classDefinition
+        $this.module = $module
+        $this.staticModule = $staticModule
+    }
+
+    [ClassDefinition] $classDefinition
+    [PSModuleInfo] $module
+    [PSModuleInfo] $staticModule
+}
+
 # This implements the language used to specify the definition of a class. This implementation
 # is embedded within the PowerShell language, particularly as it can be executed within a
 # PowerShell script block, a form of anonymous function
@@ -29,7 +41,7 @@ class ClassDsl {
         }
     }
 
-    [ClassDefinition] NewClassDefinition([string] $className, [ScriptBlock] $classBlock, [object[]] $classArguments, [HashTable]  $variablesToInclude) {
+    [ClassDefinitionContext] NewClassDefinitionContext([string] $className, [ScriptBlock] $classBlock, [object[]] $classArguments, [HashTable]  $variablesToInclude) {
         $this.InitializeInspectionState($classBlock)
 
         $injectedVariables = if ( $variablesToInclude ) {
@@ -48,7 +60,7 @@ class ClassDsl {
             throw "Internal exception defining class"
         }
 
-        $this.ProcessStaticBlocks()
+        $staticContext = $this.ProcessStaticBlocks()
 
         $instanceMethodList = $this.GetMethods($classObject, $false)
         $staticMethodList = $this.GetMethods($classObject, $true)
@@ -58,7 +70,11 @@ class ClassDsl {
 
         $classDefinition = [ClassDefinition]::new($className, $instanceMethodList, $staticMethodList, $instancePropertyList, $staticPropertyList, $this.constructorMethodName)
 
-        return $classDefinition
+        $staticModule = if ( $staticContext ) {
+            $staticContext.module
+        }
+
+        return [ClassDefinitionContext]::new($classDefinition, $this.executingInspectionModule, $staticModule)
     }
 
     hidden [Method[]] GetMethods([PSCustomObject] $classObject, $staticScope) {
@@ -103,9 +119,9 @@ class ClassDsl {
         return $properties
     }
 
-    hidden [void] ProcessStaticBlocks() {
+    hidden [ClassDefinitionContext] ProcessStaticBlocks() {
         if ( $this.staticScope ) {
-            return
+            return $null
         }
         $blocks = @({})
         $blocks += $this.staticBlocks
@@ -127,18 +143,19 @@ class ClassDsl {
         }
 
         $dsl = [ClassDsl]::new($true, $methodTable, $null)
-        $staticDefinition = $dsl.NewClassDefinition($null, $combinedBlock, (,$blocks), $this.classBlockParameters)
+        $staticDefinitionContext = $dsl.NewClassDefinitionContext($null, $combinedBlock, (,$blocks), $this.classBlockParameters)
 
-        $staticDefinition.GetInstanceMethods() | foreach {
+        $staticDefinitionContext.classDefinition.GetInstanceMethods() | foreach {
   #          write-host addingstaticmethod, $_.name
             $this.staticMethods.Add($_.name, $_)
         }
 
-        $staticDefinition.GetInstanceProperties() |foreach {
+        $staticDefinitionContext.classDefinition.GetInstanceProperties() |foreach {
 #            write-host addingstaticprop, $_.name
             $this.staticProperties.Add($_.name, $_)
         }
 
+        return $staticDefinitionContext
     }
 
     hidden [void] InitializeInspectionState([ScriptBlock] $classBlock) {

@@ -48,7 +48,7 @@ class ClassManager {
 
         $classBuilder = [ScriptClassBuilder]::new($className, $classBlock)
         $classInfo = $classBuilder.ToClassInfo($classArguments)
-
+        $this.GeneralizeInstanceMethods($classInfo)
  #       $classInfo.prototype | fl * | out-host
 
         $this.AddClass($classInfo)
@@ -126,6 +126,12 @@ class ClassManager {
         return $isOfType
     }
 
+    [void] SetClass([ClassInfo] $classInfo) {
+        $this.GetClassInfo($classInfo.classDefinition.Name) | out-null
+        $this.AddClass($classInfo)
+#        $this.classes[$classInfo.classDefinition.name] = $classInfo
+    }
+
     hidden [void] AddClass([ClassInfo] $classInfo) {
         $className = $classInfo.classDefinition.Name
         $this.classes[$className] = $classInfo
@@ -151,7 +157,27 @@ class ClassManager {
         }
     }
 
+    hidden [void] GeneralizeInstanceMethods([ClassInfo] $classInfo) {
+        $builder = [NativeObjectBuilder]::New($null, $classInfo.prototype, [NativeObjectBuilderMode]::Modify)
+        $classInfo.classDefinition.GetInstanceMethods() | foreach {
+            $generalizedBlock = $this.GetGeneralizedMethodBlock($_)
+            $builder.RemoveMember($_.name, 'ScriptMethod', $false)
+            $builder.AddMethod($_.name, $generalizedBlock)
+        }
+    }
+
+    hidden [ScriptBlock] GetGeneralizedMethodBlock([Method] $method) {
+        $block = [ScriptBlock]::Create($this::GeneralizedMethodTemplate -f $method.name)
+        return $method.block.module.newboundscriptblock($block)
+    }
+
     static [ClassManager] $singleton = $null
+
+    hidden static [string] $GeneralizedMethodTemplate = @'
+$block =  (get-scriptclass -Detailed $this.scriptclass.classname).classdefinition.instancemethods['{0}'].block
+$this.InvokeScript($block, $args)
+'@
+
 
     $targetModule = $null
 

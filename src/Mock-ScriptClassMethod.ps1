@@ -42,7 +42,7 @@ function Add-ScriptClassMock {
     $ScriptObject = $null
     $ClassName = $MockTarget
 
-    if ( __ScriptClass__IsScriptClass $MockTarget ) {
+    if ( test-scriptobject $MockTarget ) {
         if ( $Static.IsPresent ) {
             throw [ArgumentException]::new("Argument 'Static' may not be specified when the type of argument 'MockTarget' is [PSCustomObject]. Specify a ScriptClass class name of type [String] for 'MockTarget' to use 'Static'")
         }

@@ -79,7 +79,7 @@ function __PatchedObject_GetUniqueId([PSCustomObject] $object) {
         throw 'The specified object was $null'
     }
 
-    if ( ! ( __ScriptClass__IsScriptClass $object ) ) {
+    if ( ! ( test-scriptobject $object ) ) {
         throw 'The specified object was not a ScriptClass object'
     }
 

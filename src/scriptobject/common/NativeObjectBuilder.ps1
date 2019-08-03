@@ -38,6 +38,9 @@ class NativeObjectBuilder {
             $prototype
         } else {
             $objectState = @{}
+            if ( $typeName ) {
+                $objectState[$this::NativeTypeMemberName] = $typeName
+            }
             if ( $prototype ) {
                 $prototype.psobject.properties | foreach {
                     if ( $_.membertype -ne 'NoteProperty' ) {
@@ -48,11 +51,14 @@ class NativeObjectBuilder {
                 }
             }
 
-            if ( $typeName ) {
-                $objectState[([NativeObjectBuilder]::NativeTypeMemberName)] = $typeName
-             }
+            $result = [PSCustomObject] $objectState
+#            if ( $result | gm ([NativeObjectBuilder]::NativeTypeMemberName) ) {
+#            if ( $typeName ) {
+#                $result.$([NativeObjectBuilder]::NativeTypeMemberName) = $typeName
+#                $result | add-member -name ([NativeObjectBuilder]::NativeTypeMemberName) -membertype noteproperty -value $typename -force
+#            }
 
-            [PSCustomObject] $objectState
+            $result
         }
     }
 
@@ -106,7 +112,7 @@ class NativeObjectBuilder {
 
     [void] RemoveMember([string] $name, [string] $type, [bool] $force) {
         if ( ! $force ) {
-            if (! ( $this.object | gm name -membertype $type -erroraction ignore ) ) {
+            if (! ( $this.object | gm -name $name -membertype $type -erroraction ignore ) ) {
                 throw "Member '$name' cannot be removed because the object has no such member."
             }
         }

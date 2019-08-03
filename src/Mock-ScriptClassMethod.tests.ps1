@@ -125,13 +125,13 @@ Describe 'Mock-ScriptClassObject cmdlet' {
             $testObject |=> mymethod 1 5 | Should Be 6
             $testObject |=> mymethod 5 1 | Should Be 6
 
-            Mock-ScriptClassMethod ParamFilter1 mymethod { $param1 * $param2 } -parameterfilter { $param2 -eq 1 } -ModuleName ScriptClass
+            Mock-ScriptClassMethod ParamFilter1 mymethod { $param1 * $param2 } -parameterfilter { $param2 -eq 1 } # -ModuleName ScriptClass
 
             $testObject |=> mymethod 1 5 | Should Be 6
             $testObject |=> mymethod 5 1 | Should Be 5
         }
 
-        It 'should allow the user of multiple parameter mocks' {
+        It 'should allow the use of multiple parameter mocks' -pending {
             ScriptClass ParamFilter3 {
                 function mymethod($param1, $param2) {
                     $param1 + $param2
@@ -142,8 +142,8 @@ Describe 'Mock-ScriptClassObject cmdlet' {
 
             $testObject |=> mymethod 3 7 | Should Be 10
 
-            Mock-ScriptClassMethod ParamFilter3 mymethod { $param1 * $param2 } -parameterfilter { $param1 -eq 2 } -ModuleName ScriptClass
-            Mock-ScriptClassMethod ParamFilter3 mymethod { $param1 * $param2 + 1 } -parameterfilter { $param2 -eq 5 } -ModuleName ScriptClass
+            Mock-ScriptClassMethod ParamFilter3 mymethod { $param1 * $param2 } -parameterfilter { $param1 -eq 2 } #  -ModuleName ScriptClass
+            Mock-ScriptClassMethod ParamFilter3 mymethod { $param1 * $param2 + 1 } -parameterfilter { $param2 -eq 5 } # -ModuleName ScriptClass
 
             $testObject |=> mymethod 3 7 | Should Be 10
             $testObject |=> mymethod 2 7 | Should Be 14
@@ -152,7 +152,7 @@ Describe 'Mock-ScriptClassObject cmdlet' {
             $testObject |=> mymethod 2 5 | Should Be 11
         }
 
-        It 'should allow the use of the $this variable in the parameter filter to filter specific objects' -Pending {
+        It 'should allow the use of the $this variable in the parameter filter to filter specific objects' -pending {
             ScriptClass ParamFilter2 {
                 $state = 0
                 function mymethod($param1, $param2) {

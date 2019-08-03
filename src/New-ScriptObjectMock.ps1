@@ -25,7 +25,7 @@ function New-ScriptObjectMock {
         [string] $ModuleName
     )
 
-    $classDefinition = __ScriptClass__FindClass $ClassName
+    $classDefinition = Get-ScriptClass $className -detailed
 
     if ( ! $classDefinition ) {
         throw [ArgumentException]::new("The specified class '$ClassName' does not exist")
