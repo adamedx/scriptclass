@@ -15,8 +15,15 @@
 Describe "Cross-module behavior" {
     set-strictmode -version 2
 
+    $elementSeparator = if ( $PSVersionTable.PSEdition -eq 'Desktop' ) {
+        ';'
+    } else {
+        ':'
+    }
+
     $sourceModuleDirectory = (join-path $psscriptroot ../../.devmodule)
-    $testModPath = ";$sourceModuleDirectory;" + (join-path $psscriptroot ../../test/assets/ModuleTests)
+    $testModuleDirectory = join-path $psscriptroot ../../test/assets/ModuleTests
+    $testModPath = $elementSeparator + "$sourceModuleDirectory" + $elementSeparator + $testModuleDirectory
     $modules = @(
         'modA'
         'modBonA'
@@ -41,10 +48,21 @@ Describe "Cross-module behavior" {
              ($env:PSModulePath).EndsWith($testModPath) | Should Be $true
         }
 
-        It "Should successfully load modules with various dependency relationships" {
+        It "Should have paths that exist so that the test is valid" {
             {
                 $modules | foreach {
-                    start-job {param($mod) import-module $mod} -argumentlist $_ | wait-job | receive-job
+                    $modPath = join-path $testModuleDirectory $_
+                    get-item $modPath | out-null
+                }
+            } | Should Not Throw
+        }
+
+
+        It "Should successfully load modules with various dependency relationships" {
+            {
+                # Need to use ErrorAction 'stop' in receive-job otherwise module load failures are ignored
+                $modules | foreach {
+                    start-job {param($mod) import-module $mod} -argumentlist $_ | wait-job | receive-job -erroraction 'stop'
                 }
             } | should not throw
         }

@@ -359,7 +359,7 @@ function publish-modulebuild {
 function Invoke-CommandWithModulePath($command, $modulePath) {
     # Note that the path must be augmented rather than replaced
     # in order for modules related to package management to be loade
-    $commandScript = [Scriptblock]::Create("si env:PSModulePath `"`$env:PSModulePath;$modulePath`";$command")
+    $commandScript = [Scriptblock]::Create("import-module -verbose PowerShellGet;si env:PSModulePath `"`$env:PSModulePath;$modulePath`";$command")
 
     write-verbose "Executing command '$commandScript'"
     $result = & $PowerShellExecutable -noprofile -command ($commandScript)

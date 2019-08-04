@@ -17,6 +17,13 @@ param([switch] $Force)
 
 . "$psscriptroot/common-build-functions.ps1"
 
+$destinationPath = join-path (split-path -parent $psscriptroot) bin
+
+if ( ! ( test-path $destinationPath ) ) {
+    write-verbose "Destination directory '$destinationPath' does not exist, creating it..."
+    new-directory -name $destinationPath | out-null
+}
+
 if ( $PSVersionTable.PSEdition -eq 'Desktop' ) {
     $actionRequired = $true
     if ( $Force.IsPresent ) {
@@ -24,7 +31,6 @@ if ( $PSVersionTable.PSEdition -eq 'Desktop' ) {
         Clean-Tools
     }
 
-    $destinationPath = join-path (split-path -parent $psscriptroot) bin
     $nugetPath = join-path $destinationPath nuget.exe
 
     $nugetPresent = try {
@@ -41,11 +47,6 @@ if ( $PSVersionTable.PSEdition -eq 'Desktop' ) {
 
     if ( ! $nugetPresent -or $Force.IsPresent ) {
         write-verbose "Tool configuration update required or Force was specified, updating tools..."
-
-        if ( ! ( test-path $destinationPath ) ) {
-            write-verbose "Destination directory '$destinationPath' does not exist, creating it..."
-            new-directory -name $destinationPath | out-null
-        }
 
         if ( ! ( test-path $nugetPath ) ) {
             write-verbose "Downloading nuget executable to '$nugetPath'..."
@@ -78,4 +79,46 @@ if ( $PSVersionTable.PSEdition -eq 'Desktop' ) {
     }
 
     write-host -fore green ("Tools successfully configured in directory '$destinationPath'. {0} were required." -f $changeDisplay)
+} elseif ( $PSVersionTable.Platform -ne 'Win32NT' ) {
+    write-verbose "Not running on Windows, explicitly checking for required 'dotnet' tool for .net runtime..."
+
+    $dotNetToolPath = & which dotnet
+
+    # TODO: distinguish between dotnet sdk vs runtime only -- we need dotnet sdk.
+    # We assume if dotnet is present it is the SDK, but it could just be the runtime.
+    # An additional check for successful execution of 'dotnet cli' is one way to
+    # determine this, but it's not clear how to remediate if dotnet runtime is installed
+    # and SDK isn't. Failing on detection of that case may be the most deterministic option.
+    if ( ! $dotNetToolPath ) {
+        write-verbose "Required 'dotnet' tool not detected, updating PATH to look under home directory and retrying..."
+        set-item env:PATH ($env:PATH + ":" + ("/home/$($env:USER)/.dotnet"))
+    }
+
+    $dotNetToolPathUpdated = & which dotnet
+
+    if ( ! $dotNetToolPathUpdated ) {
+        write-verbose "Executable 'dotnet' not found after PATH update, will install .net runtime in default location..."
+        $dotNetInstallerFile = 'dotnet-install.sh'
+        $dotNetInstallerPath = join-path $destinationPath $dotNetInstallerFile
+
+        if ( ! ( test-path $dotNetInstallerPath ) ) {
+            write-verbose "Downloading .net installer script to '$dotNetInstallerPath'..."
+            Invoke-WebRequest -usebasicparsing 'https://dot.net/v1/dotnet-install.sh' -OutFile $dotNetInstallerPath
+            & chmod +x $dotNetInstallerPath
+        }
+
+        # Installs runtime and SDK
+        & $dotNetInstallerPath
+
+        $dotNetToolFinalVerification = & which dotnet
+
+        if ( ! $dotNetToolFinalVerification ) {
+            throw "Unable to install or detect required .net runtime tool 'dotnet'"
+        }
+    }
+
+    if ( ! ( get-command invoke-pester -erroraction ignore ) ) {
+        write-verbose "Test tool 'pester' not found, installing the Pester Module..."
+        install-module -scope currentuser Pester -verbose
+    }
 }

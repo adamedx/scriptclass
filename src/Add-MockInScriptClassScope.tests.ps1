@@ -37,12 +37,12 @@ Describe "AddMockInScriptClassScope cmdlet" {
                 get-process
             }
 
-            function GetFileShareData {
-                Get-FileShare
+            function GetEventData {
+                Get-Event
             }
 
-            function GetComputerData {
-                Get-ComputerInfo
+            function GetDscData {
+                Get-DscResource
             }
         }
 
@@ -84,19 +84,19 @@ Describe "AddMockInScriptClassScope cmdlet" {
             $instance |=> InstanceGetProcess | Should Be 5
         }
 
-        It 'Should return the mocked value for the command using parameters passed through the Contect parameter' {
-            Add-MockInScriptClassScope CommandClass get-fileshare { $MockContext.value } -MockContext @{value=10}
+        It 'Should return the mocked value for the command using parameters passed through the Context parameter' {
+            Add-MockInScriptClassScope CommandClass get-event { $MockContext.value } -MockContext @{value=10}
             $instance = new-so CommandClass
 
-            $instance |=> GetFileShareData | Should Be 10
+            $instance |=> GetEventData | Should Be 10
         }
 
         It 'Should throw an exception if the mock scriptblock attempts to access a variable defined in the scope that called the cmdlet' {
-            $computerData = 9
-            Add-MockInScriptClassScope CommandClass get-computerinfo { $computerData }
+            $dscData = 9
+            Add-MockInScriptClassScope CommandClass get-dscresource { $dscData }
             $instance = new-so CommandClass
 
-            { $instance |=> GetComputerData } | Should Throw
+            { $instance |=> GetDscData } | Should Throw
         }
     }
 }

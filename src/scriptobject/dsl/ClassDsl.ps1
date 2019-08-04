@@ -44,11 +44,18 @@ class ClassDsl {
     [ClassDefinitionContext] NewClassDefinitionContext([string] $className, [ScriptBlock] $classBlock, [object[]] $classArguments, [HashTable]  $variablesToInclude) {
         $this.InitializeInspectionState($classBlock)
 
-        $injectedVariables = if ( $variablesToInclude ) {
+        $injectedVariables = @()
+
+        if ( $variablesToInclude ) {
             $variablesToInclude.GetEnumerator() | foreach {
-                [PSVariable]::new($_.name, $_.value)
+                $injectedVariables += [PSVariable]::new($_.name, $_.value)
             }
         }
+
+        # Add the class collection variable -- without this, modules that nest this module
+        # will not see this variable in static methods...
+        $collectionVariableName = [ScriptClassSpecification]::Parameters.Language.ClassCollectionName
+        $injectedVariables += [PSVariable]::new($collectionVariableName, (get-variable $collectionVariableName -value))
 
         $classObject = new-module -AsCustomObject $this::inspectionBlock -argumentlist $this, $classBlock, $classArguments, $this.systemMethods, $injectedVariables
 
