@@ -112,9 +112,7 @@ AliasesToExport = @('new-so', 'scriptclass', 'withobject', 'Mock-ScriptClassMeth
         './scriptclass.psm1',
         'src/assemblyhelper.ps1',
         'src/include.ps1',
-        'src/Initialize-ScriptClassTest.ps1',
         'src/New-ScriptObjectMock.ps1',
-        'src/PreModuleInitialization.ps1',
         'src/scriptclass.ps1',
         'src/std.ps1',
         'src/Add-MockInScriptClassScope.ps1',
@@ -122,19 +120,21 @@ AliasesToExport = @('new-so', 'scriptclass', 'withobject', 'Mock-ScriptClassMeth
         'src/Mock-ScriptClassMethod.ps1',
         'src/mock/MethodMocker.ps1',
         'src/mock/MethodPatcher.ps1',
-        'src/mock/InitializeNonModuleMockFunctions.ps1',
         'src/mock/PatchedClassMethod.ps1',
         'src/mock/PatchedObject.ps1',
+        'src/scriptobject/ClassManager.ps1',
         'src/scriptobject/Get-ScriptClass.ps1',
         'src/scriptobject/Invoke-Method.ps1',
         'src/scriptobject/New-ScriptClass.ps1',
         'src/scriptobject/New-ScriptObject.ps1',
         'src/scriptobject/Test-ScriptObject.ps1',
+        'src/scriptobject/common/ClassDefinition.ps1',
+        'src/scriptobject/common/NativeObjectBuilder.ps1',
+        'src/scriptobject/common/ScriptClassSpecification.ps1',
         'src/scriptobject/dsl/ClassDsl.ps1',
         'src/scriptobject/dsl/MethodDsl.ps1',
-        'src/scriptobject/model/ClassDefinition.ps1',
-        'src/scriptobject/model/ClassTable.ps1',
-        'src/scriptobject/model/MethodInvocation.ps1')
+        'src/scriptobject/model/ClassBuilder.ps1',
+        'src/scriptobject/model/ScriptClassBuilder.ps1')
 
 # Private data to pass to the module specified in RootModule/ModuleToProcess. This may also contain a PSData hashtable with additional module metadata used by PowerShell.
 PrivateData = @{

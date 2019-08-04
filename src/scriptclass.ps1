@@ -37,7 +37,6 @@ set-strictmode -version 2
 . (join-path $psscriptroot scriptobject/New-ScriptObject.ps1)
 . (join-path $psscriptroot scriptobject/Test-ScriptObject.ps1)
 
-. (join-path $psscriptroot Initialize-ScriptClassTest.ps1)
 . (join-path $psscriptroot Mock-ScriptClassMethod.ps1)
 . (join-path $psscriptroot Add-MockInScriptClassScope.ps1)
 . (join-path $psscriptroot New-ScriptObjectMock.ps1)
