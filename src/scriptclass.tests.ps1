@@ -966,6 +966,21 @@ Describe 'The => invocation function' {
 
             { Get-PSCmdlet } | Should Throw
         }
+
+        It "should successfully invoke a method added to a class instance with add-memeber after the class was instantiated with new-scriptobject" {
+            ScriptClass PostClass {
+                function firstMethod($arg1, $arg2) {
+                    $arg1 + $arg2
+                }
+            }
+
+            $instance = new-so PostClass
+
+            $instance | add-member -membertype ScriptMethod -name secondMethod -value {param($firstArg, $secondArg) $firstArg + $secondArg}
+
+            $instance |=> firstMethod 3 4 | Should Be 7
+            $instance |=> secondMethod 4 5 | Should be 9
+        }
     }
 }
 

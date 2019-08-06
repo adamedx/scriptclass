@@ -41,7 +41,11 @@ new-item -path "function:/$([ScriptClassSpecification]::Parameters.Language.Meth
             $script = ($currentObject.psobject.methods | where name -eq $methodName).script
             $invoker = {param($block, $arguments) . $block @arguments}
             $thisvar = [PSVariable]::new('this', $currentObject)
-            $script.module.newboundscriptblock($invoker).invokewithcontext(@{}, [PSVariable[]] $thisVar, @($script, $methodArgs))
+            if ( $script.module ) {
+                $script.module.newboundscriptblock($invoker).invokewithcontext(@{}, [PSVariable[]] $thisVar, @($script, $methodArgs))
+            } else {
+                withobject $currentObject $script @methodArgs
+            }
         } catch {
             if ( ! [ClassManager]::Get().IsClassType($currentObject, $null) ) {
                 throw
