@@ -21,6 +21,20 @@ function GetModuleClassCollectionVariable {
     get-variable ([ScriptClassSpecification]::Parameters.Language.ClassCollectionName)
 }
 
+$methodBlock = {
+    param($object, $methodName)
+    $block = (get-scriptclass -Detailed $object.scriptclass.classname).classdefinition.instancemethods[$methodName].block
+#    $this = $object
+    try {
+        . $block @args
+    } catch {
+        write-error $_
+        get-pscallstack | write-error
+        throw
+    }
+}
+
+
 # This class implements the type system as a whole, storing state about defined types and providing access to information
 # about them and the ability to instantiate instances of defined types. It is accessed as a singleton, though future
 # implementations could allow for multiple instances to exist; perhaps that could be used to model module-scoped
@@ -168,6 +182,7 @@ class ClassManager {
 
     hidden [ScriptBlock] GetGeneralizedMethodBlock([Method] $method) {
         $block = [ScriptBlock]::Create($this::GeneralizedMethodTemplate -f $method.name)
+#        return $method.block.module.newboundscriptblock($script:methodBlock)
         return $method.block.module.newboundscriptblock($block)
     }
 
@@ -175,9 +190,15 @@ class ClassManager {
 
     hidden static [string] $GeneralizedMethodTemplate = @'
 $block =  (get-scriptclass -Detailed $this.scriptclass.classname).classdefinition.instancemethods['{0}'].block
-$this.InvokeScript($block, $args)
+. $block @args
 '@
 
+<#
+    hidden static [string] $GeneralizedMethodTemplate = @'
+$block =  (get-scriptclass -Detailed $this.scriptclass.classname).classdefinition.instancemethods['{0}'].block
+$this.InvokeScript($block, $args)
+'@
+#>
 
     $targetModule = $null
 

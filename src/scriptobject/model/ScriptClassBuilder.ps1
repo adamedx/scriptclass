@@ -116,7 +116,8 @@ $methodScript = ($classInfo.prototype.psobject.methods | where name -eq $methodN
             if ( ! $method ) {
                 throw [System.Management.Automation.MethodInvocationException]::new("The method '$methodName' could not be found on the object")
             }
-            $this.InvokeScript($method.script, $arguments)
+#            . $method.script $this $methodName @arguments
+            . $method.script @arguments
         }
         InvokeScript = {
             param([ScriptBlock] $script, $arguments)
@@ -136,6 +137,16 @@ $methodScript = ($classInfo.prototype.psobject.methods | where name -eq $methodN
             $this.psobject.members.GetHashCode()
         }
     }
+
+    static [void] AddStaticCommonMethods($module, $staticPrototype) {
+        $objectBuilder = [NativeObjectBuilder]::new($null, $staticPrototype, [NativeObjectBuilderMode]::Modify)
+        foreach ( $methodname in [ScriptClassBuilder]::commonMethods.keys ) {
+#            $normalizedMethod = invoke-command {param($object, $module, $block) $module.newboundscriptblock($block.getnewclosure())} -argumentlist $staticPrototype, $module, ([ScriptClassBuilder]::commonMethods[$methodName])
+            $normalizedMethod = $module.newboundscriptblock([ScriptClassBuilder]::commonMethods[$methodName])
+            $objectBuilder.AddMethod($methodName, $normalizedMethod)
+        }
+    }
+
 }
 
 [ScriptClassBuilder]::Initialize()

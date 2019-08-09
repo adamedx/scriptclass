@@ -38,13 +38,22 @@ new-item -path "function:/$([ScriptClassSpecification]::Parameters.Language.Meth
         $attemptObjectRestore = $false
         $currentObject = $_
         $result = try {
-            $script = ($currentObject.psobject.methods | where name -eq $methodName).script
-            $invoker = {param($block, $arguments) . $block @arguments}
-            $thisvar = [PSVariable]::new('this', $currentObject)
-            if ( $script.module ) {
-                $script.module.newboundscriptblock($invoker).invokewithcontext(@{}, [PSVariable[]] $thisVar, @($script, $methodArgs))
+            $methodInfo = ($currentObject.psobject.methods | where name -eq $methodName)
+            if ( $methodInfo | gm script -erroraction ignore ) {
+                $script = $methodInfo.script
+                #            $invoker = {param($block, [object[]] $arguments, $obj, $methodName) . $block $obj $methodName @arguments}
+                #            $invoker = {param($block, $arguments) . $block @arguments}
+                $thisvar = [PSVariable]::new('this', $currentObject)
+                if ( $script.module ) {
+                    $currentObject.InvokeMethod($methodName, $methodArgs)
+                    #                . $script $currentObject $methodName @methodArgs
+                    #                $script.module.newboundscriptblock($invoker).invokewithcontext(@{}, [PSVariable[]] $thisVar, @($script, $methodArgs))
+                    #                $script.module.newboundscriptblock($invoker).invokewithcontext(@{}, [PSVariable[]] $thisVar, @($script, $methodArgs, $currentObject, $methodName))
+                } else {
+                    withobject $currentObject $script @methodArgs
+                }
             } else {
-                withobject $currentObject $script @methodArgs
+                $attemptObjectRestore = $true
             }
         } catch {
             if ( ! [ClassManager]::Get().IsClassType($currentObject, $null) ) {
@@ -54,6 +63,7 @@ new-item -path "function:/$([ScriptClassSpecification]::Parameters.Language.Meth
             if ( ( $currentObject.psobject.methods | where name -eq 'InvokeMethod' ) ) {
                 throw
             }
+
             $attemptObjectRestore = $true
         }
 
@@ -89,7 +99,11 @@ new-item -path "function:/$([ScriptClassSpecification]::Parameters.Language.Meth
                 throw [System.Management.Automation.MethodInvocationException]::new("The method '$methodName' could not be found on the object")
             }
 
-            $currentObject.InvokeMethod($methodName, $methodArgs)
+            $methodScript = ($currentObject.psobject.methods | where name -eq $methodname).script
+
+            withobject $currentObject $methodScript @methodArgs
+#            . $methodScript.getnewclosure() @methodArgs
+            # $currentObject.InvokeMethod($methodName, $methodArgs)
         }
 
         $results += $result

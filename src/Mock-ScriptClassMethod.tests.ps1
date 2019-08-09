@@ -47,7 +47,7 @@ Describe 'Mock-ScriptClassObject cmdlet' {
         }
 
         It "Should throw an exception with a specific message when attempting to mock a class that does not exist" {
-            { Mock-ScriptClassMethod ClassThatDoesNotExist nonexistentmethod { 'nothing' } -ModuleName ScriptClass } | Should Throw 'not found'
+            { Mock-ScriptClassMethod ClassThatDoesNotExist nonexistentmethod { 'nothing' } -ModuleName ScriptClass } | Should Throw "class 'ClassThatDoesNotExist' does not exist"
         }
 
         It "Should throw an exception with a specific message when attempting to mock a class instance method that does not exist on a class that exists" {

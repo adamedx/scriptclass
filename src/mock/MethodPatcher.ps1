@@ -220,6 +220,8 @@ function __MethodPatcher_PatchMethod(
     $isStatic,
     $object
 ) {
+    $original = [ClassManager]::Get().GetClassInfo($className)
+
     $mockableMethod = __MethodPatcher_GetMockableMethodFunction $patcher $className $methodName $isStatic ($object -eq $null)
 
     __PatchedClassMethod_Patch $mockableMethod $object
@@ -229,6 +231,8 @@ function __MethodPatcher_PatchMethod(
     $classBuilder = [ScriptClassBuilder]::new($classContext)
     $classInfo = $classBuilder.ToClassInfo($null)
     $staticPrototype = $classInfo.prototype.scriptclass
+
+    [ScriptClassBuilder]::AddStaticCommonMethods($classInfo.module, $staticPrototype)
     $classInfo.prototype = $mockableMethod.classData.prototype
     $classInfo.prototype.scriptclass = $staticPrototype
 
@@ -264,8 +268,12 @@ function __MethodPatcher_Unpatch($patcher, $patchedMethod, $object) {
         $existingClassInfo = [ClassManager]::Get().GetClassInfo($classContext.classDefinition.name)
         $mockedClassInfo = $classBuilder.ToClassInfo($null)
         $restoredStaticPrototype = $mockedClassInfo.prototype.scriptclass
+        [ScriptClassBuilder]::AddStaticCommonMethods($classContext.staticmodule, $restoredStaticPrototype)
         $mockedClassInfo.prototype = $existingClassInfo.prototype
         $mockedClassInfo.prototype.scriptclass = $restoredStaticPrototype
+        $mockedClassInfo.prototype.scriptclass.psobject.methods | where membertype -eq 'scriptmethod' | foreach {
+#            write-host -fore yellow $_.name, $_.script.module
+        }
         [ClassManager]::Get().SetClass($mockedClassInfo)
     }
 }
