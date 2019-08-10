@@ -14,9 +14,9 @@
 
 
 set-strictmode -version 2
+$ErrorActionPreference = 'stop'
 
 . (join-path $psscriptroot include.ps1)
 . (join-path $psscriptroot assemblyhelper.ps1)
-
 . (join-path $psscriptroot scriptclass.ps1)
 

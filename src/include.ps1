@@ -41,23 +41,26 @@ function ValidateIncludePath($includePath) {
     }
 }
 
-function import-script
-{
+function Import-Script {
     [cmdletbinding()]
-    param ($appRelativePath, $callerScriptDir = $null)
-    $appRoot = if ( $callerScriptDir -eq $null ) {
+    param (
+        [parameter(mandatory=$true)]
+        $Path,
+        $Parent = $null
+    )
+    $root = if ( $Parent -eq $null ) {
         CallerScriptRoot
     } else {
-        $callerScriptDir
+        $Parent
     }
 
-    ValidateIncludePath($appRelativePath)
-    $relativePath = "$($appRelativePath).ps1"
+    ValidateIncludePath($Path)
+    $relativePath = "$($Path).ps1"
     $relativeNormal = $relativePath.ToLower()
-    $fullPath = (join-path ($appRoot) $relativePath | get-item).Fullname
+    $fullPath = (join-path ($root) $relativePath | get-item).Fullname
     $canonical = $fullPath.ToLower()
     if ( $included[$canonical] -eq $null ) {
-        $included[$canonical] = @(($appRoot), $relativeNormal)
+        $included[$canonical] = @($root, $relativeNormal)
         $includes[$canonical] = $false
         $fullPath
     } else {

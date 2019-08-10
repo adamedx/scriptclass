@@ -28,21 +28,21 @@ class ClassDefinitionContext {
 # is embedded within the PowerShell language, particularly as it can be executed within a
 # PowerShell script block, a form of anonymous function
 class ClassDsl {
-    ClassDsl([bool] $staticScope, [HashTable] $systemMethodBlocks, [string] $constructorMethodName) {
+    ClassDsl([bool] $staticScope, [HashTable] $injectedMethodBlocks, [string] $constructorMethodName) {
         $this.staticScope = $staticScope
-        $this.systemMethods = @()
         $this.constructorMethodName = $constructorMethodName
+        $this.excludedFunctions = $this.languageElements.keys
 
-        if ( $systemMethodBlocks ) {
-            foreach ( $methodName in $systemMethodBlocks.keys ) {
-                $method = [Method]::new($methodName, $systemMethodBlocks[$methodName], $false, $true)
-                $this.systemMethods += $method
+        if ( $injectedMethodBlocks ) {
+            foreach ( $methodName in $injectedMethodBlocks.keys ) {
+                $method = [Method]::new($methodName, $injectedMethodBlocks[$methodName], $false, $true)
+                $this.injectedMethods += $method
             }
         }
     }
 
     [ClassDefinitionContext] NewClassDefinitionContext([string] $className, [ScriptBlock] $classBlock, [object[]] $classArguments, [HashTable]  $variablesToInclude) {
-        $this.InitializeInspectionState($classBlock)
+        $this.InitializeProcessingState($classBlock)
 
         $injectedVariables = @()
 
@@ -57,10 +57,10 @@ class ClassDsl {
         $collectionVariableName = [ScriptClassSpecification]::Parameters.Language.ClassCollectionName
         $injectedVariables += [PSVariable]::new($collectionVariableName, (get-variable $collectionVariableName -value))
 
-        $classObject = new-module -AsCustomObject $this::inspectionBlock -argumentlist $this, $classBlock, $classArguments, $this.systemMethods, $injectedVariables
+        $classObject = new-module -AsCustomObject $this::inspectionBlock -argumentlist $this, $classBlock, $classArguments, $this.injectedMethods, $injectedVariables
 
-        if ( $this.exception ) {
-            throw $this.exception
+        if ( $this.definitionProcessingState.exception ) {
+            throw $this.definitionProcessingState.exception
         }
 
         if ( ! $classObject ) {
@@ -81,13 +81,13 @@ class ClassDsl {
             $staticContext.module
         }
 
-        return [ClassDefinitionContext]::new($classDefinition, $this.executingInspectionModule, $staticModule)
+        return [ClassDefinitionContext]::new($classDefinition, $this.definitionProcessingState.executingInspectionModule, $staticModule)
     }
 
     hidden [Method[]] GetMethods([PSCustomObject] $classObject, $staticScope) {
-        $systemNames = $this.systemMethods.name
+        $injectedMethodNames = $this.injectedMethods.name
         $methods = if ( $staticScope ) {
-            $this.staticMethods.values | foreach {
+            $this.definitionProcessingState.staticMethods.values | foreach {
                 [Method]::new($_.name, $_.block, $true, $false)
             }
         } else {
@@ -95,8 +95,9 @@ class ClassDsl {
               where membertype -eq scriptmethod |
               where name -notin $this.excludedFunctions |
               foreach {
-                  $isSystemMethod = $_.name -in $systemNames
-                  [Method]::new($_.name, $_.script, $false, $isSystemMethod)
+                  if ( $_.name -notin $injectedMethodNames ) {
+                      [Method]::new($_.name, $_.script, $false, $false)
+                  }
               }
         }
 
@@ -105,7 +106,7 @@ class ClassDsl {
 
     hidden [Property[]] GetProperties([PSCustomObject] $classObject, $staticScope) {
         $properties = if ( $staticScope ) {
-            $this.staticProperties.values | foreach {
+            $this.definitionProcessingState.staticProperties.values | foreach {
                 $normalizedValue = if ( $_.type ) {
                     [TypedValue]::new($_.type, $_.value)
                 } else {
@@ -117,7 +118,7 @@ class ClassDsl {
         } else {
             $classObject.psobject.properties |
               where membertype -eq noteproperty |
-              where name -notin $this.excludedVariables |
+              where name -notin $this.definitionProcessingState.excludedVariables |
               foreach {
                   [Property]::new($_.name, $_.value, $false, $false, ! $_.IsSettable)
               }
@@ -131,51 +132,38 @@ class ClassDsl {
             return $null
         }
         $blocks = @({})
-        $blocks += $this.staticBlocks
+        $blocks += $this.definitionProcessingState.staticBlocks
 
         $methodTable = @{}
-        $this.systemMethods | foreach {
+
+        # This is required to ensure these methods are available
+        # for invocation by other static methods in the class
+        $this.injectedMethods | foreach {
             $methodTable.Add($_.name, $_.block)
         }
 
- #       write-host blocks, $blocks.length
+        # Combine all the static blocks into one block to avoid
+        # having multiple modules (each block is a module) -- this
+        # results in exactly one module for all static methods and properties
         $combinedBlock = {
             param([ScriptBlock[]] $staticBlocks)
-#            write-host inlength, $staticBlocks.length
             $staticBlocks | foreach {
-#                write-host -fore cyan processing
-#                $_ | out-host
                 . {}.module.newboundscriptblock($_)
             }
         }
 
         $dsl = [ClassDsl]::new($true, $methodTable, $null)
-        $staticDefinitionContext = $dsl.NewClassDefinitionContext($null, $combinedBlock, (,$blocks), $this.classBlockParameters)
+        $staticDefinitionContext = $dsl.NewClassDefinitionContext($null, $combinedBlock, (,$blocks), $this.definitionProcessingState.classBlockParameters)
 
         $staticDefinitionContext.classDefinition.GetInstanceMethods() | foreach {
-  #          write-host addingstaticmethod, $_.name
-            $this.staticMethods.Add($_.name, $_)
+            $this.definitionProcessingState.staticMethods.Add($_.name, $_)
         }
 
         $staticDefinitionContext.classDefinition.GetInstanceProperties() |foreach {
-#            write-host addingstaticprop, $_.name
-            $this.staticProperties.Add($_.name, $_)
+            $this.definitionProcessingState.staticProperties.Add($_.name, $_)
         }
 
         return $staticDefinitionContext
-    }
-
-    hidden [void] InitializeInspectionState([ScriptBlock] $classBlock) {
-        $this.executingInspectionModule = $null
-        $this.staticProcessed = $false
-        $this.staticBlocks = @()
-        $this.staticMethods = @{}
-        $this.staticProperties = @{}
-        $this.exception = $null
-        $this.classBlockParameters = $null
-        $this.classBlockParameterNames = $this.GetClassBlockParameters($classBlock)
-        $this.excludedVariables = @()
-        $this.excludedVariables += $this.classBlockParameterNames
     }
 
     hidden [object[]] GetClassBlockParameters([ScriptBlock] $classBlock) {
@@ -192,22 +180,28 @@ class ClassDsl {
         return $parameterNames
     }
 
+    hidden [void] InitializeProcessingState($classBlock) {
+        $this.definitionProcessingState = @{
+            staticProcessed = $false
+            staticBlocks = @()
+            staticMethods = @{}
+            staticProperties = @{}
+            classBlockParameters = $null
+            classBlockParameterNames = $this.GetClassBlockParameters($classBlock)
+            excludedVariables = @()
+            exception = $null
+            executingInspectionModule = $null
+        }
+
+        $this.definitionProcessingState.excludedVariables += $this.definitionProcessingState.classBlockParameterNames
+    }
+
     [bool] $staticScope = $false
     $constructorMethodName = $null
+    $excludedFunctions = $null
+    $injectedMethods = @()
 
-    [bool] $staticProcessed = $false
-    $staticBlocks = $null
-    $staticMethods = @{}
-    $staticProperties = @{}
-
-    $classBlockParameters = $false
-    $classBlockParameterNames = $null
-
-    $systemMethods = $null
-
-    $exception = $null
-
-    $executingInspectionModule = $null
+    $definitionProcessingState = $null
 
     $languageElements = @{
         [ScriptClassSpecification]::Parameters.Language.StrictTypeKeyword = @{
@@ -241,37 +235,22 @@ class ClassDsl {
                     throw 'Invalid static syntax'
                 }
 
-                if ( ! $this.staticProcessed ) {
+                if ( ! $this.definitionProcessingState.staticProcessed ) {
                     $classBlockParameters = @{}
-                    $this.classBlockParameterNames | foreach {
+                    $this.definitionProcessingState.classBlockParameterNames | foreach {
                         $name = $_
                         $value = ((get-pscallstack)[2].getframevariables()['psboundparameters']).value[$name][0]
                         $classBlockParameters.Add($name, $value)
                     }
 
-                    $this.classBlockParameters = $classBlockParameters
+                    $this.definitionProcessingState.classBlockParameters = $classBlockParameters
 
                     $methodTable = @{}
-                    $this.systemMethods | foreach {
-                        $methodTable.Add($_.name, $_.block)
-                    }
 
-                    $this.staticProcessed = $true
+                    $this.definitionProcessingState.staticProcessed = $true
                 }
 
-                $this.staticBlocks += $staticBlock
-<#
-                $dsl = [ClassDsl]::new($true, $methodTable, $null)
-                $staticDefinition = $dsl.NewClassDefinition($null, $staticBlock, $null, $classBlockParameters)
-
-                $staticDefinition.GetInstanceMethods() | foreach {
-                    $this.staticMethods.Add($_.name, $_)
-                }
-
-                $staticDefinition.GetInstanceProperties() |foreach {
-                    $this.staticProperties.Add($_.name, $_)
-                }
-#>
+                $this.definitionProcessingState.staticBlocks += $staticBlock
             }
         }
         [ScriptClassSpecification]::Parameters.Language.ConstantKeyword = @{
@@ -282,10 +261,10 @@ class ClassDsl {
                     [parameter(mandatory=$true)] $value
                 )
 
-                $existingVariable = . $this.executingInspectionModule.NewBoundScriptBlock({param($___variableName) get-variable -name $___variableName -scope local -erroraction ignore}) $name $value
+                $existingVariable = . $this.definitionProcessingState.executingInspectionModule.NewBoundScriptBlock({param($___variableName) get-variable -name $___variableName -scope local -erroraction ignore}) $name $value
 
                 if ( $existingVariable -eq $null ) {
-                    . $this.executingInspectionModule.NewBoundScriptBlock({param($___variableName, $___variableValue) new-variable -name $___variableName -scope local -value $___variableValue -option readonly; remove-variable ___variableName, ___variableValue}) $name $value
+                    . $this.definitionProcessingState.executingInspectionModule.NewBoundScriptBlock({param($___variableName, $___variableValue) new-variable -name $___variableName -scope local -value $___variableValue -option readonly; remove-variable ___variableName, ___variableValue}) $name $value
                 } elseif ($existingVariable.value -ne $value) {
                     throw "Attempt to redefine constant '$name' from value '$($existingVariable.value) to '$value'"
                 }
@@ -293,19 +272,16 @@ class ClassDsl {
         }
     }
 
-    $excludedVariables = $null
-    $excludedFunctions = $this.languageElements.keys
-
     static $inspectionBlock = {
-        param($___dsl, $___classBlock, $___classArguments, $___systemMethods, [object[]] $___importedVariables)
+        param($___dsl, $___classBlock, $___classArguments, $___injectedMethods, [object[]] $___importedVariables)
         set-strictmode -version 2
 
-        $___dsl.executingInspectionModule = {}.Module
+        $___dsl.definitionProcessingState.executingInspectionModule = {}.Module
 
         if ( $___importedVariables ) {
             $___importedVariables | foreach {
                 new-variable -name $_.name -value $_.value
-                $___dsl.excludedVariables += $_.name
+                $___dsl.definitionProcessingState.excludedVariables += $_.name
             }
         }
 
@@ -316,7 +292,7 @@ class ClassDsl {
             }
         }
 
-        foreach ( $___method in $___systemMethods ) {
+        foreach ( $___method in $___injectedMethods ) {
             new-item "function:/$($___method.name)" -value {}.Module.NewBoundScriptBlock($___method.block) | out-null
         }
 
@@ -329,14 +305,14 @@ class ClassDsl {
         try {
             .  {}.module.newboundscriptblock($___classBlock) @___classArguments | out-null
         } catch {
-            $___dsl.exception = $_.exception
+            $___dsl.definitionProcessingState.exception = $_.exception
             throw
         }
 
-        $___dsl.excludedVariables += @('this', 'foreach')
+        $___dsl.definitionProcessingState.excludedVariables += @('this', 'foreach')
 
         # TODO: Remove this as it is currently redundant or make parameterized
-        $___dsl.excludedFunctions = $___dsl.languageElements.keys
+        $___dsl.definitionProcessingState.excludedFunctions = $___dsl.languageElements.keys
 
         $___variables | foreach { $_ | remove-variable }
 

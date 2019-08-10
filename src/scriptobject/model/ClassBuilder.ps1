@@ -17,32 +17,19 @@
 class ClassBuilder {
     ClassBuilder([string] $className, [ScriptBlock] $classblock, [string] $constructorName) {
         $this.className = $className
-        if ( ! $this.className ) {
-            throw 'anger4'
-        }
         $this.classBlock = $classBlock
         $this.systemMethodBlocks = @{}
         $this.systemProperties = @{}
         $this.constructorName = $constructorName
-
-        $this.AddSystemProperty([NativeObjectBuilder]::NativeTypeMemberName, $null, $className)
     }
 
     ClassBuilder([ClassDefinitionContext] $context) {
         $this.definitionContext = $context
-        if ( $context.module -eq $null ) {
-            throw 'anger2'
-        }
         $this.className = $context.classDefinition.name
-        if ( ! $this.className ) {
-            throw 'anger'
-        }
         $this.classBlock = $null
         $this.systemMethodBlocks = @{}
         $this.systemProperties = @{}
         $this.constructorName = $context.classDefinition.constructorMethodName
-
-        $this.AddSystemProperty([NativeObjectBuilder]::NativeTypeMemberName, $null, $this.className)
     }
 
 
@@ -54,13 +41,13 @@ class ClassBuilder {
             $this.definitionContext
         } else {
             $dsl = [ClassDsl]::new($false, $this.systemMethodBlocks, $this.constructorName)
+            $this.AddSystemProperty([NativeObjectBuilder]::NativeTypeMemberName, $null, $this.className)
             $this.definitionContext = $dsl.NewClassDefinitionContext($this.className, $this.classBlock, $classArguments, $null)
             $this.definitionContext
         }
 
         $basePrototype = $context.classDefinition.ToPrototype($false)
         $prototype = $this.GetPrototypeObject($basePrototype)
- #       $prototype = $this.GetPrototypeObject()
 
         $classInfo = [ClassInfo]::new($context.classDefinition, $prototype, $context.module)
         return $classInfo
@@ -76,7 +63,7 @@ class ClassBuilder {
 
     hidden [object] GetPrototypeObject($basePrototype) {
         $builder = [NativeObjectBuilder]::new($null, $basePrototype, [NativeObjectBuilderMode]::Modify)
-#        $builder = [NativeObjectBuilder]::new($null, $null, [NativeObjectBuilderMode]::Create)
+
         if ( $this.systemProperties ) {
             $this.systemProperties.values | foreach {
                 $builder.AddProperty($_.name, $_.type, $_.value, $_.isReadOnly)

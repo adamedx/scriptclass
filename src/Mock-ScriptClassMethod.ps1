@@ -34,9 +34,7 @@ function Add-ScriptClassMock {
         [parameter(parametersetname='static')]
         [Switch] $Static,
 
-        [Switch] $Verifiable,
-
-        [String] $ModuleName
+        [Switch] $Verifiable
     )
 
     $ScriptObject = $null
@@ -61,6 +59,6 @@ function Add-ScriptClassMock {
 
     $mocker = __MethodMocker_Get
 
-    __MethodMocker_Mock $mocker $className  $methodName $Static.IsPresent $ScriptObject $MockWith $normalizedParameterFilter $Verifiable.IsPresent $ModuleName $MockContext
+    __MethodMocker_Mock $mocker $className  $methodName $Static.IsPresent $ScriptObject $MockWith $normalizedParameterFilter $Verifiable.IsPresent $null $MockContext
 }
 

@@ -41,16 +41,9 @@ function Invoke-Method {
         if ( $Action -is [string] ) {
             $Context.$($invocationMethods.InvokeMethodMethodName)($Action, $arguments)
         } else {
-            # TODO: Should this rebinding be an optional capability for InvokeScriptMethod
+            # TODO: Should this rebinding be an optional capability for InvokeScriptMethod?
             $boundScript = ($Context.psobject.methods | where name -eq $invocationMethods.InvokeScriptMethodName).script.module.newboundscriptblock($Action)
 
-            <#
-            $boundScript = if ( $Context.$($invocationMethods.ClassMember.Name) ) {
-                ($Context.psobject.methods | where name -eq $invocationMethods.InvokeScriptMethodName).script.module.newboundscriptblock($Action)
-            } else {
-                $Action
-            }
-#>
             $Context.$($invocationMethods.InvokeScriptMethodName)($boundScript, $arguments)
         }
     } else {

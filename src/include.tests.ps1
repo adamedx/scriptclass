@@ -225,7 +225,7 @@ testvalue `$arg1 `$arg2
         }
 
         It 'should throw an exception if the include path does not exist' {
-            { import-script 'thisdoesnotexist.io' 2>&1 | out-null } | Should Throw
+            { import-script 'thisdoesnotexist.io' | out-null } | Should Throw
         }
 
         It 'should throw an exception when loading a script file with an error' {

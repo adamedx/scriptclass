@@ -55,7 +55,7 @@ Describe 'New-ScriptObjectMock cmdlet' {
         }
 
         It "should throw an exception that contains the sequence 'was not found for class' if any keys of the MethodMocks parameter are not the names of valid methods of the class" {
-            { $mockedObject = New-ScriptObjectMock MockObjectClass -methodmocks @{Times={4};Plus={4};Add={5}} -ModuleName ScriptClass } | Should Throw 'was not found for class'
+            { $mockedObject = New-ScriptObjectMock MockObjectClass -methodmocks @{Times={4};Plus={4};Add={5}} } | Should Throw 'was not found for class'
         }
 
         It "should throw an exception that contains the sequence '[string]' if any keys of the PropertyValues parameter are not of type [string]" {
@@ -88,7 +88,7 @@ Describe 'New-ScriptObjectMock cmdlet' {
         }
 
         It 'Should be possible to mock methods and properties using only the parameters to New-ScriptObjectMock' {
-            $mockedObject = New-ScriptObjectMock MockObjectClass -MethodMocks @{Times={param($param1, $param2) ($param1 + $param2) + $this.data1 * $this.data2 };Add={param($param1, $param2) ($param1 * $param2) + $this.data1 + $this.data2}} -propertyvalues @{data1=3;data2=8} -ModuleName ScriptClass
+            $mockedObject = New-ScriptObjectMock MockObjectClass -MethodMocks @{Times={param($param1, $param2) ($param1 + $param2) + $this.data1 * $this.data2 };Add={param($param1, $param2) ($param1 * $param2) + $this.data1 + $this.data2}} -propertyvalues @{data1=3;data2=8}
 
             $mockedObject |=> Times 3 7 | Should Be 34
             $mockedObject |=> Add 2 5 | Should Be 21
@@ -97,8 +97,8 @@ Describe 'New-ScriptObjectMock cmdlet' {
         It 'Should be possible to mock a methods from a mocked object returned by New-ScriptObjectMock' {
             $mockedObject = New-ScriptObjectMock MockObjectClass
 
-            Mock-ScriptClassMethod $mockedObject Times {param($param1, $param2) ($param1 + $param2) + $this.data1 * $this.data2 + 3} -ModuleName ScriptClass
-            Mock-ScriptClassMethod $mockedObject Add {param($param1, $param2) ($param1 * $param2) + $this.data1 + $this.data2 + 9} -ModuleName ScriptClass
+            Mock-ScriptClassMethod $mockedObject Times {param($param1, $param2) ($param1 + $param2) + $this.data1 * $this.data2 + 3}
+            Mock-ScriptClassMethod $mockedObject Add {param($param1, $param2) ($param1 * $param2) + $this.data1 + $this.data2 + 9}
 
             $mockedObject.data1 = 3
             $mockedObject.data2 = 8

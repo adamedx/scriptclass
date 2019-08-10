@@ -39,9 +39,11 @@ function __PatchedObject_IsPatched($object) {
 }
 
 function __PatchedObject_AllocateUniqueId {
-    $patchState = try {
-        $script:__patchedObjectState
-    } catch {
+    $patchStateVariable = get-variable -scope script __patchedObjectState -erroraction ignore
+
+    $patchState = if ( $patchStateVariable ) {
+        $patchStateVariable.value
+    } else {
         $script:__patchedObjectState = [PSCustomObject] @{
             SerialStart = $null
             SerialCurrent = $null

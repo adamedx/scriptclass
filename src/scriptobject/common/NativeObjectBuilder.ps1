@@ -24,8 +24,6 @@ enum NativeObjectBuilderMode {
 class NativeObjectBuilder {
     static $NativeTypeMemberName = 'PSTypeName'
     NativeObjectBuilder([string] $typeName, [PSCustomObject] $prototype, [NativeObjectBuilderMode] $mode) {
-        $this.TypeName = $typeName
-
         $this.object = if ( $mode -eq [NativeObjectBuilderMode]::Modify ) {
             if ( ! $prototype ) {
                 throw [ArgumentException]::New("'Modify' mode was specified for ObjectBuilder, but no existing object was specified to modify")
@@ -39,11 +37,15 @@ class NativeObjectBuilder {
         } else {
             $objectState = @{}
             if ( $typeName ) {
+                $this::UnregisterClassType($typeName)
                 $objectState[$this::NativeTypeMemberName] = $typeName
             }
             if ( $prototype ) {
                 $prototype.psobject.properties | foreach {
                     if ( $_.membertype -ne 'NoteProperty' ) {
+                        if ( $_.name -eq $this::NativeyTypeMemberName ) {
+                            throw 'nope'
+                        }
                         throw [ArgumentException]::new("Property '$($_.name)' of member type '$($_.memberType)' is not of valid member type 'NoteProperty'")
                     }
 
@@ -51,14 +53,7 @@ class NativeObjectBuilder {
                 }
             }
 
-            $result = [PSCustomObject] $objectState
-#            if ( $result | gm ([NativeObjectBuilder]::NativeTypeMemberName) ) {
-#            if ( $typeName ) {
-#                $result.$([NativeObjectBuilder]::NativeTypeMemberName) = $typeName
-#                $result | add-member -name ([NativeObjectBuilder]::NativeTypeMemberName) -membertype noteproperty -value $typename -force
-#            }
-
-            $result
+            [PSCustomObject] $objectState
         }
     }
 
@@ -72,6 +67,7 @@ class NativeObjectBuilder {
         } else {
             @{}
         }
+
         $this.object | add-member -MemberType $memberType -name $name -value $value @secondValueParameter
     }
 
@@ -121,6 +117,10 @@ class NativeObjectBuilder {
 
     static [object] CopyFrom($sourceObject) {
         return $sourceObject.psobject.copy()
+    }
+
+    hidden static [void] UnregisterClassType([string] $typeName) {
+        remove-typedata $typename -erroraction ignore
     }
 
     static [void] RegisterClassType([string] $typeName, [string[]] $visiblePropertyNames, $prototype) {
@@ -174,6 +174,5 @@ class NativeObjectBuilder {
         Serializationdepth = 2
     }
 
-    $typeName = $null
     [PSCustomObject] $object = $null
 }

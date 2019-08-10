@@ -17,12 +17,12 @@ $thismodule = join-path (split-path -parent $here) 'ScriptClass.psd1'
 
 Describe 'Unmock-ScriptClassMethodMock cmdlet' {
     BeforeAll {
-        remove-module $thismodule -force -erroraction silentlycontinue
+        remove-module $thismodule -force -erroraction ignore
         import-module $thismodule -force
     }
 
     AfterAll {
-        remove-module $thismodule -force -erroraction silentlycontinue
+        remove-module $thismodule -force -erroraction ignore
     }
 
     Context 'Removing mocks for instance methods' {
@@ -38,7 +38,7 @@ Describe 'Unmock-ScriptClassMethodMock cmdlet' {
             $oldclass |=> RealMethod | out-null
             ($oldClass.psobject.methods | where name -eq RealMethod).script.module
 
-            Mock-ScriptClassMethod TestClassInstanceMethod3 RealMethod { 5 } # -ModuleName ScriptClass
+            Mock-ScriptClassMethod TestClassInstanceMethod3 RealMethod { 5 }
 
             $testClass = new-so TestClassInstanceMethod3
 
@@ -64,7 +64,7 @@ Describe 'Unmock-ScriptClassMethodMock cmdlet' {
 
             ($::.TestClassStaticMethod2 |=> StaticRealMethod 3 7) | Should Be ( $::.TestClassStaticMethod2.staticdata + 3 * 7 )
 
-            Mock-ScriptClassMethod TestClassStaticMethod2 StaticRealMethod { 3 } -static # -ModuleName ScriptClass
+            Mock-ScriptClassMethod TestClassStaticMethod2 StaticRealMethod { 3 } -static
 
             ($::.TestClassStaticMethod2 |=> StaticRealMethod 3 7) | Should Be 3
 
@@ -88,7 +88,7 @@ Describe 'Unmock-ScriptClassMethodMock cmdlet' {
 
             ($testObject |=> RealObjectMethod 3 7) | Should Be ( $testObject.objectData + 3 * 7  + 1 )
 
-            Mock-ScriptClassMethod $testObject RealObjectMethod { 2 } # -ModuleName ScriptClass
+            Mock-ScriptClassMethod $testObject RealObjectMethod { 2 }
 
             ($testObject |=> RealObjectMethod 3 7) | Should Be 2
 
@@ -110,11 +110,11 @@ Describe 'Unmock-ScriptClassMethodMock cmdlet' {
 
             ($testObject |=> RealObjectMethod 3 7) | Should Be ( $testObject.objectData + 3 * 7  + 3 )
 
-            Mock-ScriptClassMethod TestClassObjectMethod4 RealObjectMethod { 2 } # -ModuleName ScriptClass
+            Mock-ScriptClassMethod TestClassObjectMethod4 RealObjectMethod { 2 }
 
             ($testObject |=> RealObjectMethod 3 7) | Should Be 2
 
-            Mock-ScriptClassMethod $testObject RealObjectMethod { 5 } # -ModuleName ScriptClass
+            Mock-ScriptClassMethod $testObject RealObjectMethod { 5 }
 
             ($testObject |=> RealObjectMethod 3 7) | Should Be 5
 
@@ -140,11 +140,11 @@ Describe 'Unmock-ScriptClassMethodMock cmdlet' {
 
             ($testObject |=> RealObjectMethod 3 7) | Should Be ( $testObject.objectData + 3 * 7  + 3 )
 
-            Mock-ScriptClassMethod $testObject RealObjectMethod { 5 } # -ModuleName ScriptClass
+            Mock-ScriptClassMethod $testObject RealObjectMethod { 5 }
 
             ($testObject |=> RealObjectMethod 3 7) | Should Be 5
 
-            Mock-ScriptClassMethod TestClassObjectMethod5 RealObjectMethod { 2 } # -ModuleName ScriptClass
+            Mock-ScriptClassMethod TestClassObjectMethod5 RealObjectMethod { 2 }
 
 
             ($testObject |=> RealObjectMethod 3 7) | Should Be 5

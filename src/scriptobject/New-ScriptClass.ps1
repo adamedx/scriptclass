@@ -15,13 +15,13 @@
 function New-ScriptClass {
     [cmdletbinding()]
     param(
-        [parameter(mandatory=$true)] [string] $className,
-        [scriptblock] $classBlock,
+        [parameter(mandatory=$true)] [string] $ClassName,
+        [scriptblock] $ClassBlock = {},
         $ArgumentList
     )
 
     try {
-        [ClassManager]::Get().DefineClass($className, $classBlock, $ArgumentList) | out-null
+        [ClassManager]::Get().DefineClass($ClassName, $ClassBlock, $ArgumentList) | out-null
     } catch {
         throw
     }

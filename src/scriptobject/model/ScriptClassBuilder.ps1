@@ -38,42 +38,19 @@ class ScriptClassBuilder : ClassBuilder {
 
         $classInfo.classDefinition.CopyPrototype($true, $staticTarget)
 
-#        $classMemberBuilder = [NativeObjectBuilder]::new($null, $staticTarget, [NativeObjectBuilderMode]::Modify)
-<#
-        foreach ( $methodname in $this::commonMethods.keys ) {
-
-$methodScript = ($classInfo.prototype.psobject.methods | where name -eq $methodName).script
-            $classMemberBuilder.AddMethod($methodName, $methodScript)
-        }
-#>
-        $module = if ( $this.classBlock ) {
-            $this.classBlock.module
-        } else {
-            ([ClassBuilder]$this).definitionContext.module
-        }
-
-#        $staticModule = ($staticTarget.psobject.methods | where name -eq InvokeScript).script.module
         $definitionContext = ([ClassBuilder]$this).definitionContext
+
+        $instanceModule = ([ClassBuilder]$this).definitionContext.module
         $staticModule = if ( $definitionContext ) {
             $definitionContext.staticModule
         }
-#        $staticModule = ($staticTarget.psobject.methods | where name -eq InvokeScript).script.module
 
         $staticTarget.$($classMemberParameters.Structure.ClassNameMemberName) = $this.className
         $staticTarget.$($classMemberParameters.Structure.ModuleMemberName) = $staticModule
 
-        <#
-        write-host -fore yello 'summary'
-        write-host -fore cyan prototype
-        $classInfo.prototype | fl * | out-host
-        $classInfo.prototype | gm | out-host
-#        $classInfo.prototype.scriptclass = $staticTarget
+        $this::AddStaticCommonMethods($instanceModule, $classInfo.prototype)
+        $this::AddStaticCommonMethods($staticModule, $staticTarget)
 
-        write-host -fore cyan scriptclass
-        $classInfo.prototype.scriptclass | fl * | out-host
-        $classInfo.prototype.scriptclass | gm | out-host
-#        $staticTarget | fl * | out-host
-#>
         $excludedMethodNames = $this::commonMethods.keys
         $filteredClassDefinition = [ClassDefinition]::GetFilteredDefinition($classInfo.classDefinition, $excludedMethodNames, $null)
 
@@ -116,7 +93,7 @@ $methodScript = ($classInfo.prototype.psobject.methods | where name -eq $methodN
             if ( ! $method ) {
                 throw [System.Management.Automation.MethodInvocationException]::new("The method '$methodName' could not be found on the object")
             }
-#            . $method.script $this $methodName @arguments
+
             . $method.script @arguments
         }
         InvokeScript = {
@@ -141,12 +118,10 @@ $methodScript = ($classInfo.prototype.psobject.methods | where name -eq $methodN
     static [void] AddStaticCommonMethods($module, $staticPrototype) {
         $objectBuilder = [NativeObjectBuilder]::new($null, $staticPrototype, [NativeObjectBuilderMode]::Modify)
         foreach ( $methodname in [ScriptClassBuilder]::commonMethods.keys ) {
-#            $normalizedMethod = invoke-command {param($object, $module, $block) $module.newboundscriptblock($block.getnewclosure())} -argumentlist $staticPrototype, $module, ([ScriptClassBuilder]::commonMethods[$methodName])
             $normalizedMethod = $module.newboundscriptblock([ScriptClassBuilder]::commonMethods[$methodName])
             $objectBuilder.AddMethod($methodName, $normalizedMethod)
         }
     }
-
 }
 
 [ScriptClassBuilder]::Initialize()

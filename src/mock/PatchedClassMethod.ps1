@@ -13,14 +13,14 @@
 # limitations under the License.
 
 function __PatchedClassMethod_New(
-    $classDefinition,
+    $classInfo,
     $methodName,
     $isStatic,
     $allInstances,
     $unpatchedMethodBlock,
     $patchedMethodBlock
 ) {
-    $className = $classDefinition.classDefinition.name
+    $className = $classInfo.classDefinition.name
     $functionName = __PatchedClassMethod_GetMockableMethodName $className $methodName $isStatic
     if ( $isStatic -and ! $allInstances ) {
         throw [ArgumentException]::new("Mocking of a static method was specified, but allInstances was $false")
@@ -32,7 +32,7 @@ function __PatchedClassMethod_New(
         ClassName = $className
         MethodName = $methodName
         IsStatic = $isStatic
-        ClassData = $classDefinition
+        ClassInfo = $classInfo
         AllInstances = $allInstances
         PatchedObjects = @{}
         OriginalScriptBlock = $unpatchedMethodBlock
@@ -118,21 +118,17 @@ function __PatchedClassMethod_Patch($mockableMethod, $object) {
 }
 
 function __PatchedClassMethod_PatchStaticMethod($mockFunctionInfo) {
-#    write-host -fore cyan before
-#    $mockFunctionInfo.classData.prototype.scriptclass.psobject.methods | out-host
-#    __PatchedClassMethod_SetObjectMethod $mockFunctionInfo.classData.prototype.scriptclass $mockFunctionInfo.methodname $mockFunctionInfo.ReplacementScriptblock
-    $mockFunctionInfo.classData.classDefinition.GetMethod($mockFunctionInfo.methodName, $true).block = $mockFunctionInfo.ReplacementScriptBlock
-#    write-host -fore cyan after
+    $mockFunctionInfo.classInfo.classDefinition.GetMethod($mockFunctionInfo.methodName, $true).block = $mockFunctionInfo.ReplacementScriptBlock
 }
 
 function __PatchedClassMethod_PatchNonstaticMethod($mockFunctionInfo) {
-    $mockFunctionInfo.classData.classDefinition.GetMethod($mockFunctionInfo.methodName, $false).block = $mockFunctionInfo.ReplacementScriptBlock
+    $mockFunctionInfo.classInfo.classDefinition.GetMethod($mockFunctionInfo.methodName, $false).block = $mockFunctionInfo.ReplacementScriptBlock
 }
 
 function __PatchedClassMethod_UnpatchNonstaticMethod($patchedMethod) {
     $patchedMethod.AllInstances = $false
     if ( $patchedMethod.PatchedObjects.count -eq 0 ) {
-        $patchedMethod.classData.classDefinition.GetMethod($patchedMethod.methodName, $false).block = $patchedMethod.OriginalScriptBlock
+        $patchedMethod.classInfo.classDefinition.GetMethod($patchedMethod.methodName, $false).block = $patchedMethod.OriginalScriptBlock
     }
 }
 
@@ -150,16 +146,14 @@ function __PatchedClassMethod_UnpatchObject($patchedMethod, $object) {
     $patchedMethod.PatchedObjects.Remove($objectId)
 
     if ( ! (__PatchedClassMethod_IsActive $patchedMethod ) ) {
-        $patchedMethod.classData.classDefinition.GetMethod($patchedMethod.methodName, $false).block = $patchedMethod.OriginalScriptBlock
+        $patchedMethod.classInfo.classDefinition.GetMethod($patchedMethod.methodName, $false).block = $patchedMethod.OriginalScriptBlock
     }
 
     $object | add-member -name __ScriptClassMockedObjectId -membertype scriptmethod -value {} -force
 }
 
 function __PatchedClassMethod_UnpatchStaticMethod($patchedMethod) {
-    $patchedMethod.classData.classDefinition.GetMethod($patchedMethod.methodName, $true).block = $patchedMethod.OriginalScriptBlock
-#    __PatchedClassMethod_SetObjectMethod $patchedMethod.classData.prototype.scriptclass $patchedMethod.methodname $patchedMethod.originalScriptblock
-
+    $patchedMethod.classInfo.classDefinition.GetMethod($patchedMethod.methodName, $true).block = $patchedMethod.OriginalScriptBlock
 }
 
 function __PatchedClassMethod_SetObjectMethod($object, $methodname, $originalScriptBlock) {

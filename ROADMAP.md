@@ -1,13 +1,24 @@
 # ROADMAP for ScriptClass
 
 ## To-do items -- prioritized
+* Post-refactor clean-up and polish
+* Add documentation to cmdlets
+* break apart scriptclass tests
+* Remove use of underscores!
+* General README update
+* Build tools documentation
+* Design documentation
+* File location rationalization and move
+* Add ability to include any file extension or use full path in import-script
+* Consistent use of commas vs. newlines in collections in module files
+* Rebase the refactor!
+* Make pstypename not part of class? May affect deserialization.
+* Do we need typedobjectbuilder to be factored out of classmanager? Should it be scriptobjectbuilder?
+* Should classmanager be typemanager? ClassInfo be typeinfo? ClassDefinition be typedefinition? classbuilder be typebuilder?
+* Don't rely on pstypename for type checking
+
 
 ### To-do
-* Mocking!
-  * Method mocking - Mock-ScriptClassMethod
-  * Object mocking
-* Remove superfluous verbose output from export-module
-* Remove some usage of script scope variables
 * Fix issue with test-scriptobject and psremoting jobs from start-job
 * Private member variables (e.g. wrap methods such that the push the this parameter on a stack, and pop it off when they leave, then you can peek at the top when entering private methods)
 * Inheritance
@@ -23,4 +34,44 @@
   PSScriptRoot                NoteProperty   string PSScriptRoot=C:\Users\adamed\src\poshgraph\.devmodule\sc...
   snapshot2                   NoteProperty   Object[] snapshot2=System.Object[]
   varsnapshot1                Note
+* Mocking!
+  * Method mocking - Mock-ScriptClassMethod
+  * Object mocking
+* Remove superfluous verbose output from export-module
+* Remove some usage of script scope variables
+* Complete refactor!
+* Complete module isolation -- no variables / private functions leak outside of the module!
+* Move process of adding common methods to static members out of dsl processing into ScriptClassBuilder
+* Fix pstypename double add
+* Use erroractionpreference stop throughout module
+* Fix methoddsl not checking for missing method
+* Make method restoration its own method
+* Clean up dsl processing to separate out execution state (possibly use a new class altogether)
+* Better errors in include (seems like this already works?)
+* Fix parameter names in exposed cmdlets
+* Remove error stream noise
+* Clean up methoddsl
+* Remove commented-out code
+* Code-reuse opportunities in mock code
+* Remove module argument from mock command
+* Change classdata in mock functions to classinfo
+
+### New file layout
+
+    scriptclass.psd1
+    scriptclass.psm1
+    \\build
+    \\test
+    \\src
+        scriptclass.ps1
+        cmdlets.ps1
+        \\cmdlets
+        \\scriptobject
+            \\common
+            \\dsl
+            \\types
+            \\objects
+        \\codesharing
+
+#### Test breakout
 

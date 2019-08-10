@@ -677,12 +677,12 @@ Describe "The class definition interface" {
 
 Describe "The Get-ScriptClass cmdlet" {
     BeforeAll {
-        remove-module $thismodule -force -erroraction silentlycontinue
+        remove-module $thismodule -force -erroraction ignore
         import-module $thismodule -force
     }
 
     AfterAll {
-        remove-module $thismodule -force -erroraction silentlycontinue
+        remove-module $thismodule -force -erroraction ignore
     }
 
     ScriptClass ClassClass59 {
@@ -706,12 +706,12 @@ Describe "The Get-ScriptClass cmdlet" {
 
 Describe 'The $:: collection' {
     BeforeAll {
-        remove-module $thismodule -force -erroraction silentlycontinue
+        remove-module $thismodule -force -erroraction ignore
         import-module $thismodule -force
     }
 
     AfterAll {
-        remove-module $thismodule -force -erroraction silentlycontinue
+        remove-module $thismodule -force -erroraction ignore
     }
 
     ScriptClass ClassClass60 {}
@@ -749,12 +749,12 @@ Describe 'The $:: collection' {
 
 Describe "'withobject' alias for object-based command context" {
     BeforeAll {
-        remove-module $thismodule -force -erroraction silentlycontinue
+        remove-module $thismodule -force -erroraction ignore
         import-module $thismodule -force
     }
 
     AfterAll {
-        remove-module $thismodule -force -erroraction silentlycontinue
+        remove-module $thismodule -force -erroraction ignore
     }
 
     Context "When invoking an object's method through withobject" {
@@ -870,12 +870,12 @@ Describe "'withobject' alias for object-based command context" {
 
 Describe 'The => invocation function' {
     BeforeAll {
-        remove-module $thismodule -force -erroraction silentlycontinue
+        remove-module $thismodule -force -erroraction ignore
         import-module $thismodule -force
     }
 
     AfterAll {
-        remove-module $thismodule -force -erroraction silentlycontinue
+        remove-module $thismodule -force -erroraction ignore
     }
 
     Context "When a method is invoked through the => function" {
@@ -986,12 +986,12 @@ Describe 'The => invocation function' {
 
 Describe 'Static functions' {
     BeforeAll {
-        remove-module $thismodule -force -erroraction silentlycontinue
+        remove-module $thismodule -force -erroraction ignore
         import-module $thismodule -force
     }
 
     AfterAll {
-        remove-module $thismodule -force -erroraction silentlycontinue
+        remove-module $thismodule -force -erroraction ignore
     }
 
     ScriptClass ClassClass52 {
@@ -1207,12 +1207,12 @@ Describe 'Static functions' {
 
 Describe 'Static member variables' {
     BeforeAll {
-        remove-module $thismodule -force -erroraction silentlycontinue
+        remove-module $thismodule -force -erroraction ignore
         import-module $thismodule -force
     }
 
     AfterAll {
-        remove-module $thismodule -force -erroraction silentlycontinue
+        remove-module $thismodule -force -erroraction ignore
     }
 
     Context "When declaring a class with static member variables" {
@@ -1332,12 +1332,12 @@ Describe 'Internal ScriptClass State' {
         # by removing the variable
         remove-variable -scope 0 __staticBlockLocalVariablesToRemove -erroraction ignore
 
-        remove-module $thismodule -force -erroraction silentlycontinue
+        remove-module $thismodule -force -erroraction ignore
         import-module $thismodule -force
     }
 
     AfterAll {
-        remove-module $thismodule -force -erroraction silentlycontinue
+        remove-module $thismodule -force -erroraction ignore
     }
 
     Context "When defining static members" {
@@ -1385,12 +1385,12 @@ Describe 'Internal ScriptClass State' {
 
 Describe 'Typed static member variables' {
     BeforeAll {
-        remove-module $thismodule -force -erroraction silentlycontinue
+        remove-module $thismodule -force -erroraction ignore
         import-module $thismodule -force
     }
 
     AfterAll {
-        remove-module $thismodule -force -erroraction silentlycontinue
+        remove-module $thismodule -force -erroraction ignore
     }
 
     Context 'When declaring typed static members with strict-val' {
@@ -1428,12 +1428,12 @@ Describe 'Typed static member variables' {
 
 Describe 'The test-scriptobject cmdlet' {
     BeforeAll {
-        remove-module $thismodule -force -erroraction silentlycontinue
+        remove-module $thismodule -force -erroraction ignore
         import-module $thismodule -force
     }
 
     AfterAll {
-        remove-module $thismodule -force -erroraction silentlycontinue
+        remove-module $thismodule -force -erroraction ignore
     }
 
     ScriptClass ClassClass64 {}
@@ -1491,19 +1491,19 @@ Describe 'The test-scriptobject cmdlet' {
 
 Describe "The const cmdlet" {
     BeforeAll {
-        remove-module $thismodule -force -erroraction silentlycontinue
+        remove-module $thismodule -force -erroraction ignore
         import-module $thismodule -force
     }
 
     AfterAll {
-        remove-module $thismodule -force -erroraction silentlycontinue
+        remove-module $thismodule -force -erroraction ignore
     }
 
     function clean-variable($name) {
         $existing = $true
 
         @('Script', 'Local', 1) | foreach {
-            $existing = get-variable -name $name -scope $_ -erroraction silentlycontinue
+            $existing = get-variable -name $name -scope $_ -erroraction ignore
 
             if ($existing -ne $null) {
                 $existing | remove-variable -scope $_ -force
@@ -1514,7 +1514,7 @@ Describe "The const cmdlet" {
     }
 
     function variable-exists($name) {
-        (get-variable -name $name -erroraction silentlycontinue) -ne $null
+        (get-variable -name $name -erroraction ignore) -ne $null
     }
 
     BeforeEach {

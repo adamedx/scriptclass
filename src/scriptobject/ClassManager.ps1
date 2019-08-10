@@ -17,37 +17,17 @@
 remove-variable -erroraction ignore ([ScriptClassSpecification]::Parameters.Language.ClassCollectionName) -force
 new-variable ([ScriptClassSpecification]::Parameters.Language.ClassCollectionName) -value ([PSCustomObject] @{([NativeObjectBuilder]::NativeTypeMemberName)=([ScriptClassSpecification]::Parameters.Language.ClassCollectionType)}) -option readonly -passthru
 
-function GetModuleClassCollectionVariable {
-    get-variable ([ScriptClassSpecification]::Parameters.Language.ClassCollectionName)
-}
-
-$methodBlock = {
-    param($object, $methodName)
-    $block = (get-scriptclass -Detailed $object.scriptclass.classname).classdefinition.instancemethods[$methodName].block
-#    $this = $object
-    try {
-        . $block @args
-    } catch {
-        write-error $_
-        get-pscallstack | write-error
-        throw
-    }
-}
-
-
 # This class implements the type system as a whole, storing state about defined types and providing access to information
 # about them and the ability to instantiate instances of defined types. It is accessed as a singleton, though future
 # implementations could allow for multiple instances to exist; perhaps that could be used to model module-scoped
 # classes at some point.
 class ClassManager {
     ClassManager([PSModuleInfo] $targetModule) {
-        $this.targetModule = $targetModule
-        $this.classCollectionVariable = if ( $targetModule ) {
-            . $targetModule.NewBoundScriptBlock({GetModuleClassCollectionVariable})
-        }
-        if ( $this.classCollectionVariable ) {
-            $this.classCollectionBuilder = [NativeObjectBuilder]::new($null, $this.classCollectionVariable.value, [NativeObjectBuilderMode]::Modify)
-        }
+        # The targetModule argument is required so that the class collection variable can be created
+        # at scope script of the correct module, i.e. the module that hosts this code. Otherwise PowerShell
+        # tries to find the variable outside of module scope in the "global environment."
+        $classCollectionVariable = . $targetModule.newboundscriptblock( {get-variable -scope script ([ScriptClassSpecification]::Parameters.Language.ClassCollectionName) } )
+        $this.classCollectionBuilder = [NativeObjectBuilder]::new($null, $classCollectionVariable.value, [NativeObjectBuilderMode]::Modify)
     }
 
     [ClassDefinition] DefineClass([string] $className, [ScriptBlock] $classBlock, [object[]] $classArguments) {
@@ -63,23 +43,14 @@ class ClassManager {
         $classBuilder = [ScriptClassBuilder]::new($className, $classBlock)
         $classInfo = $classBuilder.ToClassInfo($classArguments)
         $this.GeneralizeInstanceMethods($classInfo)
- #       $classInfo.prototype | fl * | out-host
 
         $this.AddClass($classInfo)
-
-#        write-host -fore yellow afteradd
-
-  #      $this.classes[$className].prototype | fl * | out-host
 
         $visibleProperties = $classInfo.classDefinition.GetInstanceProperties() |
           where isSystem -eq $false |
           select -expandproperty name
 
-#        $classInfo.prototype | fl * | out-host
-#        $classInfo.prototype.scriptclass | fl * | out-host
         [NativeObjectBuilder]::RegisterClassType($className, $visibleProperties, $classInfo.prototype)
-
-   #     $classInfo.prototype | fl * | out-host
 
         return $classInfo.classDefinition
     }
@@ -143,7 +114,6 @@ class ClassManager {
     [void] SetClass([ClassInfo] $classInfo) {
         $this.GetClassInfo($classInfo.classDefinition.Name) | out-null
         $this.AddClass($classInfo)
-#        $this.classes[$classInfo.classDefinition.name] = $classInfo
     }
 
     hidden [void] AddClass([ClassInfo] $classInfo) {
@@ -160,7 +130,25 @@ class ClassManager {
         return [ClassManager]::singleton
     }
 
-    static [void] Initialize([PSmoduleInfo] $targetModule) {
+    static [void] RestoreMissingObjectMethods([ClassInfo] $classInfo, [PSCustomObject] $object, [bool] $staticContext) {
+        $builder = [NativeObjectBuilder]::new($null, $object, [NativeObjectBuilderMode]::Modify)
+
+        $methods = if ( $staticContext ) {
+            $classInfo.classDefinition.GetStaticMethods()
+        } else {
+            $classInfo.classDefinition.GetInstanceMethods()
+        }
+
+        $methods | foreach {
+            $builder.AddMethod($_.name, $_.block)
+        }
+
+        [ScriptClassBuilder]::commonMethods.GetEnumerator() | foreach {
+            $builder.AddMethod($_.name, $_.value)
+        }
+    }
+
+    static [void] Initialize([PSModuleInfo] $targetModule) {
         [ClassManager]::singleton = [ClassManager]::new($targetModule)
         [NativeObjectBuilder]::RegisterClassType([ScriptClassSpecification]::Parameters.Language.ClassCollectionType, @(), $null)
     }
@@ -182,7 +170,6 @@ class ClassManager {
 
     hidden [ScriptBlock] GetGeneralizedMethodBlock([Method] $method) {
         $block = [ScriptBlock]::Create($this::GeneralizedMethodTemplate -f $method.name)
-#        return $method.block.module.newboundscriptblock($script:methodBlock)
         return $method.block.module.newboundscriptblock($block)
     }
 
@@ -193,22 +180,12 @@ $block =  (get-scriptclass -Detailed $this.scriptclass.classname).classdefinitio
 . $block @args
 '@
 
-<#
-    hidden static [string] $GeneralizedMethodTemplate = @'
-$block =  (get-scriptclass -Detailed $this.scriptclass.classname).classdefinition.instancemethods['{0}'].block
-$this.InvokeScript($block, $args)
-'@
-#>
-
-    $targetModule = $null
-
-    $classCollectionVariable = $null
     $classCollectionBuilder = $null
     $allowRedefinition = $true
     $classes = @{}
 }
 
-[ClassManager]::Initialize({}.Module)
+[ClassManager]::Initialize({}.module)
 
 $mymanager = [ClassManager]::Get()
 
