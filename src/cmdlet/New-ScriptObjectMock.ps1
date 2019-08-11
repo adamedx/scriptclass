@@ -56,7 +56,7 @@ function New-ScriptObjectMock {
     # This actually updates the object to have the unique id method,
     # thus making it an officially mocked object even if no methods
     # are currently mocked
-    __PatchedObject_GetUniqueId $mockedObject | out-null
+    PatchedObject_GetUniqueId $mockedObject | out-null
 
     if ( $propertyValues ) {
         $propertyValues.keys | foreach {
@@ -65,10 +65,10 @@ function New-ScriptObjectMock {
     }
 
     if ( $methodMocks ) {
-        $mocker = __MethodMocker_Get
+        $mocker = MethodMocker_Get
 
         $MethodMocks.keys | foreach {
-            __MethodMocker_Mock $mocker $className $_ $false $mockedObject $MethodMocks[$_] { $true } $false $ModuleName
+            MethodMocker_Mock $mocker $className $_ $false $mockedObject $MethodMocks[$_] { $true } $false $ModuleName
         }
     }
 

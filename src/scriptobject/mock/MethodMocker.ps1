@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-function __MethodMocker_Get {
+function MethodMocker_Get {
     $mockerVariable = get-variable -scope script __MethodMocker -erroraction ignore
     $mocker = if ( $mockerVariable ) {
         $mockerVariable.value
@@ -20,7 +20,7 @@ function __MethodMocker_Get {
 
     if ( ! $mocker ) {
         $mocker = [PSCustomObject] @{
-            MethodPatcher = __MethodPatcher_Get
+            MethodPatcher = MethodPatcher_Get
         }
 
         $script:__MethodMocker = $mocker
@@ -29,31 +29,31 @@ function __MethodMocker_Get {
     $mocker
 }
 
-function __MethodMocker_GetClassModule($object, $className) {
+function MethodMocker_GetClassModule($object, $className) {
     $arguments = @{}
     if ( $object ) { $arguments['object'] = $object }
     if ( $className) { $arguments['className'] = $className }
 
     $classInfo = Get-ScriptClass -detailed @arguments
-    __MethodPatcher_GetClassModule $classInfo
+    MethodPatcher_GetClassModule $classInfo
 }
 
-function __MethodMocker_Mock($mockManager, $className, $methodName, $isStatic, $object, $mockScriptBlock, $parameterFilter, $isVerifiableMock, $moduleName, $mockContext) {
-    $patchedMethod = __MethodPatcher_PatchMethod $mockManager.MethodPatcher $className $MethodName $isStatic $object
+function MethodMocker_Mock($mockManager, $className, $methodName, $isStatic, $object, $mockScriptBlock, $parameterFilter, $isVerifiableMock, $moduleName, $mockContext) {
+    $patchedMethod = MethodPatcher_PatchMethod $mockManager.MethodPatcher $className $MethodName $isStatic $object
 
     $objectModule = if ( $object ) {
-        __MethodMocker_GetClassModule -object $object
+        MethodMocker_GetClassModule -object $object
     } else {
-        __MethodMocker_GetClassModule -className $className
+        MethodMocker_GetClassModule -className $className
     }
 
-    __MethodMocker_MockPatchedMethod $patchedMethod $object $mockScriptBlock $parameterFilter $isVerifiableMock $objectModule.Name $objectModule $mockContext
+    MethodMocker_MockPatchedMethod $patchedMethod $object $mockScriptBlock $parameterFilter $isVerifiableMock $objectModule.Name $objectModule $mockContext
 }
 
-function __MethodMocker_MockPatchedMethod($patchedMethod, $object, $mockScriptBlock, $parameterFilter, $isVerifiableMock, $moduleName, $module, $mockContext) {
+function MethodMocker_MockPatchedMethod($patchedMethod, $object, $mockScriptBlock, $parameterFilter, $isVerifiableMock, $moduleName, $module, $mockContext) {
     $adjustedParameterFilter = if ( $object ) {
-        $patchedObject = __PatchedClassMethod_GetPatchedObject $patchedMethod $Object
-        __PatchedObject_Mock $patchedObject $mockScriptBlock $parameterFilter
+        $patchedObject = PatchedClassMethod_GetPatchedObject $patchedMethod $Object
+        PatchedObject_Mock $patchedObject $mockScriptBlock $parameterFilter
         $patchedObject.ParameterFilter
     } else {
         $parameterFilter
@@ -87,16 +87,16 @@ function __MethodMocker_MockPatchedMethod($patchedMethod, $object, $mockScriptBl
     ) $patchedMethod $parameterFilterArgument $IsVerifiableMock $mockScriptBlock $moduleArgument $mockContext
 }
 
-function __MethodMocker_Unmock($className, $methodName, $isStatic, $object, $allMocks) {
-    $patcher = __MethodPatcher_Get
+function MethodMocker_Unmock($className, $methodName, $isStatic, $object, $allMocks) {
+    $patcher = MethodPatcher_Get
 
     $targetMethods = if ( $allMocks ) {
-        __MethodPatcher_GetPatchedMethods $patcher
+        MethodPatcher_GetPatchedMethods $patcher
     } else {
-        __MethodPatcher_QueryPatchedMethods $patcher $ClassName $MethodName $Static $Object
+        MethodPatcher_QueryPatchedMethods $patcher $ClassName $MethodName $Static $Object
     }
 
     $targetMethods | foreach {
-        __MethodPatcher_Unpatch $patcher $_ $object
+        MethodPatcher_Unpatch $patcher $_ $object
     }
 }

@@ -82,7 +82,7 @@ Describe "Assembly helper cmdlets" {
         }
     }
 
-    Mock __LoadAssembly {
+    Mock LoadAssembly {
         param($assemblyPath)
         if ( test-path $assemblyPath ) {
             [PSCustomObject]@{Location=$assemblyPath}
@@ -118,7 +118,7 @@ Describe "Assembly helper cmdlets" {
     }
 
     Context "When running on PowerShell Desktop edition" {
-        Mock __IsDesktopEdition { $true }
+        Mock IsDesktopEdition { $true }
 
         It "Should throw an exception if an attempt is made to load an assembly that does not exist " {
             { Import-Assembly idontexist $null $assemblyRoot } | Should Throw "Unable to find assembly"
@@ -176,7 +176,7 @@ Describe "Assembly helper cmdlets" {
     }
 
     Context "When running on PowerShell Core edition" {
-        Mock __IsDesktopEdition { $false }
+        Mock IsDesktopEdition { $false }
 
         It "Should throw an exception if an attempt is made to load an assembly that does not exist " {
             { Import-Assembly idontexist $null $assemblyRoot } | Should Throw "Unable to find assembly"

@@ -3,19 +3,15 @@
 ## To-do items -- prioritized
 * Post-refactor clean-up and polish
 * Add documentation to cmdlets
-* break apart scriptclass tests
-* Remove use of underscores!
 * General README update
 * Build tools documentation
 * Design documentation
-* File location rationalization and move
-* Add ability to include any file extension or use full path in import-script
 * Consistent use of commas vs. newlines in collections in module files
 * Rebase the refactor!
 * Make pstypename not part of class? May affect deserialization.
 * Do we need typedobjectbuilder to be factored out of classmanager? Should it be scriptobjectbuilder?
 * Should classmanager be typemanager? ClassInfo be typeinfo? ClassDefinition be typedefinition? classbuilder be typebuilder?
-* Don't rely on pstypename for type checking
+* Add namespacing to actual types (e.g. a type declared as ComplexNumber becomes ScriptClass.ComplexNumber, or even has a module, e.g. ScriptClass.Module.Complex#).
 
 
 ### To-do
@@ -55,6 +51,11 @@
 * Code-reuse opportunities in mock code
 * Remove module argument from mock command
 * Change classdata in mock functions to classinfo
+* Don't rely on pstypename for type checking
+* Add ability to include any file extension or use full path in import-script
+* Remove use of underscores!
+* File location rationalization and move
+* break apart scriptclass tests
 
 ### New file layout
 
@@ -66,12 +67,16 @@
         scriptclass.ps1
         cmdlets.ps1
         \\cmdlets
+        \\codeshare
+            \\assembly
+            \\script
         \\scriptobject
             \\common
+            \\psobject
             \\dsl
-            \\types
-            \\objects
-        \\codesharing
+            \\mock
+            \\type
+
 
 #### Test breakout
 

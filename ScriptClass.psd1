@@ -108,33 +108,37 @@ AliasesToExport = @('new-so', 'scriptclass', 'withobject', 'Mock-ScriptClassMeth
 
 # List of all files packaged with this module
     FileList = @(
-        './ScriptClass.psd1',
-        './scriptclass.psm1',
-        'src/assemblyhelper.ps1',
-        'src/include.ps1',
-        'src/New-ScriptObjectMock.ps1',
-        'src/scriptclass.ps1',
-        'src/std.ps1',
-        'src/Add-MockInScriptClassScope.ps1',
-        'src/Unmock-ScriptClassMethod.ps1',
-        'src/Mock-ScriptClassMethod.ps1',
-        'src/mock/MethodMocker.ps1',
-        'src/mock/MethodPatcher.ps1',
-        'src/mock/PatchedClassMethod.ps1',
-        'src/mock/PatchedObject.ps1',
-        'src/scriptobject/ClassManager.ps1',
-        'src/scriptobject/Get-ScriptClass.ps1',
-        'src/scriptobject/Invoke-Method.ps1',
-        'src/scriptobject/New-ScriptClass.ps1',
-        'src/scriptobject/New-ScriptObject.ps1',
-        'src/scriptobject/Test-ScriptObject.ps1',
-        'src/scriptobject/common/ClassDefinition.ps1',
-        'src/scriptobject/common/NativeObjectBuilder.ps1',
-        'src/scriptobject/common/ScriptClassSpecification.ps1',
-        'src/scriptobject/dsl/ClassDsl.ps1',
-        'src/scriptobject/dsl/MethodDsl.ps1',
-        'src/scriptobject/model/ClassBuilder.ps1',
-        'src/scriptobject/model/ScriptClassBuilder.ps1')
+        './ScriptClass.psd1'
+        './scriptclass.psm1'
+        'src/cmdlet.ps1'
+        'src/scriptclass.ps1'
+        'src/scriptobject.ps1'
+        'src/cmdlet/Add-ScriptClassMock.ps1'
+        'src/cmdlet/Add-MockInScriptClassScope.ps1'
+        'src/cmdlet/Get-ScriptClass.ps1'
+        'src/cmdlet/Import-Assembly.ps1'
+        'src/cmdlet/Import-Script.ps1'
+        'src/cmdlet/Invoke-Method.ps1'
+        'src/cmdlet/New-ScriptClass.ps1'
+        'src/cmdlet/New-ScriptObject.ps1'
+        'src/cmdlet/New-ScriptObjectMock.ps1'
+        'src/cmdlet/Test-ScriptObject.ps1'
+        'src/cmdlet/Remove-ScriptClassMock.ps1'
+        'src/codeshare/assembly.ps1'
+        'src/codeshare/script.ps1'
+        'src/scriptobject/ClassManager.ps1'
+        'src/scriptobject/common/ClassDefinition.ps1'
+        'src/scriptobject/common/NativeObjectBuilder.ps1'
+        'src/scriptobject/common/ScriptClassSpecification.ps1'
+        'src/scriptobject/dsl/ClassDsl.ps1'
+        'src/scriptobject/dsl/MethodDsl.ps1'
+        'src/scriptobject/mock/MethodMocker.ps1'
+        'src/scriptobject/mock/MethodPatcher.ps1'
+        'src/scriptobject/mock/PatchedClassMethod.ps1'
+        'src/scriptobject/mock/PatchedObject.ps1'
+        'src/scriptobject/type/ClassBuilder.ps1'
+        'src/scriptobject/type/ScriptClassBuilder.ps1'
+    )
 
 # Private data to pass to the module specified in RootModule/ModuleToProcess. This may also contain a PSData hashtable with additional module metadata used by PowerShell.
 PrivateData = @{

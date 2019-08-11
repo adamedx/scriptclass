@@ -12,33 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 set-strictmode -version 2
+$ErrorActionPreference = 'stop'
 
-. (join-path $psscriptroot scriptobject/common/ScriptClassSpecification.ps1)
-. (join-path $psscriptroot scriptobject/common/NativeObjectBuilder.ps1)
-. (join-path $psscriptroot scriptobject/common/ClassDefinition.ps1)
-
-. (join-path $psscriptroot scriptobject/dsl/ClassDsl.ps1)
-. (join-path $psscriptroot scriptobject/dsl/MethodDsl.ps1)
-
-. (join-path $psscriptroot scriptobject/model/ClassBuilder.ps1)
-. (join-path $psscriptroot scriptobject/model/ScriptClassBuilder.ps1)
-
-. (join-path $psscriptroot scriptobject/ClassManager.ps1)
-
-. (join-path $psscriptroot mock/PatchedObject.ps1)
-. (join-path $psscriptroot mock/PatchedClassMethod.ps1)
-. (join-path $psscriptroot mock/MethodPatcher.ps1)
-. (join-path $psscriptroot mock/MethodMocker.ps1)
-
-. (join-path $psscriptroot scriptobject/Invoke-Method.ps1)
-. (join-path $psscriptroot scriptobject/Get-ScriptClass.ps1)
-. (join-path $psscriptroot scriptobject/New-ScriptClass.ps1)
-. (join-path $psscriptroot scriptobject/New-ScriptObject.ps1)
-. (join-path $psscriptroot scriptobject/Test-ScriptObject.ps1)
-
-. (join-path $psscriptroot Mock-ScriptClassMethod.ps1)
-. (join-path $psscriptroot Add-MockInScriptClassScope.ps1)
-. (join-path $psscriptroot New-ScriptObjectMock.ps1)
-. (join-path $psscriptroot Unmock-ScriptClassMethod.ps1)
+. (join-path $psscriptroot codeshare/assembly.ps1)
+. (join-path $psscriptroot codeshare/script.ps1)
+. (join-path $psscriptroot scriptobject.ps1)
+. (join-path $psscriptroot cmdlet.ps1)
 

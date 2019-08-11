@@ -12,15 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-function __MethodPatcher_Get {
-    $patcherVariable = get-variable -scope script __MethodPatcher_Singleton -erroraction ignore
+function MethodPatcher_Get {
+    $patcherVariable = get-variable -scope script MethodPatcher_Singleton -erroraction ignore
 
     $patcher = if ( $patcherVariable ) {
         $patcherVariable.value
     }
 
     if ( $patcher ) {
-        return $script:__MethodPatcher_Singleton
+        return $script:MethodPatcher_Singleton
     }
 
     $newPatcher = [PSCustomObject] @{
@@ -30,7 +30,7 @@ function __MethodPatcher_Get {
         NonstaticMethodTemplate = $null
     }
 
-    $script:__MethodPatcher_Singleton = $newPatcher
+    $script:MethodPatcher_Singleton = $newPatcher
 
     $newPatcher
 
@@ -40,9 +40,9 @@ function __MethodPatcher_Get {
 
     $newPatcher.NonstaticMethodTemplate = @'
 set-strictmode -version 2
-$__patchedMethod = __MethodPatcher_GetPatchedMethodByFunctionName (__MethodPatcher_Get) '{0}'
+$__patchedMethod = MethodPatcher_GetPatchedMethodByFunctionName (MethodPatcher_Get) '{0}'
 if ( $__patchedMethod ) {{
-    $__objectMockScriptBlock = __PatchedClassMethod_GetMockedObjectScriptBlock $__patchedMethod $this
+    $__objectMockScriptBlock = PatchedClassMethod_GetMockedObjectScriptBlock $__patchedMethod $this
     if ( $__objectMockScriptBlock ) {{
         # Invoke the object-specific mock
         $__result = . ([ScriptBlock]::Create($__objectMockScriptBlock.tostring())) @args
@@ -60,7 +60,7 @@ if ( $__patchedMethod ) {{
 '@
 }
 
-function __MethodPatcher_GetPatchedClass($patcher, $originalClassInfo) {
+function MethodPatcher_GetPatchedClass($patcher, $originalClassInfo) {
     $classInfo = $patcher.PatchedClasses[$originalClassInfo.classDefinition.name]
 
     if ( ! $classInfo ) {
@@ -70,27 +70,27 @@ function __MethodPatcher_GetPatchedClass($patcher, $originalClassInfo) {
     $classInfo
 }
 
-function __MethodPatcher_SetPatchedClass($patcher, $classInfo) {
+function MethodPatcher_SetPatchedClass($patcher, $classInfo) {
     $patcher.PatchedClasses[$classInfo.classDefinition.name] = $classInfo
 }
 
-function __MethodPatcher_RemovePatchedClass($patcher, $className) {
+function MethodPatcher_RemovePatchedClass($patcher, $className) {
     $patcher.PatchedClasses.Remove($className)
 }
 
-function __MethodPatcher_GetPatchedMethods($patcher) {
+function MethodPatcher_GetPatchedMethods($patcher) {
     $patcher.Methods.Values
 }
 
-function __MethodPatcher_QueryPatchedMethods($patcher, $className, $method, $staticMethods, $object) {
+function MethodPatcher_QueryPatchedMethods($patcher, $className, $method, $staticMethods, $object) {
     $methodClass = $className
     $methodNames = if ( $method ) {
         @($method)
     } else {
         $classInfo = if ( $ClassName ) {
-            __MethodPatcher_GetClassDefinition $patcher $className
+            MethodPatcher_GetClassDefinition $patcher $className
         } else {
-            __MethodPatcher_GetClassDefinition $patcher $object.scriptclass.classname
+            MethodPatcher_GetClassDefinition $patcher $object.scriptclass.classname
         }
 
         $methodClass = $classInfo.classDefinition.name
@@ -107,51 +107,51 @@ function __MethodPatcher_QueryPatchedMethods($patcher, $className, $method, $sta
     }
 
     $patchedClassMethods = $methodNames | foreach {
-        __MethodPatcher_GetMockableMethodFunction $patcher $methodClass $_ $staticMethods ($object -eq $null)
+        MethodPatcher_GetMockableMethodFunction $patcher $methodClass $_ $staticMethods ($object -eq $null)
     }
 
     $patchedClassMethods
 }
 
-function __MethodPatcher_GetClassModule($classInfo) {
+function MethodPatcher_GetClassModule($classInfo) {
     $classInfo.module
 }
 
-function __MethodPatcher_GetMockableMethodFunction(
+function MethodPatcher_GetMockableMethodFunction(
     $patcher,
     $className,
     $methodName,
     $isStatic,
     $allInstances
 ) {
-    $functionName = __PatchedClassMethod_GetMockableMethodName $className $methodName $isStatic
+    $functionName = PatchedClassMethod_GetMockableMethodName $className $methodName $isStatic
 
-    $existingPatchMethod = __MethodPatcher_GetPatchedMethodByFunctionName $patcher $functionName
+    $existingPatchMethod = MethodPatcher_GetPatchedMethodByFunctionName $patcher $functionName
 
     if ( $existingPatchMethod ) {
         $existingPatchMethod
     } else {
-        $classDefinition = __MethodPatcher_GetClassDefinition $className
-        $classModule = __MethodPatcher_GetClassModule $classDefinition
+        $classDefinition = MethodPatcher_GetClassDefinition $className
+        $classModule = MethodPatcher_GetClassModule $classDefinition
 
-        $originalMethodBlock = __MethodPatcher_GetClassMethod $classDefinition $methodName $isStatic
+        $originalMethodBlock = MethodPatcher_GetClassMethod $classDefinition $methodName $isStatic
 
-        $replacementMethodBlock = __MethodPatcher_CreateMethodPatchScriptBlock $patcher $functionName $isStatic $classModule
+        $replacementMethodBlock = MethodPatcher_CreateMethodPatchScriptBlock $patcher $functionName $isStatic $classModule
 
         $newFunc = . $classModule.NewBoundScriptBlock({param($functionName, $originalMethodBlock) new-item "function:$functionName" -value $originalMethodBlock -force ; export-modulemember -function $functionName}) $functionName $originalMethodBlock
 
-        $anotherfunc = . $classModule.NewBoundScriptBlock({param([object[]] $functions) $functions | foreach { new-item "function:$($_.name)" -value $_.scriptblock -force }} ) (get-item function:__MethodPatcher_Get, function:__MethodPatcher_GetPatchedMethodByFunctionName, function:__PatchedClassMethod_GetMockedObjectScriptBlock)
+        $anotherfunc = . $classModule.NewBoundScriptBlock({param([object[]] $functions) $functions | foreach { new-item "function:$($_.name)" -value $_.scriptblock -force }} ) (get-item function:MethodPatcher_Get, function:MethodPatcher_GetPatchedMethodByFunctionName, function:PatchedClassMethod_GetMockedObjectScriptBlock)
 
-        $classInfo = __MethodPatcher_GetPatchedClass $patcher $classDefinition $classDefinition
+        $classInfo = MethodPatcher_GetPatchedClass $patcher $classDefinition $classDefinition
 
-        $patchedClassMethod = __PatchedClassMethod_New $classInfo $methodName $isStatic $allInstances $originalMethodBlock $replacementMethodBlock
+        $patchedClassMethod = PatchedClassMethod_New $classInfo $methodName $isStatic $allInstances $originalMethodBlock $replacementMethodBlock
         $patcher.Methods[$patchedClassMethod.FunctionName] = $patchedClassMethod
 
         $patchedClassMethod
     }
 }
 
-function __MethodPatcher_CreateScriptBlockInModule($module, $block) {
+function MethodPatcher_CreateScriptBlockInModule($module, $block) {
     if ( $module ) {
         $module.NewBoundScriptBlock($block)
     } else {
@@ -159,7 +159,7 @@ function __MethodPatcher_CreateScriptBlockInModule($module, $block) {
     }
 }
 
-function __MethodPatcher_GetClassDefinition($className) {
+function MethodPatcher_GetClassDefinition($className) {
     $classInfo = [ClassManager]::Get().FindClassInfo($className)
 
     if ( ! $classInfo ) {
@@ -169,7 +169,7 @@ function __MethodPatcher_GetClassDefinition($className) {
     $classInfo
 }
 
-function __MethodPatcher_GetClassMethod($classDefinition, $methodName, $isStatic) {
+function MethodPatcher_GetClassMethod($classDefinition, $methodName, $isStatic) {
     $methodBlock = if ( $isStatic ) {
         $classDefinition.prototype.scriptclass.psobject.methods[$methodName].script
     } else {
@@ -186,17 +186,17 @@ function __MethodPatcher_GetClassMethod($classDefinition, $methodName, $isStatic
     $methodBlock
 }
 
-function __MethodPatcher_CreateMethodPatchScriptBlock($patcher, $functionName, $isStatic, $module) {
+function MethodPatcher_CreateMethodPatchScriptBlock($patcher, $functionName, $isStatic, $module) {
     $newBlock = if ( $isStatic ) {
         [ScriptBlock]::Create($patcher.StaticMethodTemplate -f $functionName)
     } else {
         [ScriptBlock]::Create($patcher.NonstaticMethodTemplate -f $functionName)
     }
 
-    __MethodPatcher_CreateScriptBlockInModule $module $newBlock
+    MethodPatcher_CreateScriptBlockInModule $module $newBlock
 }
 
-function __MethodPatcher_PatchMethod(
+function MethodPatcher_PatchMethod(
     $patcher,
     $className,
     $methodName,
@@ -205,37 +205,37 @@ function __MethodPatcher_PatchMethod(
 ) {
     $original = [ClassManager]::Get().GetClassInfo($className)
 
-    $mockableMethod = __MethodPatcher_GetMockableMethodFunction $patcher $className $methodName $isStatic ($object -eq $null)
+    $mockableMethod = MethodPatcher_GetMockableMethodFunction $patcher $className $methodName $isStatic ($object -eq $null)
 
-    __PatchedClassMethod_Patch $mockableMethod $object
+    PatchedClassMethod_Patch $mockableMethod $object
 
-    $newClassInfo = __MethodPatcher_RegisterMethodClassInfo $mockableMethod
+    $newClassInfo = MethodPatcher_RegisterMethodClassInfo $mockableMethod
 
     $mockableMethod.classInfo = $newClassInfo
 
     $mockableMethod
 }
 
-function __MethodPatcher_GetPatchedMethodByFunctionName($patcher, $functionName) {
+function MethodPatcher_GetPatchedMethodByFunctionName($patcher, $functionName) {
     $patcher.Methods[$functionName]
 }
 
-function __MethodPatcher_Unpatch($patcher, $patchedMethod, $object) {
-    __PatchedClassMethod_Unpatch $patchedMethod $object
+function MethodPatcher_Unpatch($patcher, $patchedMethod, $object) {
+    PatchedClassMethod_Unpatch $patchedMethod $object
 
-    if ( ! ( __PatchedClassMethod_IsActive $patchedMethod ) ) {
+    if ( ! ( PatchedClassMethod_IsActive $patchedMethod ) ) {
         . $patchedMethod.originalscriptblock.module.newboundscriptblock({param($functionname) get-item "function:$functionname" | remove-item}) $patchedMethod.functionname
 
-        $restoredClassInfo = __MethodPatcher_GetPatchedClass $patcher $patchedMethod.classInfo
-        __MethodPatcher_RemovePatchedClass $patcher $restoredClassInfo.classDefinition.name
+        $restoredClassInfo = MethodPatcher_GetPatchedClass $patcher $patchedMethod.classInfo
+        MethodPatcher_RemovePatchedClass $patcher $restoredClassInfo.classDefinition.name
         $patcher.Methods.Remove($patchedMethod.functionname)
         [ClassManager]::Get().SetClass($restoredClassInfo)
     } else {
-        __MethodPatcher_RegisterMethodClassInfo $patchedMethod | out-null
+        MethodPatcher_RegisterMethodClassInfo $patchedMethod | out-null
     }
 }
 
-function __MethodPatcher_RegisterMethodClassInfo($updatedMethod) {
+function MethodPatcher_RegisterMethodClassInfo($updatedMethod) {
     $classContext = [ClassDefinitionContext]::new($updatedMethod.classInfo.classDefinition, $updatedMethod.classInfo.module, $updatedMethod.classInfo.prototype.scriptclass.module)
     $classBuilder = [ScriptClassBuilder]::new($classContext)
 

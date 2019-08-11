@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-function __PatchedObject_New($object) {
+function PatchedObject_New($object) {
     @{
         Object = $object
         MockScriptBlock = $null
@@ -20,7 +20,7 @@ function __PatchedObject_New($object) {
     }
 }
 
-function __PatchedObject_Mock($patchedObject, $mockScriptBlock, $parameterFilter) {
+function PatchedObject_Mock($patchedObject, $mockScriptBlock, $parameterFilter) {
     $patchedObject.MockScriptBlock = $mockScriptBlock
 
     # TODO: Add additional filtering to the parameter filter so it only applies
@@ -29,7 +29,7 @@ function __PatchedObject_Mock($patchedObject, $mockScriptBlock, $parameterFilter
     $patchedObject.Parameterfilter = $parameterFilter
 }
 
-function __PatchedObject_IsPatched($object) {
+function PatchedObject_IsPatched($object) {
     $objectId = try {
         $object.__ScriptClassMockedObjectId()
     } catch {
@@ -38,7 +38,7 @@ function __PatchedObject_IsPatched($object) {
     $objectId -ne $null
 }
 
-function __PatchedObject_AllocateUniqueId {
+function PatchedObject_AllocateUniqueId {
     $patchStateVariable = get-variable -scope script __patchedObjectState -erroraction ignore
 
     $patchState = if ( $patchStateVariable ) {
@@ -76,7 +76,7 @@ function __PatchedObject_AllocateUniqueId {
     $nextId
 }
 
-function __PatchedObject_GetUniqueId([PSCustomObject] $object) {
+function PatchedObject_GetUniqueId([PSCustomObject] $object) {
     if ( ! $object ) {
         throw 'The specified object was $null'
     }
@@ -90,7 +90,7 @@ function __PatchedObject_GetUniqueId([PSCustomObject] $object) {
     }
 
     if ( ! $objectUniqueId ) {
-        $objectUniqueId = __PatchedObject_AllocateUniqueId
+        $objectUniqueId = PatchedObject_AllocateUniqueId
 
         $object | add-member -name __ScriptClassMockedObjectId -membertype scriptmethod -value ([ScriptBlock]::Create("[uint64] $($objectUniqueId.tostring())")) -force
     }

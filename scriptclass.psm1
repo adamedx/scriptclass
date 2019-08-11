@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-. (join-path $psscriptroot src/std.ps1)
+. (join-path $psscriptroot src/scriptclass.ps1)
 
 $functionsToAliases = @{
     'Get-ScriptClass' = $null

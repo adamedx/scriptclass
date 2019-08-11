@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-function __IsDesktopEdition {
+function IsDesktopEdition {
     $PSVersionTable.PSEdition -eq 'Desktop'
 }
 
@@ -41,7 +41,7 @@ function FindAssembly($assemblyRoot, $assemblyName, $platformSpec) {
 function LoadAssemblyFromRoot($assemblyRoot, $assemblyName, $platformSpec) {
     $specs = if ( $platformSpec ) {
         , @($platformSpec)
-    } elseif ( __IsDesktopEdition ) {
+    } elseif ( IsDesktopEdition ) {
         , @('net45')
     } else {
         @('netstandard1.3', 'netstandard1.1', 'netcoreapp1.0')
@@ -66,10 +66,10 @@ function LoadAssemblyFromRoot($assemblyRoot, $assemblyName, $platformSpec) {
     }
 
     write-verbose "Requested assembly '$assemblyName', loading assembly '$assemblyPath'"
-    __LoadAssembly $assemblyPath
+    LoadAssembly $assemblyPath
 }
 
-function __LoadAssembly($assemblyPath) {
+function LoadAssembly($assemblyPath) {
     [System.Reflection.Assembly]::LoadFrom($assemblyPath)
 }
 

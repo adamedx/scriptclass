@@ -14,8 +14,8 @@
 
 set-strictmode -version 2
 
-$here = Split-Path -Parent $MyInvocation.MyCommand.Path
-$thismodule = join-path (split-path -parent $here) 'ScriptClass.psd1'
+$here = $psscriptroot
+$thismodule = join-path $here ../../ScriptClass.psd1
 $thisshell = if ( $PSEdition -eq 'Desktop' ) {
     'powershell'
 } else {
@@ -51,16 +51,25 @@ Describe "The import-script cmdlet" {
         remove-module $thismodule -force -erroraction ignore
     }
 
-    $importCommand = "import-module -force '" + (join-path $here "..\ScriptClass.psd1") + "'"
+    $importCommand = "import-module -force '" + $thismodule + "'"
     $simpleClientScriptPath = "TestDrive:\simplesclientcript.ps1"
+    $simpleClientScriptNonPs1File = "simplesclientcriptNonStandardExtension.txt"
+    $simpleClientScriptNonPs1Path = join-path (get-item "TestDrive:").fullname $simpleClientScriptNonPs1File
     $parameterizedClientScriptFile = "parameterizedclientscript.ps1"
     $parameterizedClientScriptPath = join-path "TestDrive:" $parameterizedClientScriptFile
     $simpleScriptFile = "simplescript.ps1"
-    $simpleScriptPath = join-path TestDrive: $simpleScriptFile
+    $simpleScriptPath = join-path (get-item TestDrive:).fullname $simpleScriptFile
     $errorscriptFile = "errorscript.ps1"
-    $errorScriptPath = join-path TestDrive: $errorscriptfile
+    $errorScriptPath = join-path (get-item TestDrive:).fullname  $errorscriptfile
+    $errorScriptLoadFile = 'errorscriptLoadfile.ps1'
+    $errorScriptLoadPath = join-path (split-path -parent $errorScriptPath) $errorScriptLoadFile
+
     $includeOnceFile = 'includeonce.ps1'
     $includeOncePath = join-path "TestDrive:" $includeoncefile
+    $includeUsingNonPs1File = "includeNonPs1.ps1"
+    $includeUsingNonPs1Path = join-path (get-item "TestDrive:").fullname $includeUsingNonPs1File
+    $includeUsingNonPs1AnyExtensionFile = "includeNonPs1AnyExtension.ps1"
+    $includeUsingNonPs1AnyExtensionPath = join-path (get-item "TestDrive:").fullname $includeUsingNonPs1AnyExtensionFile
     $indirectFile = "indirect.ps1"
     $indirectPath = join-path TestDrive: $indirectFile
     $subdirfile = join-path (new-item -Type Directory "TestDrive:\subdir").fullname subdirfile.ps1
@@ -103,22 +112,44 @@ Describe "The import-script cmdlet" {
     }
 
     function run-command([string] $command) {
-        & $thisshell -noprofile -command "`$erroractionpreference = 'stop'; exit (iex '$command')" | out-null
-        $lastexitcode
+        $result = & $thisshell -noprofile -command "`$erroractionpreference = 'stop'; exit (iex '$command')"
+        if ( ! $? ) {
+            throw [Exception]::new("Command failed: " + $result)
+        } else {
+            0
+        }
     }
-
     set-content $errorScriptPath -value @"
 function incomplete {
  echo hi
 "@
 
+    set-content $errorScriptLoadPath -value @"
+$importCommand
+. (import-script $($errorScriptFile.split('.')[0]))
+"@
+
     set-content $simpleclientscriptpath -value @"
 $importCommand
 `$scriptname = '$simplescriptfile'.split('.')[0]
-# . `$include $(remove-ext $simplescriptfile)
 . (import-script `$scriptname)
-# . (import-script '$(remove-ext $simplescriptfile)')
 "@
+
+    set-content $includeUsingNonPs1Path -value @"
+    $importCommand
+    . (import-script $($simpleclientscriptnonPs1File.split('.')[0]))
+"@
+
+    set-content $includeUsingNonPs1AnyExtensionPath -value @"
+    $importCommand
+    # Don't dot source this -- because it's not a ps1,
+    # the file is actually executed -- maybe this feature
+    # is not so useful...
+    import-script -AnyExtension $simpleclientscriptnonPs1File | out-null
+"@
+
+    get-content $simpleclientscriptpath |
+      set-content $simpleClientScriptNonPs1Path
 
     set-content $parameterizedClientScriptPath -value @"
 param([string] `$fileToInclude, [string] `$exprtoeval = '0')
@@ -228,9 +259,16 @@ testvalue `$arg1 `$arg2
             { import-script 'thisdoesnotexist.io' | out-null } | Should Throw
         }
 
+        It 'should throw an exception if the AnyExtension parameter is omitted when trying to load a file that does not end in ps1' {
+            { run-command "& $includeUsingNonPs1Path" } | Should Throw $simpleClientScriptNonPs1Path.split('.')[0]
+        }
+
+        It 'should not throw an exception if the AnyExtension parameter is used to load a file that does not end in ps1' {
+            { run-command "& $includeUsingNonPs1AnyExtensionPath | out-null" } | Should Not Throw
+        }
+
         It 'should throw an exception when loading a script file with an error' {
-            { run-command ". (import-script $(remove-ext $errorscriptfile))" } | Should Not Throw
-            run-command ". (import-script $(remove-ext $errorscriptfile))" | Should Not Be 0
+            { run-command "& $errorScriptLoadPath" } | Should Throw 'function incomplete'
         }
 
         It 'should process the file only once even if it is included in a script more than once' {

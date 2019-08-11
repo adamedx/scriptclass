@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-function __PatchedClassMethod_New(
+function PatchedClassMethod_New(
     $classInfo,
     $methodName,
     $isStatic,
@@ -21,7 +21,7 @@ function __PatchedClassMethod_New(
     $patchedMethodBlock
 ) {
     $className = $classInfo.classDefinition.name
-    $functionName = __PatchedClassMethod_GetMockableMethodName $className $methodName $isStatic
+    $functionName = PatchedClassMethod_GetMockableMethodName $className $methodName $isStatic
     if ( $isStatic -and ! $allInstances ) {
         throw [ArgumentException]::new("Mocking of a static method was specified, but allInstances was $false")
     }
@@ -40,7 +40,7 @@ function __PatchedClassMethod_New(
     }
 }
 
-function __PatchedClassMethod_IsActive($patchedMethod, $object) {
+function PatchedClassMethod_IsActive($patchedMethod, $object) {
     $isActive = $patchedMethod.AllInstances -or $patchedMethod.PatchedObjects.Count -gt 0
 
     if ( $isActive ) {
@@ -54,16 +54,16 @@ function __PatchedClassMethod_IsActive($patchedMethod, $object) {
     }
 }
 
-function __PatchedClassMethod_PatchObjectMethod($patchedMethod, $object) {
-    $objectId = __PatchedObject_GetUniqueId $object
+function PatchedClassMethod_PatchObjectMethod($patchedMethod, $object) {
+    $objectId = PatchedObject_GetUniqueId $object
 
-    $patchedObject = __PatchedObject_New $object
+    $patchedObject = PatchedObject_New $object
 
     $patchedMethod.PatchedObjects[$objectId] = $patchedObject
 }
 
-function __PatchedClassMethod_GetPatchedObject($patchedMethod, $object) {
-    $objectId = __PatchedObject_GetUniqueId $object
+function PatchedClassMethod_GetPatchedObject($patchedMethod, $object) {
+    $objectId = PatchedObject_GetUniqueId $object
 
     $patchedObject = $patchedMethod.PatchedObjects[$objectId]
 
@@ -74,7 +74,7 @@ function __PatchedClassMethod_GetPatchedObject($patchedMethod, $object) {
     $patchedObject
 }
 
-function __PatchedClassMethod_GetMockedObjectScriptblock($patchedMethod, $object) {
+function PatchedClassMethod_GetMockedObjectScriptblock($patchedMethod, $object) {
     if ( $object | gm __ScriptClassMockedObjectId -erroraction ignore ) {
         $objectId = $object.__ScriptClassMockedObjectId()
         $patchedObject = if ( $objectId ) {
@@ -87,7 +87,7 @@ function __PatchedClassMethod_GetMockedObjectScriptblock($patchedMethod, $object
     }
 }
 
-function __PatchedClassMethod_GetMockableMethodName(
+function PatchedClassMethod_GetMockableMethodName(
     $className,
     $methodName,
     $isStatic
@@ -105,39 +105,39 @@ function __PatchedClassMethod_GetMockableMethodName(
     "__MockScriptClassMethod_$($methodType)_$($classname)_$($methodName)__"
 }
 
-function __PatchedClassMethod_Patch($mockableMethod, $object) {
+function PatchedClassMethod_Patch($mockableMethod, $object) {
     if ( $mockableMethod.IsStatic ) {
-        __PatchedClassMethod_PatchStaticMethod $mockableMethod
+        PatchedClassMethod_PatchStaticMethod $mockableMethod
     } else {
-        __PatchedClassMethod_PatchNonstaticMethod $mockableMethod
+        PatchedClassMethod_PatchNonstaticMethod $mockableMethod
 
         if ( $object ) {
-            __PatchedClassMethod_PatchObjectMethod $mockableMethod $object
+            PatchedClassMethod_PatchObjectMethod $mockableMethod $object
         }
     }
 }
 
-function __PatchedClassMethod_PatchStaticMethod($mockFunctionInfo) {
+function PatchedClassMethod_PatchStaticMethod($mockFunctionInfo) {
     $mockFunctionInfo.classInfo.classDefinition.GetMethod($mockFunctionInfo.methodName, $true).block = $mockFunctionInfo.ReplacementScriptBlock
 }
 
-function __PatchedClassMethod_PatchNonstaticMethod($mockFunctionInfo) {
+function PatchedClassMethod_PatchNonstaticMethod($mockFunctionInfo) {
     $mockFunctionInfo.classInfo.classDefinition.GetMethod($mockFunctionInfo.methodName, $false).block = $mockFunctionInfo.ReplacementScriptBlock
 }
 
-function __PatchedClassMethod_UnpatchNonstaticMethod($patchedMethod) {
+function PatchedClassMethod_UnpatchNonstaticMethod($patchedMethod) {
     $patchedMethod.AllInstances = $false
     if ( $patchedMethod.PatchedObjects.count -eq 0 ) {
         $patchedMethod.classInfo.classDefinition.GetMethod($patchedMethod.methodName, $false).block = $patchedMethod.OriginalScriptBlock
     }
 }
 
-function __PatchedClassMethod_UnpatchObject($patchedMethod, $object) {
-    if ( ! (__PatchedObject_IsPatched $object) ) {
+function PatchedClassMethod_UnpatchObject($patchedMethod, $object) {
+    if ( ! (PatchedObject_IsPatched $object) ) {
         throw [ArgumentException]::new("The specified object is not patched or mocked")
     }
 
-    if ( ! (__PatchedClassMethod_IsActive $patchedMethod $object) ) {
+    if ( ! (PatchedClassMethod_IsActive $patchedMethod $object) ) {
         throw [ArgumentException]::new("There are no mocked objects for the method '$($patchedMethod.methodName)'")
     }
 
@@ -145,28 +145,28 @@ function __PatchedClassMethod_UnpatchObject($patchedMethod, $object) {
 
     $patchedMethod.PatchedObjects.Remove($objectId)
 
-    if ( ! (__PatchedClassMethod_IsActive $patchedMethod ) ) {
+    if ( ! (PatchedClassMethod_IsActive $patchedMethod ) ) {
         $patchedMethod.classInfo.classDefinition.GetMethod($patchedMethod.methodName, $false).block = $patchedMethod.OriginalScriptBlock
     }
 
     $object | add-member -name __ScriptClassMockedObjectId -membertype scriptmethod -value {} -force
 }
 
-function __PatchedClassMethod_UnpatchStaticMethod($patchedMethod) {
+function PatchedClassMethod_UnpatchStaticMethod($patchedMethod) {
     $patchedMethod.classInfo.classDefinition.GetMethod($patchedMethod.methodName, $true).block = $patchedMethod.OriginalScriptBlock
 }
 
-function __PatchedClassMethod_SetObjectMethod($object, $methodname, $originalScriptBlock) {
+function PatchedClassMethod_SetObjectMethod($object, $methodname, $originalScriptBlock) {
     $object | add-member -name $methodname -membertype scriptmethod -value $originalScriptblock -force
 }
 
-function __PatchedClassMethod_Unpatch($patchedMethod, $object) {
+function PatchedClassMethod_Unpatch($patchedMethod, $object) {
     if ( $object ) {
-        __PatchedClassMethod_UnpatchObject $patchedMethod $object
+        PatchedClassMethod_UnpatchObject $patchedMethod $object
     } elseif ( $patchedMethod.IsStatic ) {
-        __PatchedClassMethod_UnpatchStaticMethod $patchedMethod
+        PatchedClassMethod_UnpatchStaticMethod $patchedMethod
     } else {
-        __PatchedClassMethod_UnpatchNonstaticMethod $patchedMethod
+        PatchedClassMethod_UnpatchNonstaticMethod $patchedMethod
     }
 }
 
