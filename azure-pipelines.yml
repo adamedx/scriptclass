@@ -20,7 +20,7 @@ jobs:
         OS_PLATFORM: 'windows'
         USE_POWERSHELL_CORE: false
       PowerShellCoreWindows:
-        VM_IMAGE: 'vs2017-win2016'
+        VM_IMAGE: 'windows-2019'
         OS_PLATFORM: 'windows'
         USE_POWERSHELL_CORE: true
       PowerShellCoreUbuntu:
@@ -85,7 +85,7 @@ jobs:
     inputs:
       targetType: inline
       script: './build/configure-tools.ps1; ./build/publish-moduletodev.ps1'
-      pwsh: $(USE_POWERSHELL_CORE)
+      pwsh: false
   - task: powershell@2
     displayName: 'Create test output directory'
     inputs:

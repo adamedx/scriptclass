@@ -46,6 +46,7 @@ $assemblyNamesAndVersions = @(
 $here = Split-Path -Parent $MyInvocation.MyCommand.Path
 $sut = (Split-Path -Leaf $MyInvocation.MyCommand.Path) -replace '\.Tests\.', '.'
 
+. (join-path $here ../codeshare/assembly.ps1)
 . (join-path $here $sut)
 
 Describe "Assembly helper cmdlets" {

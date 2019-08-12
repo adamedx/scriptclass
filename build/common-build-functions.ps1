@@ -353,7 +353,7 @@ function publish-modulebuild {
         $optionalArguments += " -nugetapikey $repositoryKey"
     }
 
-    Invoke-CommandWithModulePath "publish-module -path '$moduleSourceDirectory' -repository '$destinationRepositoryName' -verbose $optionalArguments" $moduleRootDirectory
+    Invoke-CommandWithModulePath "publish-module -path '$moduleSourceDirectory' -repository '$destinationRepositoryName' $optionalArguments" $moduleRootDirectory
 }
 
 function Invoke-CommandWithModulePath($command, $modulePath) {
@@ -362,7 +362,13 @@ function Invoke-CommandWithModulePath($command, $modulePath) {
     $commandScript = [Scriptblock]::Create("import-module -verbose PowerShellGet;si env:PSModulePath `"`$env:PSModulePath;$modulePath`";$command")
 
     write-verbose "Executing command '$commandScript'"
-    $result = & $PowerShellExecutable -noprofile -command ($commandScript)
+    $result = if ( $PSVersionTable.PSEdition -ne 'Desktop' -and $PSVersionTable.Platform -eq 'Win32NT' ) {
+        $result2 = $null
+        (& $commandScript) | tee-object -variable result2 | out-host
+        $result2
+    } else {
+        & $PowerShellExecutable -noninteractive -noprofile -command ($commandScript)
+    }
 
     # Use of the powershell command with a script block may not result in an exception
     # when the script block throws an exception. However, $? is reliably set to a failure code in this case, so we check for that
@@ -467,7 +473,7 @@ function Get-TemporaryPSModuleSourceName {
 function Clear-TemporaryPSModuleSources {
     $temporarySource = Get-TemporaryPSModuleSourceName
     if ( ( Get-PSRepository $temporarySource -erroraction silentlycontinue ) -ne $null ) {
-        unregister-PSrepository $temporarySource
+        unregister-PSrepository $temporarySource | out-null
     }
 }
 
@@ -485,8 +491,8 @@ function Get-DefaultPSModuleSource($noRegister = $false) {
         $sourceUri = Get-DefaultRepositoryFallbackUri
         write-verbose "PS repository source '$defaultPSGetSource' not found, will create new source"
         write-verbose "Creating '$temporarySource' with uri '$sourceUri'"
-        Unregister-psrepository $temporarySource -erroraction silentlycontinue
-        Register-psrepository $temporarySource -sourcelocation (Get-DefaultRepositoryFallbackUri)
+        Unregister-psrepository $temporarySource -erroraction silentlycontinue | out-null
+        Register-psrepository $temporarySource -sourcelocation (Get-DefaultRepositoryFallbackUri) | out-null
         $temporarySource
     } else {
         write-verbose "Default module repository '$defaultSourceName' does not exist and caller did not specifed not to create it, caller must handle creating it"
@@ -595,7 +601,7 @@ function publish-modulelocal {
         }
     }
 
-    unregister-packagesource -force $temporaryPackageSource
+    unregister-packagesource -force $temporaryPackageSource | out-null
 
     $targetModuleDestination = join-path $devModuleLocation $moduleName
     if ( test-path $targetModuleDestination ) {
@@ -616,11 +622,12 @@ function publish-modulelocal {
     # This method allows us to catch that error locally prior to making
     # the module public.
     $repository = get-temporarymodulepsrepository $moduleName $PsRepoLocation
+
     write-verbose "Publishing target module '$modulepath' from build output to publish location '$devModuleLocation'"
     try {
-        publish-modulebuild $modulePathVersioned $repository
+        publish-modulebuild $modulePathVersioned $repository | out-null
     } finally {
-         unregister-psrepository $repository
+        unregister-psrepository $repository | out-null
     }
 
     [PSCustomObject]@{ImportableModuleDirectory=$devModuleLocation;ModulePackageRepositoryDirectory=$PsRepoLocation}
@@ -638,10 +645,10 @@ function get-temporarymodulepsrepository($moduleName, $repositoryPath)  {
     $existingRepository = get-psrepository $localPSRepositoryName -erroraction silentlycontinue
 
     if ( $existingRepository -ne $null ) {
-        unregister-psrepository $localPSRepositoryName
+        unregister-psrepository $localPSRepositoryName | out-null
     }
 
-    register-psrepository $localPSRepositoryName $localPSRepositoryDirectory
+    register-psrepository $localPSRepositoryName $localPSRepositoryDirectory | out-null
 
     $localPSRepositoryName
 }
@@ -657,7 +664,7 @@ function get-temporarypackagerepository($moduleName, $moduleDependencySource)  {
     $existingRepository = get-packagesource $localPackageRepositoryName -erroraction silentlycontinue
 
     if ( $existingRepository -ne $null ) {
-        unregister-packagesource $localPackageRepositoryName
+        unregister-packagesource $localPackageRepositoryName | out-null
     }
 
     register-packagesource $localPackageRepositoryName $localPackageRepositoryLocation -providername nuget | out-null

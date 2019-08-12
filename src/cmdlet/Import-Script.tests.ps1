@@ -112,9 +112,19 @@ Describe "The import-script cmdlet" {
     }
 
     function run-command([string] $command) {
-        $result = & $thisshell -noprofile -command "`$erroractionpreference = 'stop'; exit (iex '$command')"
+        $result = (& $thisshell -noprofile -command "`$erroractionpreference = 'stop'; exit (iex '$command' 2>&1)")
         if ( ! $? ) {
-            throw [Exception]::new("Command failed: " + $result)
+            write-host '*****************CAUGHT--------'
+            $global:lastCommandExceptionOutput = ($result | out-string)
+            if ( $result -eq $null ) {
+                write-host '----------null'
+            } else {
+                write-host '----type:', $result.gettype()
+            }
+            write-host '****' $global:lastCommandExceptionOutput
+            write-host '+++++'
+            $result | out-host
+            throw "Command failed: " + $result
         } else {
             0
         }
@@ -250,17 +260,21 @@ testvalue `$arg1 `$arg2
 
 
     Context 'When loading source into a script' {
+        BeforeEach {
+            $global:lastCommandExceptionOutput = $null
+        }
         It 'should load the valid script file without throwing an exception' {
             { iex $simpleclientscriptpath | out-null } | Should Not Throw
             run-command ("& " + (gi $simpleclientscriptpath).fullname) | Should BeExactly 0
         }
 
         It 'should throw an exception if the include path does not exist' {
-            { import-script 'thisdoesnotexist.io' | out-null } | Should Throw
+            { import-script 'thisdoesnotexist.io' 2>&1 | out-null } | Should Throw
         }
 
         It 'should throw an exception if the AnyExtension parameter is omitted when trying to load a file that does not end in ps1' {
-            { run-command "& $includeUsingNonPs1Path" } | Should Throw $simpleClientScriptNonPs1Path.split('.')[0]
+            { run-command "& $includeUsingNonPs1Path" } | Should Throw
+            $global:lastCommandExceptionOutput | should BeLike "*$($simpleClientScriptNonPs1Path.split('.')[0])*"
         }
 
         It 'should not throw an exception if the AnyExtension parameter is used to load a file that does not end in ps1' {
@@ -268,7 +282,8 @@ testvalue `$arg1 `$arg2
         }
 
         It 'should throw an exception when loading a script file with an error' {
-            { run-command "& $errorScriptLoadPath" } | Should Throw 'function incomplete'
+            { run-command "& $errorScriptLoadPath" } | Should Throw
+            $global:lastCommandExceptionOutput | should BeLike '*function incomplete*'
         }
 
         It 'should process the file only once even if it is included in a script more than once' {

@@ -12,8 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Note that -force is required to prevent breaks with
+# PowerShell Core 6.x only when import-module -force
+# is invoked.
 # function => {
-new-item -path "function:/$([ScriptClassSpecification]::Parameters.Language.MethodCallOperator)" -value {
+new-item -path "function:/$([ScriptClassSpecification]::Parameters.Language.MethodCallOperator)" -force -value {
     param ($methodName)
     if ($methodName -eq $null) {
         throw "A method must be specified"
@@ -46,7 +49,11 @@ new-item -path "function:/$([ScriptClassSpecification]::Parameters.Language.Meth
     }
 } | out-null
 
-new-item -path "function:/$([ScriptClassSpecification]::Parameters.Language.StaticMethodCallOperator)" -value {
+# Note that -force is required to prevent breaks with
+# PowerShell Core 6.x only when import-module -force
+# is invoked.
+# function ::> {
+new-item -path "function:/$([ScriptClassSpecification]::Parameters.Language.StaticMethodCallOperator)" -force -value {
     [cmdletbinding(positionalbinding=$false)]
     param(
         [parameter(valuefrompipeline=$true)] $target,

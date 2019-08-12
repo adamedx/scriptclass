@@ -35,15 +35,15 @@ $aliases = foreach ( $functionName in $functionsToAliases.keys ) {
     }
 }
 
-$variables = @([ScriptClassSpecification]::Parameters.Language.ClassCollectionName) # , 'mymanager')
+$variables = @([ScriptClassSpecification]::Parameters.Language.ClassCollectionName)
 
 $functions += @(
-    'Add-MockInScriptClassScope',
-    'Add-ScriptClassMock',
-    'Import-Assembly',
-    'Import-Script',
-    'Initialize-ScriptClassTest',
-    'New-ScriptObjectMock',
+    'Add-MockInScriptClassScope'
+    'Add-ScriptClassMock'
+    'Import-Assembly'
+    'Import-Script'
+    'Initialize-ScriptClassTest'
+    'New-ScriptObjectMock'
     'Remove-ScriptClassMock')
 
 $aliases += @('Mock-ScriptClassMethod', 'Unmock-ScriptClassMethod' )

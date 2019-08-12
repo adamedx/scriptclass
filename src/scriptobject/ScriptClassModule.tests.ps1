@@ -15,10 +15,10 @@
 Describe "Cross-module behavior" {
     set-strictmode -version 2
 
-    $elementSeparator = if ( $PSVersionTable.PSEdition -eq 'Desktop' ) {
-        ';'
-    } else {
+    $elementSeparator = if ( $PSVersionTable.PSEdition -ne 'Desktop' -and $PSVersionTable.Platform -ne 'Win32NT' ) {
         ':'
+    } else {
+        ';'
     }
 
     $sourceModuleDirectory = (join-path $psscriptroot ../../.devmodule)

@@ -75,20 +75,19 @@ PowerShellVersion = '5.1'
 
 # Functions to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no functions to export.
 FunctionsToExport = @(
-#    'Get-ClassMan',
-    '=>',
-    '::>',
-    'Add-MockInScriptClassScope',
-    'Add-ScriptClassMock',
-    'Get-ScriptClass',
-    'Import-Assembly',
-    'Import-Script',
-    'Initialize-ScriptClassTest',
-    'Invoke-Method',
-    'New-ScriptClass',
-    'New-ScriptObject',
-    'New-ScriptObjectMock',
-    'Remove-ScriptClassMock',
+    '=>'
+    '::>'
+    'Add-MockInScriptClassScope'
+    'Add-ScriptClassMock'
+    'Get-ScriptClass'
+    'Import-Assembly'
+    'Import-Script'
+    'Initialize-ScriptClassTest'
+    'Invoke-Method'
+    'New-ScriptClass'
+    'New-ScriptObject'
+    'New-ScriptObjectMock'
+    'Remove-ScriptClassMock'
     'Test-ScriptObject')
 
 # Cmdlets to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no cmdlets to export.
@@ -159,7 +158,7 @@ PrivateData = @{
 
         # ReleaseNotes of this module
         ReleaseNotes = @"
-# ScriptClass 0.17.0 Release Notes
+# ScriptClass 0.20.0 Release Notes
 
 Compatibility fixes for Linux
 

@@ -1,12 +1,12 @@
 # ROADMAP for ScriptClass
 
 ## To-do items -- prioritized
+* Run in CI pipeline
 * Post-refactor clean-up and polish
 * Add documentation to cmdlets
 * General README update
 * Build tools documentation
 * Design documentation
-* Consistent use of commas vs. newlines in collections in module files
 * Rebase the refactor!
 * Make pstypename not part of class? May affect deserialization.
 * Do we need typedobjectbuilder to be factored out of classmanager? Should it be scriptobjectbuilder?
@@ -56,6 +56,7 @@
 * Remove use of underscores!
 * File location rationalization and move
 * break apart scriptclass tests
+* Consistent use of commas vs. newlines in collections in module files
 
 ### New file layout
 
