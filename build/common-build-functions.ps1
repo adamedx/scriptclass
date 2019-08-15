@@ -353,7 +353,7 @@ function publish-modulebuild {
         $optionalArguments += " -nugetapikey $repositoryKey"
     }
 
-    Invoke-CommandWithModulePath "publish-module -path '$moduleSourceDirectory' -repository '$destinationRepositoryName' $optionalArguments" $moduleRootDirectory
+    Invoke-CommandWithModulePath "publish-module -path '$moduleSourceDirectory' -repository '$destinationRepositoryName' -verbose $optionalArguments" $moduleRootDirectory
 }
 
 function Invoke-CommandWithModulePath($command, $modulePath) {

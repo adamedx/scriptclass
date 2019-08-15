@@ -41,7 +41,6 @@ class ClassBuilder {
             $this.definitionContext
         } else {
             $dsl = [ClassDsl]::new($false, $this.systemMethodBlocks, $this.constructorName)
-            $this.AddSystemProperty([NativeObjectBuilder]::NativeTypeMemberName, $null, $this.className)
             $this.definitionContext = $dsl.NewClassDefinitionContext($this.className, $this.classBlock, $classArguments, $null)
             $this.definitionContext
         }

@@ -1,14 +1,12 @@
 # ROADMAP for ScriptClass
 
 ## To-do items -- prioritized
-* Run in CI pipeline
 * Post-refactor clean-up and polish
 * Add documentation to cmdlets
 * General README update
 * Build tools documentation
 * Design documentation
 * Rebase the refactor!
-* Make pstypename not part of class? May affect deserialization.
 * Do we need typedobjectbuilder to be factored out of classmanager? Should it be scriptobjectbuilder?
 * Should classmanager be typemanager? ClassInfo be typeinfo? ClassDefinition be typedefinition? classbuilder be typebuilder?
 * Add namespacing to actual types (e.g. a type declared as ComplexNumber becomes ScriptClass.ComplexNumber, or even has a module, e.g. ScriptClass.Module.Complex#).
@@ -57,6 +55,9 @@
 * File location rationalization and move
 * break apart scriptclass tests
 * Consistent use of commas vs. newlines in collections in module files
+* Run in CI pipeline
+* Make pstypename not part of class? May affect deserialization.
+* change module tests to not require .devmodule
 
 ### New file layout
 

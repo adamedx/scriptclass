@@ -42,9 +42,9 @@ ScriptClass Complex {
     }
 }
 
-PS> $complexNumber = new-so Complex
-PS> $complexNumber |=> Add 3 4
-PS> $complexNumber |=> Magnitude
+PS> $origin = new-so Complex
+PS> $translation = $origin |=> Add 3 4
+PS> $translation |=> Magnitude
 5
 ```
 
@@ -54,30 +54,30 @@ On the Windows operating system, PowerShell 5.1 and higher are supported. On Lin
 
 ## Installation
 
-ScriptClass designed to work on PowerShell 5.0 and Windows 10 / Windows Server 2016. To install it to your user profile from [PowerShell Gallery](https://www.powershellgallery.com/), just run the following command:
+ScriptClass is designed to work on PowerShell 5.1 and Windows 10 / Windows Server 2016. To install it to your user profile from [PowerShell Gallery](https://www.powershellgallery.com/), just run the following command:
 
 ```powershell
     Install-Module ScriptClass -scope currentuser
 ```
 
-After this, all of the ScriptClass cmdlets will be availble to PowerShell code, enabling you to define classes as you would in object-oriented languages.
+After this, all of the ScriptClass cmdlets will be availble to PowerShell code, enabling you to define classes and create objects as you would in any object-oriented language.
 
 ## Features
 The library features the following enhancements for PowerShell applications and complex libraries:
 
-* The `ScriptClass` alias / `add-scriptclass` cmdlet: This let you define types using a syntax very similar to that of other languages that feature a `class` keyword. Types defined by `ScriptClass` are actually `[PSCustomObject]` objects and so integrate well with PowerShell's native type system and object-manipulation cmdlets.
-* The `new-so` alias / `new-scriptobject` cmdlet: Instantiate a type defined by `ScriptClass`.
-* The `=>`, `::>` and `with` aliases / `invoke-method` cmdlet: Convenient ways to invoke methods on a `ScriptClass` object using PowerShell syntax (no parentheses or punctuation needed to call methods)
-* The `import-script` cmdlet that allows the use of code (i.e. functions, classes, variables, etc.) from external PowerShell files within the calling PowerShell file. It is similar in function to the Ruby `require` method or Python's `import` keyword.
-* Automatic enforcement of PowerShell `strict mode 2`.
-* Additional helper functions and objects to make it easy to use classes
+* The `ScriptClass` alias / `New-ScriptClass` cmdlet: Lets you define types using a syntax very similar to that of other languages that feature a `class` keyword. These types ultimately describe sets of `[PSCustomObject]` objects.
+* The `new-so` alias / `New-ScriptObject` cmdlet: Instantiate a type defined by `ScriptClass`. The resulting object is a `[PSCustomObject]` instance, so the returned objects integrate well with PowerShell's native type system and object-manipulation cmdlets.
+* The `=>`, `::>` and `withobject` aliases / `Invoke-Method` cmdlet: Convenient ways to invoke methods on a `ScriptClass` object using PowerShell syntax (no parentheses or punctuation needed to call methods)
+* The `Import-Script` cmdlet that allows the sharing of code (i.e. functions, classes, variables, etc.) across script files. It is similar in function to the Ruby `require` method or Python's `import` keyword, allowing code in one file to access any functions, types, or variables defined in another file.
+* The `Import-Assembly` cmdlet provides a simpler PowerShell-oriented wrapper around the .Net Framework's assembly loading methods.
+* Automatic enforcement of PowerShell `Set-StrictMode 2` within `ScriptClass` methods to facilitate the robustness and determinism typically expected of object-based environments.
 
 ## Contributing / Development
-The project is not yet ready for contributors, but suggestions on features or other advice is welcome while we establish a baseline.
+We're open for contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for policies around contributing code.
 
 ### Testing
 
-Tests are implemented using Pester. To ensure you have the latest version of Pester on our developer system, visit the [Pester site](https://github.com/pester/Pester) for instructions on installing Pester.
+Tests are implemented using Pester. To ensure you have the latest version of Pester on your developer system, visit the [Pester site](https://github.com/pester/Pester) for instructions on installing Pester.
 
 To test, execute the PowerShell command below from the root of the repository
 
@@ -96,10 +96,10 @@ git clone https://github.com/adamedx/scriptclass
 cd scriptclass
 
 # Download dependencies -- this only needs to be done once
-.\build\install.ps1
+./build/install.ps1
 
 # Actually build
-.\build\build-package.ps1
+./build/build-package.ps1
 ```
 
 ### Installing the build
@@ -107,7 +107,7 @@ cd scriptclass
 Once you've executed `build-package.ps1`, you can copy it to a directory in `$env:psmodulepath` so that you can import it:
 
 ```powershell
-cp -r .\pkg\modules\scriptclass ~/Documents/WindowsPowerShell/Modules
+cp -r ./pkg/modules/scriptclass ~/Documents/WindowsPowerShell/Modules
 import scriptclass
 ```
 

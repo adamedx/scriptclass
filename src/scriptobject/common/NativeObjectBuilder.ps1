@@ -24,6 +24,7 @@ enum NativeObjectBuilderMode {
 class NativeObjectBuilder {
     static $NativeTypeMemberName = 'PSTypeName'
     NativeObjectBuilder([string] $typeName, [PSCustomObject] $prototype, [NativeObjectBuilderMode] $mode) {
+        $this.mode = $mode
         $this.object = if ( $mode -eq [NativeObjectBuilderMode]::Modify ) {
             if ( ! $prototype ) {
                 throw [ArgumentException]::New("'Modify' mode was specified for ObjectBuilder, but no existing object was specified to modify")
@@ -43,9 +44,6 @@ class NativeObjectBuilder {
             if ( $prototype ) {
                 $prototype.psobject.properties | foreach {
                     if ( $_.membertype -ne 'NoteProperty' ) {
-                        if ( $_.name -eq $this::NativeyTypeMemberName ) {
-                            throw 'nope'
-                        }
                         throw [ArgumentException]::new("Property '$($_.name)' of member type '$($_.memberType)' is not of valid member type 'NoteProperty'")
                     }
 
@@ -132,7 +130,7 @@ class NativeObjectBuilder {
         $typeArguments.TypeName = $typeName
 
         $displayProperties = @{}
-        $typeArguments.DefaultDisplayPropertySet |
+        $typeArguments['DefaultDisplayPropertySet'] |
           where { $_ -ne $null -and $_ -ne ([NativeObjectBuilder]::NativeTypeMemberName) } |
           foreach {
               $displayProperties.Add($_, $null)
@@ -144,35 +142,23 @@ class NativeObjectBuilder {
             }
         }
 
-        if ( $displayProperties.count -eq 0 ) {
-            $displayProperties.Add([NativeObjectBuilder]::NativeTypeMemberName, $typeName)
+        if ( $displayProperties.count -gt 0 ) {
+            $typeArguments['DefaultDisplayPropertySet'] = [string[]] $displayProperties.keys
         }
-
-        $typeArguments.DefaultDisplayPropertySet = [string[]] $displayProperties.keys
 
         if ( $prototype ) {
-            $typeArguments.PropertySerializationSet += $prototype.psobject.properties | where name -ne ([NativeObjectBuilder]::NativeTypeMemberName) | select -expandproperty name
-        }
-
-        $existingTypeData = Get-TypeData $typeName
-
-        if ( $existingTypeData ) {
-            $existingTypeData | remove-typedata
+            $typeArguments['PropertySerializationSet'] = $prototype.psobject.properties | where name -ne ([NativeObjectBuilder]::NativeTypeMemberName) | select -expandproperty name
         }
 
         Update-TypeData -force @typeArguments
     }
 
     static $basicTypeData = @{
-        TypeName = ([ScriptClassSpecification]::Parameters.Schema.ClassMember.Type)
-        MemberName = ([NativeObjectBuilder]::NativeTypeMemberName)
-        Value = $null
-        MemberType = 'noteproperty'
-        DefaultDisplayPropertySet = @(([NativeObjectBuilder]::NativeTypeMemberName))
-        PropertySerializationSet = @(([NativeObjectBuilder]::NativeTypeMemberName))
+        TypeName = $null
         Serializationmethod = 'SpecificProperties'
         Serializationdepth = 2
     }
 
     [PSCustomObject] $object = $null
+    [NativeObjectBuilderMode] $mode
 }

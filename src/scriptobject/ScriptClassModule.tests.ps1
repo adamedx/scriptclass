@@ -21,9 +21,9 @@ Describe "Cross-module behavior" {
         ';'
     }
 
-    $sourceModuleDirectory = (join-path $psscriptroot ../../.devmodule)
-    $testModuleDirectory = join-path $psscriptroot ../../test/assets/ModuleTests
-    $testModPath = $elementSeparator + "$sourceModuleDirectory" + $elementSeparator + $testModuleDirectory
+    $sourceModuleDirectory = (get-item (join-path $psscriptroot ../..)).fullname
+    $testModuleDirectory = (get-item (join-path $psscriptroot ../../test/assets/ModuleTests)).fullname
+    $testModPath = $elementSeparator + $sourceModuleDirectory + $elementSeparator + $testModuleDirectory
     $modules = @(
         'modA'
         'modBonA'
@@ -35,12 +35,12 @@ Describe "Cross-module behavior" {
 
     Context "Access ScriptClass types and objects across modules" {
         BeforeAll {
-             if ( ! ($env:PSModulePath).EndsWith($testModPath) ) {
-                 si env:PSModulePath (($env:PSModulePath) + $testModPath)
+            if ( ! ($env:PSModulePath).EndsWith($testModPath) ) {
+                si env:PSModulePath (($env:PSModulePath) + $testModPath)
             }
         }
 
-        It "Should have the directory '$sourceModuleDirectory' under the source directory created by running publish-moduletodev and import-devmodule in order to run these tests" {
+        It "Should be able to access the directory '$sourceModuleDirectory', the root of the repository, in order to run these tests" {
             test-path $sourceModuleDirectory | Should Be $true
         }
 

@@ -39,7 +39,7 @@ function Remove-ScriptClassMock {
         }
 
         $ScriptObject = $MockTarget
-        $ClassName = $MockTarget.PSTypeName
+        $ClassName = $MockTarget.ScriptClass.ClassName
     } elseif ( $MockTarget -isnot [String] ) {
         throw [ArgumentException]::new("Argument 'MockTarget' of type '$($MockTarget.gettype())' is not of valid type [String] or [PSCustomObject]")
     }

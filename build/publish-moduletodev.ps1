@@ -21,16 +21,6 @@ $moduleName = Get-ModuleName
 
 $locations = publish-modulelocal $sourceDependencyRepository $targetDirectory -verbose
 
-write-host 'returned', $locations.gettype()
-
-$locations | foreach {
-    if ( $_ ) {
-        write-host type, $_.gettype()
-        $_ | fl * | out-host
-    } else {
-        write-host null
-    }
-}
 $moduleLocation = $locations.ImportableModuleDirectory
 $repoLocation = $locations.ModulePackageRepositoryDirectory
 

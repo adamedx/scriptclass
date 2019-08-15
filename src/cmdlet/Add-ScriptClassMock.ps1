@@ -46,7 +46,7 @@ function Add-ScriptClassMock {
         }
 
         $ScriptObject = $MockTarget
-        $ClassName = $MockTarget.PSTypeName
+        $ClassName = $MockTarget.scriptclass.className
     } elseif ( $MockTarget -isnot [String] ) {
         throw [ArgumentException]::new("Argument 'MockTarget' of type '$($MockTarget.gettype())' is not of valid type [String] or a [PSCustomObject] ScriptClass object")
     }

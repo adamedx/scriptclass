@@ -35,14 +35,16 @@ Context "when creating an object from a class declared with ScriptClass" {
             ScriptClass $className {}
 
             $newInstance = new-scriptobject $className
-            $newInstance.PSTypeName | Should BeExactly $className
+            $newInstance.scriptclass.classname | Should BeExactly $className
+            $newInstance.psobject.typenames -contains $className | Should Be $true
         }
 
         It "can create a new object using new-so alias for new-scriptobject with the specified type" {
             ScriptClass ClassClass66 {}
 
             $newInstance = new-so ClassClass66
-            $newInstance.PSTypeName | Should BeExactly ClassClass66
+            $newInstance.ScriptClass.ClassName | Should BeExactly ClassClass66
+            $newInstance.psobject.typenames -contains 'ClassClass66' | Should Be $true
         }
 
         It "has a 'scriptclass' member that has a className member equal to the class name" {
