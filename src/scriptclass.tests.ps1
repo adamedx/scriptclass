@@ -30,6 +30,7 @@ Describe "ScriptClass module manifest" {
                 '::>'
                 'Add-MockInScriptClassScope'
                 'Add-ScriptClassMock'
+                'Enable-ScriptClassVerbosePreference'
                 'Get-ScriptClass'
                 'Import-Assembly'
                 'Import-Script'
@@ -54,9 +55,10 @@ Describe "ScriptClass module manifest" {
             $verifiedExportsCount -eq $expectedFunctions.length | Should BeExactly $true
         }
 
-        It "should export the '::' variable and only that variable" {
-            $manifest.exportedvariables.count | Should BeExactly 1
+        It "should export the '::' (actually ':') and 'ScriptClassVerbosePreference' variables and only those variables" {
+            $manifest.exportedvariables.count | Should BeExactly 2
             $manifest.exportedvariables.keys -contains ':' | Should BeExactly $true
+            $manifest.exportedvariables.keys -contains 'ScriptClassVerbosePreference' | Should BeExactly $true
         }
 
         It "should export the 'new-so', 'ScriptClass', 'withobject', Mock-ScriptClassMethod, and 'Unmock-ScriptClassMethod' aliases and only those aliases" {

@@ -35,11 +35,12 @@ $aliases = foreach ( $functionName in $functionsToAliases.keys ) {
     }
 }
 
-$variables = @([ScriptClassSpecification]::Parameters.Language.ClassCollectionName)
+$variables = @([ScriptClassSpecification]::Parameters.Language.ClassCollectionName, 'ScriptClassVerbosePreference')
 
 $functions += @(
     'Add-MockInScriptClassScope'
     'Add-ScriptClassMock'
+    'Enable-ScriptClassVerbosePreference'
     'Import-Assembly'
     'Import-Script'
     'Initialize-ScriptClassTest'

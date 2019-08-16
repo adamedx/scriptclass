@@ -1,10 +1,14 @@
 # ScriptClass Overview
 
 ## Motivation
-The ScriptClass module is intended to facilitate the development of PowerShell-based applications rather than just scripts or utilities that comprise the typical PowerShell use case.
 
-**DISCLAIMER: THIS SECTION IS HIGHLY EXPERIMENTAL**
+> The ScriptClass module is intended to facilitate the development of PowerShell-based applications rather than just scripts or utilities that comprise the typical PowerShell use case.
 
+The key feature enabled by ScriptClass is to allow the use of PowerShell script code to define object-oriented data types commonly known in many languages as *classes*. As of PowerShell 5.0, the PowerShell language does indeed support `class`, *but it does so as part of a parallel scripting syntax with several non-obvious runtime quirks that introduce a new cognitive burden to developers.*
+
+ScriptClass then brings the benefits of classes to developers through familiar PowerShell syntax and with unsurprising, deterministic runtime behaviors.
+
+### PowerShell 5.0 class limitations
 The ability to define classes of objects is a very useful one across a spectrum of languages including C++, C#, Java, Ruby, Python, and many others. Even without strict conformance to object-oriented rigor, there are cognitive benefits to developers in abstracting detailed state into higher level concepts and explicitly defining the allowed operations upon those concepts. Classes enhance code readability and foster understanding of code and an easier ability to reason about it and how to change it safely.
 
 With PowerShell 5.0, this object-oriented notion of a *class* was introduced into the PowerShell language with the intention of enabling PowerShell users to create objects for consumption by .Net Code. While conceptually these classes are analogs of the same classes delivered through the `class` keyword in the aforementioned OO languages, the key scenario for PowerShell classes was to enable the development of PowerShell DSC resources. Given this, it's understandable that the user experience of PowerShell's class feature is closer to that of PowerShell's pre-existing .Net interoperability, particularly with the syntax of method invocation, rather than providing an exerience for classes more in line with PowerShell's command-line / pipeline-focused approach.
@@ -41,6 +45,10 @@ function prompt {
 
 What is the equivalent of the usage above without `class`? The normal PowerShell calling and declaration syntax requires no parentheses or punctuation to delimit parameters to a function (just spaces). It allows return value specification in a function via simply expressing a value, and no need to specify a return type for a method, regardless whether it does or does not end up returning a value. And such returned values are part of the PowerShell object pipeline, where .NET methods are unable to produce objects in the pipeline.
 
+## Classes via functions / monads - a thought experiment
+
+PowerShell and its pipeline promote a functional approach to scripting. What if we were to implement types on top of the functional paradigm that pervades PowerShell?
+
 To get the benefits of encapsulation and conceptual modeling that `class` brings to application developers, a disciplined PowerShell developer might adopt a convention for expressing classes, instantiating them, and using them based on PowerShell hash tables or the `PSCustomObject` core PowerShell type which can be constructed via hash tables:
 
 ```powershell
@@ -67,13 +75,16 @@ function prompt {
     GetCustomShellPrompt $shellInfo "%" "-> "
 }
 ```
-With the addition of `class`, PowerShell scripts may not include *both* of these styles of code. This has drawbacks:
+With discipline, a developer could adhere to this or similar conventions to develop the kinds of complex applications found in comparable dynamic languages such as Ruby and Python. Other PowerShell developers might initially find this approach to require more "work" and ceremony in packing state, but the syntax would still be PowerShell and that developer could understand the code's behavior even if she was unfamiliar with the convention.
+
+## Prior art and PowerShell 5.0 classes
+Now imagine the developer encounters PowerShell 5.0 and its addition of `class`. She can indeeed convert her code from the convention-based approaach above to use the official `class` capability, but because `class` doesn't directly enable the exposure of commands, some of her code will undoubtedly adhere to a "normal" PowerShell functional style. This means that scripts may now include *both* of these styles of code -- her original custom convention, and the "official" class implementation. This has drawbacks:
 
 * Most scripts will be forced to "mix" both styles, which results in some confusion when reading the scripts ("why is this function being called with parentheses and this one not -- ah, it's a class method, not a function")
 * The mixing can cause errors during development such as accidentally using parentheses with PowerShell functions after defining several class methods. This results in errors known quite well to PowerShell users where your function behaves strangely, you debug it to realize it's getting passed an array even though you are passing a different type, and after looking at the call site for a long time and debugging other parts of the code to determine what parameters you are actually passing, you realize you need to remove the parentheses and commas and pass parameters the way PowerShell expects.
 * When you use class methods, you forego useful and productive PowerShell capabilities like passing parameters by name or through the pipeline
 
-In short, any PowerShell code that incorporates classes as presented by the language reference will be a mash of programming paradigms. The question arises: what would PowerShell's `class` feature look like if it were compatible with the existing PowerShell function call model? Is there a way to make classes, or something like them, support a more `function`-like model?
+In short, any PowerShell code that incorporates classes as presented by the language reference will be a mash of programming paradigms. The question arises: what would PowerShell's `class` feature look like if it were compatible with the existing PowerShell function call model? Is there a way to make classes, or something like them, support a more `function`-like model? Can we do better than a convention-based approach like the one described earlier?
 
 ### Further limitations with `class` in PowerShell
 

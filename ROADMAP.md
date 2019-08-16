@@ -7,10 +7,7 @@
 * Build tools documentation
 * Design documentation
 * Rebase the refactor!
-* Do we need typedobjectbuilder to be factored out of classmanager? Should it be scriptobjectbuilder?
-* Should classmanager be typemanager? ClassInfo be typeinfo? ClassDefinition be typedefinition? classbuilder be typebuilder?
-* Add namespacing to actual types (e.g. a type declared as ComplexNumber becomes ScriptClass.ComplexNumber, or even has a module, e.g. ScriptClass.Module.Complex#).
-
+* Consider making the constructor name the name of the class
 
 ### To-do
 * Fix issue with test-scriptobject and psremoting jobs from start-job
@@ -18,6 +15,9 @@
 * Inheritance
 * Method overrides
 * Protected methods
+* Do we need typedobjectbuilder to be factored out of classmanager? Should it be scriptobjectbuilder?
+* Should classmanager be typemanager? ClassInfo be typeinfo? ClassDefinition be typedefinition? classbuilder be typebuilder?
+* Add namespacing to actual types (e.g. a type declared as ComplexNumber becomes ScriptClass.ComplexNumber, or even has a module, e.g. ScriptClass.Module.Complex#).
 
 ### Done
 * Remove extraneous variables from scriptblock snapshot:
@@ -58,6 +58,7 @@
 * Run in CI pipeline
 * Make pstypename not part of class? May affect deserialization.
 * change module tests to not require .devmodule
+* Fix verbose common parameters not setting verbose flag in ScriptClass methods
 
 ### New file layout
 

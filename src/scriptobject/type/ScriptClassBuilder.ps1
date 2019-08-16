@@ -82,6 +82,10 @@ class ScriptClassBuilder : ClassBuilder {
         [ScriptClassBuilder]::classMemberPrototype = $primitiveClassDefinition.ToPrototype($false)
     }
 
+    static [string] GetVerbosePreference() {
+        return $script:ScriptClassVerbosePreference
+    }
+
     static $classMemberPrototype = $null
     static $commonMethods = @{
         InvokeMethod = {
@@ -94,7 +98,15 @@ class ScriptClassBuilder : ClassBuilder {
                 throw [System.Management.Automation.MethodInvocationException]::new("The method '$methodName' could not be found on the object")
             }
 
-            . $method.script @arguments
+            $oldVerbosePreference = $VerbosePreference
+            $VerbosePreference = [ScriptClassBuilder]::GetVerbosePreference()
+
+            try {
+                . $method.script @arguments
+            } finally {
+                $VerbosePreference = $oldVerbosePreference
+                Enable-ScriptClassVerbosePreference $oldVerbosePreference
+            }
         }
         InvokeScript = {
             param([ScriptBlock] $script, $arguments)

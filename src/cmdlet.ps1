@@ -16,6 +16,7 @@ set-strictmode -version 2
 
 . (join-path $psscriptroot cmdlet/Add-MockInScriptClassScope.ps1)
 . (join-path $psscriptroot cmdlet/Add-ScriptClassMock.ps1)
+. (join-path $psscriptroot cmdlet/Enable-ScriptClassVerbosePreference.ps1)
 . (join-path $psscriptroot cmdlet/Import-Assembly.ps1)
 . (join-path $psscriptroot cmdlet/Import-Script.ps1)
 . (join-path $psscriptroot cmdlet/Invoke-Method.ps1)

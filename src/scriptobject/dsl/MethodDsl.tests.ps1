@@ -249,3 +249,65 @@ Describe 'Static method invocation' {
         }
     }
 }
+
+Describe "Context for common parameters" {
+    BeforeAll {
+        remove-module $thismodule -force -erroraction ignore
+        import-module $thismodule -force
+    }
+
+    AfterAll {
+        remove-module $thismodule -force -erroraction ignore
+    }
+
+    Context 'when the verbose common parameter is specified for the calling cmdlet' {
+        ScriptClass VerboseClass {
+            static {
+                function StaticVerbose($data) {
+                    write-verbose ('STATIC: ' + $data)
+                }
+            }
+
+            function InstanceVerbose($data) {
+                write-verbose $data
+            }
+        }
+
+        function CallVerbose {
+            [cmdletbinding()]
+            param(
+                $dataToWrite,
+                [Switch] $Static
+            )
+
+            Enable-ScriptClassVerbosePreference
+
+            if ( $Static.IsPresent ) {
+                $::.VerboseClass |=> StaticVerbose $dataToWrite
+            } else {
+                $instance = new-so VerboseClass
+                $instance |=> InstanceVerbose $dataToWrite
+            }
+        }
+
+        $requestedOutput = 'this is verbose'
+        $expectedInstanceVerboseOutput = $requestedOutput
+        $expectedStaticVerboseOutput = 'STATIC: ' + $requestedOutput
+
+        It "Should emit no verbose output when a static method is invoked from the calling function and verbose is not specified" {
+            CallVerbose $requestedOutput -Static 4>&1 | Should Be $null
+        }
+
+        It "Should emit no verbose output when an instance method is invoked from the calling function and verbose is not specified" {
+            CallVerbose $requestedOutput 4>&1 | Should Be $null
+        }
+
+        It "Should emit verbose output when a static method is invoked from the calling function and verbose is specified" {
+            CallVerbose $requestedOutput -verbose -Static 4>&1 | Should Be $expectedStaticVerboseOutput
+        }
+
+        It "Should emit verbose output when an instance method is invoked from the calling function and verbose is specified" {
+            CallVerbose $requestedOutput -verbose 4>&1 | Should Be $expectedInstanceVerboseOutput
+        }
+    }
+}

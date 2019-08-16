@@ -79,6 +79,7 @@ FunctionsToExport = @(
     '::>'
     'Add-MockInScriptClassScope'
     'Add-ScriptClassMock'
+    'Enable-ScriptClassVerbosePreference'
     'Get-ScriptClass'
     'Import-Assembly'
     'Import-Script'
@@ -94,7 +95,7 @@ FunctionsToExport = @(
 # CmdletsToExport = @()
 
 # Variables to export from this module
-VariablesToExport = @(':') # This is actually $::
+VariablesToExport = @(':', 'ScriptClassVerbosePreference') # : is actually $::
 
 # Aliases to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no aliases to export.
 AliasesToExport = @('new-so', 'scriptclass', 'withobject', 'Mock-ScriptClassMethod', 'Unmock-ScriptClassMethod')
@@ -114,6 +115,7 @@ AliasesToExport = @('new-so', 'scriptclass', 'withobject', 'Mock-ScriptClassMeth
         'src/scriptobject.ps1'
         'src/cmdlet/Add-ScriptClassMock.ps1'
         'src/cmdlet/Add-MockInScriptClassScope.ps1'
+        'src/cmdlet/Enable-ScriptClassVerbosePreference.ps1'
         'src/cmdlet/Get-ScriptClass.ps1'
         'src/cmdlet/Import-Assembly.ps1'
         'src/cmdlet/Import-Script.ps1'
@@ -160,11 +162,19 @@ PrivateData = @{
         ReleaseNotes = @"
 # ScriptClass 0.20.0 Release Notes
 
-Compatibility fixes for Linux
+This version contains a significant number of breaking changes. These changes are the key milestone in
+moving this module to version 1.0.
 
 ## New features
 
 ## Fixed defects
+
+* The module's internal variables are now isolated within the module -- previously variables and
+  functions at script scope were available to any callers outside the module, allowing them
+  to modify ScriptClass internal state. And it was quite possible that ScriptClass internal state
+  collided with variables or functions in other modules. This is no longer the case as ScriptClass
+  now behaves like an ordineary Powershell module. This means its features can be accessed by
+  other modules by including ScriptClass in the ``NestedModules`` element of those module manifests.
 
 "@
 
