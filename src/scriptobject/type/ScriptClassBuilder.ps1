@@ -105,7 +105,6 @@ class ScriptClassBuilder : ClassBuilder {
                 . $method.script @arguments
             } finally {
                 $VerbosePreference = $oldVerbosePreference
-                Enable-ScriptClassVerbosePreference $oldVerbosePreference
             }
         }
         InvokeScript = {
