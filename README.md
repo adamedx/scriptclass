@@ -90,7 +90,7 @@ NestedModules = @(
 )
 ```
 
-Specifying thie entry in your mdoule manifest this way is the recommended way to use ScriptClass from a module -- it ensures that when your module is installed from a PowerShell module repository such as PowerShell Gallery through the `Install-Module` command, `ScriptClass` is installed right along with it.
+Specifying this entry in your module manifest this way is the recommended way to use ScriptClass from a module -- it ensures that when your module is installed from a PowerShell module repository such as PowerShell Gallery through the `Install-Module` command, `ScriptClass` is installed right along with it.
 
 Note that the `ModuleName` and `Guid` fields must be specified exactly as given here -- they uniquely identify ScriptClass. If you use different values you won't be referencing ScriptClass. It is recommanded that you also specify the exact version of ScriptClass you're using (typically the latest version you can find at [PowerShell Gallery](http://powershellgallery.com/packages/scriptclass). This can insulate you from breaking changes that occur in newer versions of ScriptClass that your code has not been tested against. In that case, the entry for ScriptClass given above would be modified to
 

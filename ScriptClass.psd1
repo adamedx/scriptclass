@@ -89,7 +89,8 @@ FunctionsToExport = @(
     'New-ScriptObject'
     'New-ScriptObjectMock'
     'Remove-ScriptClassMock'
-    'Test-ScriptObject')
+    'Test-ScriptObject'
+)
 
 # Cmdlets to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no cmdlets to export.
 # CmdletsToExport = @()
@@ -107,39 +108,39 @@ AliasesToExport = @('new-so', 'scriptclass', 'withobject', 'Mock-ScriptClassMeth
 # ModuleList = @()
 
 # List of all files packaged with this module
-    FileList = @(
-        './ScriptClass.psd1'
-        './scriptclass.psm1'
-        'src/cmdlet.ps1'
-        'src/scriptclass.ps1'
-        'src/scriptobject.ps1'
-        'src/cmdlet/Add-ScriptClassMock.ps1'
-        'src/cmdlet/Add-MockInScriptClassScope.ps1'
-        'src/cmdlet/Enable-ScriptClassVerbosePreference.ps1'
-        'src/cmdlet/Get-ScriptClass.ps1'
-        'src/cmdlet/Import-Assembly.ps1'
-        'src/cmdlet/Import-Script.ps1'
-        'src/cmdlet/Invoke-Method.ps1'
-        'src/cmdlet/New-ScriptClass.ps1'
-        'src/cmdlet/New-ScriptObject.ps1'
-        'src/cmdlet/New-ScriptObjectMock.ps1'
-        'src/cmdlet/Test-ScriptObject.ps1'
-        'src/cmdlet/Remove-ScriptClassMock.ps1'
-        'src/codeshare/assembly.ps1'
-        'src/codeshare/script.ps1'
-        'src/scriptobject/ClassManager.ps1'
-        'src/scriptobject/common/ClassDefinition.ps1'
-        'src/scriptobject/common/NativeObjectBuilder.ps1'
-        'src/scriptobject/common/ScriptClassSpecification.ps1'
-        'src/scriptobject/dsl/ClassDsl.ps1'
-        'src/scriptobject/dsl/MethodDsl.ps1'
-        'src/scriptobject/mock/MethodMocker.ps1'
-        'src/scriptobject/mock/MethodPatcher.ps1'
-        'src/scriptobject/mock/PatchedClassMethod.ps1'
-        'src/scriptobject/mock/PatchedObject.ps1'
-        'src/scriptobject/type/ClassBuilder.ps1'
-        'src/scriptobject/type/ScriptClassBuilder.ps1'
-    )
+FileList = @(
+    './ScriptClass.psd1'
+    './scriptclass.psm1'
+    'src/cmdlet.ps1'
+    'src/scriptclass.ps1'
+    'src/scriptobject.ps1'
+    'src/cmdlet/Add-ScriptClassMock.ps1'
+    'src/cmdlet/Add-MockInScriptClassScope.ps1'
+    'src/cmdlet/Enable-ScriptClassVerbosePreference.ps1'
+    'src/cmdlet/Get-ScriptClass.ps1'
+    'src/cmdlet/Import-Assembly.ps1'
+    'src/cmdlet/Import-Script.ps1'
+    'src/cmdlet/Invoke-Method.ps1'
+    'src/cmdlet/New-ScriptClass.ps1'
+    'src/cmdlet/New-ScriptObject.ps1'
+    'src/cmdlet/New-ScriptObjectMock.ps1'
+    'src/cmdlet/Test-ScriptObject.ps1'
+    'src/cmdlet/Remove-ScriptClassMock.ps1'
+    'src/codeshare/assembly.ps1'
+    'src/codeshare/script.ps1'
+    'src/scriptobject/ClassManager.ps1'
+    'src/scriptobject/common/ClassDefinition.ps1'
+    'src/scriptobject/common/NativeObjectBuilder.ps1'
+    'src/scriptobject/common/ScriptClassSpecification.ps1'
+    'src/scriptobject/dsl/ClassDsl.ps1'
+    'src/scriptobject/dsl/MethodDsl.ps1'
+    'src/scriptobject/mock/MethodMocker.ps1'
+    'src/scriptobject/mock/MethodPatcher.ps1'
+    'src/scriptobject/mock/PatchedClassMethod.ps1'
+    'src/scriptobject/mock/PatchedObject.ps1'
+    'src/scriptobject/type/ClassBuilder.ps1'
+    'src/scriptobject/type/ScriptClassBuilder.ps1'
+)
 
 # Private data to pass to the module specified in RootModule/ModuleToProcess. This may also contain a PSData hashtable with additional module metadata used by PowerShell.
 PrivateData = @{
@@ -159,24 +160,56 @@ PrivateData = @{
         IconUri = 'https://raw.githubusercontent.com/adamedx/scriptclass/master/assets/ScriptClassIco.png'
 
         # ReleaseNotes of this module
-        ReleaseNotes = @"
+        ReleaseNotes = @'
 # ScriptClass 0.20.0 Release Notes
 
-This version contains a significant number of breaking changes. These changes are the key milestone in
-moving this module to version 1.0.
+This version of *ScriptClass* contains a significant number of breaking changes, though consumers of previous versions
+should be able to migrate to this version with relatively straightforward modifications -- the overall
+philosphy of the library remains intact. These changes are the key milestone in moving this module to version 1.0.
+
+The most significant changes are at the implementation layer, where refactoring and simplification should
+make the code more reliable at runtime, enable better isolation of PowerShell modules built on it from
+dependencies on implementation of *ScriptClass* or other modules depending on it, and even improve runtime performance.
+In general, the codebase is more modular and now aligns to an explicit logical arrangement, making it easier
+to maintain and modify.
 
 ## New features
+
+* The `::>` operator now supports invocation on class instances, i.e. given an instance, it will call the
+static member of that instance's class. It can still be used with class names as the target just as before.
+* Script scope variables are inaccessible to code within a ScriptClass method -- this protects the method
+code from unintended / confusing behavvior. This is also a breaking change
+* Parameters may be passed to the script block used to define a class via `New-ScriptClass`. This is a workaround
+for the breaking change above for cases where one explicitly wants outside state available to the method
+* Module initialization occurs only within module scope -- no pre-initialization code is executed through the
+`ScriptsToProcess` key of the manifest, resulting in better isolation and reliability
+`Import-Script` now supports the `AnyExtension` option to allow any file, not just files ending with
+the `ps1` extension, to be imported
+
+## Breaking changes
+
+* `Add-ScriptClass` is renamed to `New-ScriptClass`
+* `Get-Class` is renamed to `Get-ScriptClass`
+* The `with` alias is renamed to `withobject`
+* Script scope variables are no longer accessible from *ScriptClass* methods -- use the `ArgumentList` parameter
+of `New-ScriptClass` / `ScriptClass` to pass such variables to the *ScriptClass* definition
+* The `PSCmdlet` automatic variable is no longer passed to *ScriptClass* methods
+* Verbose output is not visible from *ScriptClass* methods unless a caller earlier in the stack has invoked the
+new `Enable-ScriptClassVerbosePreference` command
+* The `gls` alias directs to the new `Get-GraphItemWithMetadata` command instead of `Get-GraphChildItem`
+* The `PSTypeName` property is no longer part of *ScriptClass* objects
+* The `Get-ScriptClass` command returns a different data structure than the old `Get-Class` command
 
 ## Fixed defects
 
 * The module's internal variables are now isolated within the module -- previously variables and
   functions at script scope were available to any callers outside the module, allowing them
-  to modify ScriptClass internal state. And it was quite possible that ScriptClass internal state
-  collided with variables or functions in other modules. This is no longer the case as ScriptClass
-  now behaves like an ordineary Powershell module. This means its features can be accessed by
-  other modules by including ScriptClass in the ``NestedModules`` element of those module manifests.
+  to modify *ScriptClass* internal state. And it was quite possible that *ScriptClass* internal state
+  collided with variables or functions in other modules. This is no longer the case as *ScriptClass*
+  now behaves like an ordinary Powershell module. This means its features can be accessed by
+  other modules by including *ScriptClass* in the `NestedModules` element of those module manifests.
 
-"@
+'@
 
     } # End of PSData hashtable
 
