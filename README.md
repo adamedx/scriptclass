@@ -64,7 +64,7 @@ The library features the following enhancements for PowerShell applications and 
 
 ## Installation
 
-ScriptClass is designed to work on PowerShell 5.1 and Windows 10 / Windows Server 2016. To install it to your user profile from [PowerShell Gallery](http://powershellgallery.com/packages/scriptclass), just run the following command:
+ScriptClass is designed to work on PowerShell 5.1 and Windows 10 / Windows Server 2016 and Linux distributions such as Ubuntu 16 and later. To install it to your user profile from [PowerShell Gallery](http://powershellgallery.com/packages/scriptclass), just run the following command:
 
 ```powershell
     Install-Module ScriptClass -scope currentuser
