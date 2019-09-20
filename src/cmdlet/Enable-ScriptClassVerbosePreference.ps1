@@ -12,11 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set-strictmode -version 2
-$ErrorActionPreference = 'stop'
+$ScriptClassVerbosePreference = 'SilentlyContinue'
 
-. (join-path $psscriptroot codeshare/assembly.ps1)
-. (join-path $psscriptroot codeshare/script.ps1)
-. (join-path $psscriptroot scriptobject.ps1)
-. (join-path $psscriptroot cmdlet.ps1)
+function Enable-ScriptClassVerbosePreference {
+    [cmdletbinding()]
+    param(
+        [string] $PreferenceOverride
+    )
 
+    $targetValue = if ( $PreferenceOverride ) {
+        $PreferenceOverride
+    } else {
+        $PSCmdlet.GetVariableValue('VerbosePreference')
+    }
+
+    $script:ScriptClassVerbosePreference = $targetValue
+}

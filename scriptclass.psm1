@@ -12,22 +12,42 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-$variables = @('::')
+. (join-path $psscriptroot src/scriptclass.ps1)
 
-$functions = @('=>', '::>')
+$functionsToAliases = @{
+    'Get-ScriptClass' = $null
+    'Invoke-Method' = 'withobject'
+    'New-ScriptClass' = 'scriptclass'
+    'New-ScriptObject' = 'new-so'
+    'Test-ScriptObject' = $null
+    [ScriptClassSpecification]::Parameters.Language.MethodCallOperator = $null
+    [ScriptClassSpecification]::Parameters.Language.StaticMethodCallOperator = $null
+}
 
-$cmdlets = @('Add-ScriptClass',
-             'Invoke-Method',
-             'Import-Assembly',
-             'Import-Script',
-             'Mock-ScriptClassMethod',
-             'New-ScriptObject',
-             'Test-ScriptObject',
-             'Unmock-ScriptClassMethod')
+$functions = @()
 
-$aliases = @('new-so', 'scriptclass', 'with', 'const' )
+$aliases = foreach ( $functionName in $functionsToAliases.keys ) {
+    $functions += $functionName
+    $alias = $functionsToAliases[$functionName]
+    if ( $alias ) {
+        set-alias $alias $functionName
+        $alias
+    }
+}
 
-export-modulemember -variable $variables -cmdlet $cmdlets -function $functions -alias $aliases
+$variables = @([ScriptClassSpecification]::Parameters.Language.ClassCollectionName, 'ScriptClassVerbosePreference')
 
+$functions += @(
+    'Add-MockInScriptClassScope'
+    'Add-ScriptClassMock'
+    'Enable-ScriptClassVerbosePreference'
+    'Import-Assembly'
+    'Import-Script'
+    'Initialize-ScriptClassTest'
+    'New-ScriptObjectMock'
+    'Remove-ScriptClassMock')
 
+$aliases += @('Mock-ScriptClassMethod', 'Unmock-ScriptClassMethod' )
+
+export-modulemember -variable $variables -function $functions -alias $aliases
 

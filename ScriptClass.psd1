@@ -14,10 +14,10 @@
 # a scriptclass.psm1 in a parent directory, and then it will publish
 # the parent directory rather than something nested underneath as the
 # output of a build! Do not precede with '.'!
-# RootModule = ''
+RootModule = 'scriptclass.psm1'
 
 # Version number of this module.
-ModuleVersion = '0.16.0'
+ModuleVersion = '0.20.0'
 
 # Supported PSEditions
 CompatiblePSEditions = @('Desktop', 'Core')
@@ -62,7 +62,7 @@ PowerShellVersion = '5.1'
 # RequiredAssemblies = @()
 
 # Script files (.ps1) that are run in the caller's environment prior to importing this module.
-ScriptsToProcess = @('src/std.ps1')
+# ScriptsToProcess = @()
 
 # Type files (.ps1xml) to be loaded when importing this module
 # TypesToProcess = @()
@@ -74,25 +74,32 @@ ScriptsToProcess = @('src/std.ps1')
 # NestedModules = @()
 
 # Functions to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no functions to export.
-FunctionsToExport = @('=>', '::>')
+FunctionsToExport = @(
+    '=>'
+    '::>'
+    'Add-MockInScriptClassScope'
+    'Add-ScriptClassMock'
+    'Enable-ScriptClassVerbosePreference'
+    'Get-ScriptClass'
+    'Import-Assembly'
+    'Import-Script'
+    'Initialize-ScriptClassTest'
+    'Invoke-Method'
+    'New-ScriptClass'
+    'New-ScriptObject'
+    'New-ScriptObjectMock'
+    'Remove-ScriptClassMock'
+    'Test-ScriptObject'
+)
 
 # Cmdlets to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no cmdlets to export.
-    CmdletsToExport = @(
-        'Add-ScriptClass',
-        'Import-Assembly',
-        'Import-Script',
-        'Invoke-Method',
-        'Mock-ScriptClassMethod',
-        'New-ScriptObject',
-        'New-ScriptObjectMock',
-        'Test-ScriptObject',
-        'Unmock-ScriptClassMethod')
+# CmdletsToExport = @()
 
 # Variables to export from this module
-VariablesToExport = @('::')
+VariablesToExport = @(':', 'ScriptClassVerbosePreference') # : is actually $::
 
 # Aliases to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no aliases to export.
-AliasesToExport = @('new-so', 'scriptclass', 'with', 'const')
+AliasesToExport = @('new-so', 'scriptclass', 'withobject', 'Mock-ScriptClassMethod', 'Unmock-ScriptClassMethod')
 
 # DSC resources to export from this module
 # DscResourcesToExport = @()
@@ -101,20 +108,39 @@ AliasesToExport = @('new-so', 'scriptclass', 'with', 'const')
 # ModuleList = @()
 
 # List of all files packaged with this module
-    FileList = @(
-        './ScriptClass.psd1',
-        './scriptclass.psm1',
-        'src/Mock-ScriptClassMethod.ps1',
-        'src/mock/MethodMocker.ps1',
-        'src/mock/MethodPatcher.ps1',
-        'src/mock/PatchedClassMethod.ps1',
-        'src/mock/PatchedObject.ps1',
-        'src/New-ScriptObjectMock.ps1',
-        'src/scriptclass.ps1',
-        'src/std.ps1',
-        'src/Unmock-ScriptClassMethod.ps1',
-        'src/include.ps1',
-        'src/assemblyhelper.ps1')
+FileList = @(
+    './ScriptClass.psd1'
+    './scriptclass.psm1'
+    'src/cmdlet.ps1'
+    'src/scriptclass.ps1'
+    'src/scriptobject.ps1'
+    'src/cmdlet/Add-ScriptClassMock.ps1'
+    'src/cmdlet/Add-MockInScriptClassScope.ps1'
+    'src/cmdlet/Enable-ScriptClassVerbosePreference.ps1'
+    'src/cmdlet/Get-ScriptClass.ps1'
+    'src/cmdlet/Import-Assembly.ps1'
+    'src/cmdlet/Import-Script.ps1'
+    'src/cmdlet/Invoke-Method.ps1'
+    'src/cmdlet/New-ScriptClass.ps1'
+    'src/cmdlet/New-ScriptObject.ps1'
+    'src/cmdlet/New-ScriptObjectMock.ps1'
+    'src/cmdlet/Test-ScriptObject.ps1'
+    'src/cmdlet/Remove-ScriptClassMock.ps1'
+    'src/codeshare/assembly.ps1'
+    'src/codeshare/script.ps1'
+    'src/scriptobject/ClassManager.ps1'
+    'src/scriptobject/common/ClassDefinition.ps1'
+    'src/scriptobject/common/NativeObjectBuilder.ps1'
+    'src/scriptobject/common/ScriptClassSpecification.ps1'
+    'src/scriptobject/dsl/ClassDsl.ps1'
+    'src/scriptobject/dsl/MethodDsl.ps1'
+    'src/scriptobject/mock/MethodMocker.ps1'
+    'src/scriptobject/mock/MethodPatcher.ps1'
+    'src/scriptobject/mock/PatchedClassMethod.ps1'
+    'src/scriptobject/mock/PatchedObject.ps1'
+    'src/scriptobject/type/ClassBuilder.ps1'
+    'src/scriptobject/type/ScriptClassBuilder.ps1'
+)
 
 # Private data to pass to the module specified in RootModule/ModuleToProcess. This may also contain a PSData hashtable with additional module metadata used by PowerShell.
 PrivateData = @{
@@ -134,26 +160,56 @@ PrivateData = @{
         IconUri = 'https://raw.githubusercontent.com/adamedx/scriptclass/master/assets/ScriptClassIco.png'
 
         # ReleaseNotes of this module
-        ReleaseNotes = @"
-# ScriptClass 0.16.0 Release Notes
+        ReleaseNotes = @'
+# ScriptClass 0.20.0 Release Notes
 
-Compatibility fixes for Linux
+This version of *ScriptClass* contains a significant number of breaking changes, though consumers of previous versions
+should be able to migrate to this version with relatively straightforward modifications -- the overall
+philosphy of the library remains intact. These changes are the key milestone in moving this module to version 1.0.
+
+The most significant changes are at the implementation layer, where refactoring and simplification should
+make the code more reliable at runtime, enable better isolation of PowerShell modules built on it from
+dependencies on implementation of *ScriptClass* or other modules depending on it, and even improve runtime performance.
+In general, the codebase is more modular and now aligns to an explicit logical arrangement, making it easier
+to maintain and modify.
 
 ## New features
 
-* ``Import-Assembly`` syntax is more sane -- assembly name without '.dll' extension must be specified
-* ``Import-Assembly`` now supports a platform precedence and will search for compatible platforms in a priority order among netstandard1.3, netstandard1.1, and netcoreapp1.0 monikers (in that order)
-* ``Import-Assembly`` now returns a `System.Reflection.Assembly` if it loads an assembly successfully
-* Added common parameters to Import-Assembly through cmdletbinding attribute
+* The `::>` operator now supports invocation on class instances, i.e. given an instance, it will call the
+static member of that instance's class. It can still be used with class names as the target just as before.
+* Script scope variables are inaccessible to code within a ScriptClass method -- this protects the method
+code from unintended / confusing behavvior. This is also a breaking change
+* Parameters may be passed to the script block used to define a class via `New-ScriptClass`. This is a workaround
+for the breaking change above for cases where one explicitly wants outside state available to the method
+* Module initialization occurs only within module scope -- no pre-initialization code is executed through the
+`ScriptsToProcess` key of the manifest, resulting in better isolation and reliability
+`Import-Script` now supports the `AnyExtension` option to allow any file, not just files ending with
+the `ps1` extension, to be imported
+
+## Breaking changes
+
+* `Add-ScriptClass` is renamed to `New-ScriptClass`
+* `Get-Class` is renamed to `Get-ScriptClass`
+* The `with` alias is renamed to `withobject`
+* Script scope variables are no longer accessible from *ScriptClass* methods -- use the `ArgumentList` parameter
+of `New-ScriptClass` / `ScriptClass` to pass such variables to the *ScriptClass* definition
+* The `PSCmdlet` automatic variable is no longer passed to *ScriptClass* methods
+* Verbose output is not visible from *ScriptClass* methods unless a caller earlier in the stack has invoked the
+new `Enable-ScriptClassVerbosePreference` command
+* The `gls` alias directs to the new `Get-GraphItemWithMetadata` command instead of `Get-GraphChildItem`
+* The `PSTypeName` property is no longer part of *ScriptClass* objects
+* The `Get-ScriptClass` command returns a different data structure than the old `Get-Class` command
 
 ## Fixed defects
 
-* Fix ``Import-Assembly`` so that it handles Linux paths with '/' characters
-* Fix break in ``Import-Assembly`` by replacing use of ``ls`` alias with ``Get-ChildItem`` to avoid collision with Linux ``ls`` command
-* Fix path case sensitivity issue with ``Import-Script`` where entire path of script file was lower-cased before attempting to load the file, which breaks on case-sensitive file systems like Linux
-* Added missing test coverage for Import-Assembly
+* The module's internal variables are now isolated within the module -- previously variables and
+  functions at script scope were available to any callers outside the module, allowing them
+  to modify *ScriptClass* internal state. And it was quite possible that *ScriptClass* internal state
+  collided with variables or functions in other modules. This is no longer the case as *ScriptClass*
+  now behaves like an ordinary Powershell module. This means its features can be accessed by
+  other modules by including *ScriptClass* in the `NestedModules` element of those module manifests.
 
-"@
+'@
 
     } # End of PSData hashtable
 

@@ -12,11 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set-strictmode -version 2
-$ErrorActionPreference = 'stop'
+function New-ScriptClass {
+    [cmdletbinding()]
+    param(
+        [parameter(mandatory=$true)] [string] $ClassName,
+        [scriptblock] $ClassBlock = {},
+        $ArgumentList
+    )
 
-. (join-path $psscriptroot codeshare/assembly.ps1)
-. (join-path $psscriptroot codeshare/script.ps1)
-. (join-path $psscriptroot scriptobject.ps1)
-. (join-path $psscriptroot cmdlet.ps1)
-
+    try {
+        [ClassManager]::Get().DefineClass($ClassName, $ClassBlock, $ArgumentList) | out-null
+    } catch {
+        throw
+    }
+}
