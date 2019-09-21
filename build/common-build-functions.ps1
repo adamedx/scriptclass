@@ -23,6 +23,20 @@ $PowerShellExecutable = if ( $PSVersionTable.PSEdition -eq 'Desktop' ) {
     'pwsh'
 }
 
+$OSPathSeparator = ';'
+$IsNonWindowsPlatform = $false
+
+try {
+    if ( $PSVersionTable.PSEdition -eq 'Core' ) {
+        if ( $PSVersionTable.Platform -ne 'Windows' -and $PSVersionTable.Platform -ne 'Win32NT' ) {
+            $isNonWindowsPlatform = $true
+            $OSPathSeparator = ':'
+        }
+    }
+} catch {
+}
+
+
 function new-directory {
     param(
         [Parameter(mandatory=$true)]
@@ -359,7 +373,7 @@ function publish-modulebuild {
 function Invoke-CommandWithModulePath($command, $modulePath) {
     # Note that the path must be augmented rather than replaced
     # in order for modules related to package management to be loade
-    $commandScript = [Scriptblock]::Create("import-module -verbose PowerShellGet;si env:PSModulePath `"`$env:PSModulePath;$modulePath`";$command")
+    $commandScript = [Scriptblock]::Create("import-module -verbose PowerShellGet;si env:PSModulePath `"$env:PSModulePath$OSPathSeparator$modulePath`";$command")
 
     write-verbose "Executing command '$commandScript'"
     $result = if ( $PSVersionTable.PSEdition -ne 'Desktop' -and $PSVersionTable.Platform -eq 'Win32NT' ) {
@@ -589,15 +603,37 @@ function publish-modulelocal {
         save-module -name $nestedModuleName -requiredversion $nestedModuleVersion -repository $dependencysource -path $devModuleLocation
 
         # Also download its package file to the ps repo location so that the directory can be used when
-        # installing the package from the ps repo a repository. Note that while docs say that save-package
-        # does not output a value, evidence suggests it does, so redirect any out to avoid the resulting
-        # pipeline pollution
-        save-package -name $nestedModuleName -requiredversion $nestedModuleVersion -source $temporaryPackageSource -path $PsRepoLocation -erroraction silentlycontinue | out-null
+        # installing the package from the ps repo a repository.
+        $savedPackage = save-package -name $nestedModuleName -requiredversion $nestedModuleVersion -source $temporaryPackageSource -path $PsRepoLocation -erroraction silentlycontinue
         if ( ! $? ) {
             write-verbose "First package save attempted failed, retrying..."
             # Sometimes save-package fails the first time, so try it again, and then it succeeds.
             # Don't ask.
-            save-package -name $nestedModuleName -requiredversion $nestedModuleVersion -source $temporaryPackageSource -path $PsRepoLocation | out-null
+            $savedPackage = save-package -name $nestedModuleName -requiredversion $nestedModuleVersion -source $temporaryPackageSource -path $PsRepoLocation | out-null
+        }
+
+        $savedPackageFullName = "$($savedPackage.name).$($savedPackage.version).nupkg"
+        $targetPackageFullName = "$nestedModuleName.$($savedPackage.version).nupkg"
+        $namesDifferInCase = ! ( $savedPackageFullName -ceq $targetPackageFullName )
+
+        if ( ! $namesDifferInCase ) {
+            write-verbose "Saved package name and target package name have identical case: '$targetPackageFullName', no action needed on any platform"
+        } else {
+            write-verbose 'Saved package name and target package name differ in casing:'
+            write-verbose "Saved package name '$savedPackageFullName'"
+            write-verbose "Target package name: $targetPackageFullName'"
+            if ( $isNonWindowsPlatform ) {
+                write-verbose 'Package name casees differ and running on non-Windows platform, attempting rename of downloaded package to match official module name'
+                $savedPackagePath = join-path $PsRepoLocation $savedPackageFullName
+                $targetPackagePath = join-path $PsRepoLocation $targetPackageFullName
+                write-verbose "Setting name of downloaded package at '$savedPackagePath' to '$targetPackagePath'"
+                # A two-stage move is required because move-item apparently does a no-op when names
+                # compare the same case insensitively.
+                move-item $savedPackagePath "$targetPackagePath.tmp"
+                move-item "$targetPackagePath.tmp" $targetPackagePath
+            } else {
+                write-verbose 'Running on Windows, so difference in case for package names is ok, no action will be taken'
+            }
         }
     }
 
@@ -751,13 +787,32 @@ function Normalize-LibraryDirectory($packageConfigPath, $libraryRoot) {
         $assemblies = get-assemblydependencies $packageConfigPath
 
         $assemblies | foreach {
-            $normalizedName = join-path $libraryRoot ($_.id, $_.version -join '.')
-            if ( ! ( test-path $normalizedName ) ) {
-                $alternateName = join-path $libraryRoot (join-path $_.id $_.version)
-                if ( ! ( test-path $alternateName ) ) {
-                    throw "Unable to find directory for assembly '$($_.id)' with version '$($_.version)' at either '$normalizedName' or '$alternatName'"
+            $libraryDirectories = get-childitem $libraryRoot
+            $normalizedName = ($_.id, $_.version -join '.')
+            $normalizedPathActualCase = $libraryDirectories | where name -eq $normalizedName | select -expandproperty fullname
+            write-host -fore cyan libsat, $libraryRoot
+            write-host -fore cyan "**** try1: $normalizedName = '$normalizedPathActualCase'"
+            ls $libraryRoot | out-host
+            if ( ! $normalizedPathActualCase ) {
+                $librarySubdir = $libraryDirectories | where name -eq $_.id
+                $alternatePathActualCase = if ( $librarySubDir ) {
+                    join-path $librarySubDir.fullname $_.version
                 }
-                move-item  $alternateName $normalizedName
+
+                $alternatePathExists = if ( $alternatePathActualCase ) {
+                    write-verbose "Checking for alternatePath '$alternatePathActualCase'"
+                    test-path $alternatePathActualCase
+                }
+
+                write-host -fore cyan "**** try2: '$alternatePathActualCase'"
+                if ( ! $alternatePathExists ) {
+                    throw "Unable to find directory for assembly '$($_.id)' with version '$($_.version)' at either '$normalizedPathActualCase' or '$alternatePathActualCase'"
+                }
+                $normalizedPathTargetCase = ($librarySubdir.fullname, $_.version -join '.')
+                write-verbose "Normalizing name for library identified as '$normalizedName'" -verbose
+                write-verbose "Normalizing by moving file '$alternatePathActualCase' to '$normalizedPathTargetCase'" -verbose
+
+                move-item  $alternatePathActualCase $normalizedPathTargetCase
             }
         }
     }
