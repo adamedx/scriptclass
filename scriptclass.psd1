@@ -17,7 +17,7 @@
 RootModule = 'scriptclass.psm1'
 
 # Version number of this module.
-ModuleVersion = '0.20.0'
+ModuleVersion = '0.20.1'
 
 # Supported PSEditions
 CompatiblePSEditions = @('Desktop', 'Core')
