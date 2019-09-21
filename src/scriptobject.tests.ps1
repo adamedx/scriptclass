@@ -16,7 +16,7 @@ set-strictmode -version 2
 
 $here = Split-Path -Parent $MyInvocation.MyCommand.Path
 $sut = (Split-Path -Leaf $MyInvocation.MyCommand.Path) -replace '\.Tests\.', '.'
-$thismodule = join-path (split-path -parent $here) 'ScriptClass.psd1'
+$thismodule = join-path (split-path -parent $here) 'scriptclass.psd1'
 
 Describe 'The $:: collection' {
     BeforeAll {
