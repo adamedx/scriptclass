@@ -15,7 +15,7 @@
 set-strictmode -version 2
 
 $here = $psscriptroot
-$thismodule = join-path $here ../../ScriptClass.psd1
+$thismodule = join-path $here ../../scriptclass.psd1
 $thisshell = if ( $PSEdition -eq 'Desktop' ) {
     'powershell'
 } else {

@@ -1,5 +1,7 @@
 # ScriptClass Overview
 
+Note: *This document reflects the initial goals and investigation around ScriptClass, and is intended to remain a snapshot of that first exploration. Therefore this document will not be updated to conform to the implementation, interface, desgin, or goals of ScriptClass as embodied by the repository's current codebase as it changes.*
+
 ## Motivation
 
 > The ScriptClass module is intended to facilitate the development of PowerShell-based applications rather than just scripts or utilities that comprise the typical PowerShell use case.

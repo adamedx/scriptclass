@@ -16,7 +16,7 @@
   <files>
     <file src="LICENSE.md" target="." />
     <file src="README.md" target="." />
-    <file src="ScriptClass.psd1" target="." />
+    <file src="scriptclass.psd1" target="." />
     <file src="scriptclass.psm1" target="." />
     <file src="samples\complex.ps1" target="samples/" />
     <file src="src\**\*.ps1" target="src/" />

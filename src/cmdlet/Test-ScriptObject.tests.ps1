@@ -15,7 +15,7 @@
 set-strictmode -version 2
 
 $here = Split-Path -Parent $MyInvocation.MyCommand.Path
-$thismodule = join-path (split-path -parent $here) '../ScriptClass.psd1'
+$thismodule = join-path (split-path -parent $here) '../scriptclass.psd1'
 
 Describe 'The test-scriptobject cmdlet' {
     BeforeAll {

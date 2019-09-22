@@ -17,7 +17,7 @@
 RootModule = 'scriptclass.psm1'
 
 # Version number of this module.
-ModuleVersion = '0.20.0'
+ModuleVersion = '0.20.1'
 
 # Supported PSEditions
 CompatiblePSEditions = @('Desktop', 'Core')
@@ -109,7 +109,7 @@ AliasesToExport = @('new-so', 'scriptclass', 'withobject', 'Mock-ScriptClassMeth
 
 # List of all files packaged with this module
 FileList = @(
-    './ScriptClass.psd1'
+    './scriptclass.psd1'
     './scriptclass.psm1'
     'src/cmdlet.ps1'
     'src/scriptclass.ps1'
@@ -161,53 +161,19 @@ PrivateData = @{
 
         # ReleaseNotes of this module
         ReleaseNotes = @'
-# ScriptClass 0.20.0 Release Notes
+# ScriptClass 0.20.1 Release Notes
 
-This version of *ScriptClass* contains a significant number of breaking changes, though consumers of previous versions
-should be able to migrate to this version with relatively straightforward modifications -- the overall
-philosphy of the library remains intact. These changes are the key milestone in moving this module to version 1.0.
-
-The most significant changes are at the implementation layer, where refactoring and simplification should
-make the code more reliable at runtime, enable better isolation of PowerShell modules built on it from
-dependencies on implementation of *ScriptClass* or other modules depending on it, and even improve runtime performance.
-In general, the codebase is more modular and now aligns to an explicit logical arrangement, making it easier
-to maintain and modify.
+This minor release changes the case of the module to lowercase to remove complexity on systems
+with case sensitive file systems (i.e. Linux) to eliminate issues with inability to find modules.
 
 ## New features
 
-* The `::>` operator now supports invocation on class instances, i.e. given an instance, it will call the
-static member of that instance's class. It can still be used with class names as the target just as before.
-* Script scope variables are inaccessible to code within a ScriptClass method -- this protects the method
-code from unintended / confusing behavvior. This is also a breaking change
-* Parameters may be passed to the script block used to define a class via `New-ScriptClass`. This is a workaround
-for the breaking change above for cases where one explicitly wants outside state available to the method
-* Module initialization occurs only within module scope -- no pre-initialization code is executed through the
-`ScriptsToProcess` key of the manifest, resulting in better isolation and reliability
-`Import-Script` now supports the `AnyExtension` option to allow any file, not just files ending with
-the `ps1` extension, to be imported
-
 ## Breaking changes
-
-* `Add-ScriptClass` is renamed to `New-ScriptClass`
-* `Get-Class` is renamed to `Get-ScriptClass`
-* The `with` alias is renamed to `withobject`
-* Script scope variables are no longer accessible from *ScriptClass* methods -- use the `ArgumentList` parameter
-of `New-ScriptClass` / `ScriptClass` to pass such variables to the *ScriptClass* definition
-* The `PSCmdlet` automatic variable is no longer passed to *ScriptClass* methods
-* Verbose output is not visible from *ScriptClass* methods unless a caller earlier in the stack has invoked the
-new `Enable-ScriptClassVerbosePreference` command
-* The `gls` alias directs to the new `Get-GraphItemWithMetadata` command instead of `Get-GraphChildItem`
-* The `PSTypeName` property is no longer part of *ScriptClass* objects
-* The `Get-ScriptClass` command returns a different data structure than the old `Get-Class` command
 
 ## Fixed defects
 
-* The module's internal variables are now isolated within the module -- previously variables and
-  functions at script scope were available to any callers outside the module, allowing them
-  to modify *ScriptClass* internal state. And it was quite possible that *ScriptClass* internal state
-  collided with variables or functions in other modules. This is no longer the case as *ScriptClass*
-  now behaves like an ordinary Powershell module. This means its features can be accessed by
-  other modules by including *ScriptClass* in the `NestedModules` element of those module manifests.
+* Module name is now lowercase for deterministic behavior on Linux or similar systems with
+  case sensitive file systems.
 
 '@
 

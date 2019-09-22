@@ -12,5 +12,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import-module "$psscriptroot/../../ScriptClass.psd1" -force
+import-module "$psscriptroot/../../scriptclass.psd1" -force
 
