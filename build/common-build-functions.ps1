@@ -604,13 +604,15 @@ function publish-modulelocal {
 
         # Also download its package file to the ps repo location so that the directory can be used when
         # installing the package from the ps repo a repository.
-        $savedPackage = save-package -name $nestedModuleName -requiredversion $nestedModuleVersion -source $temporaryPackageSource -path $PsRepoLocation -erroraction silentlycontinue
+        $savedPackages = save-package -name $nestedModuleName -requiredversion $nestedModuleVersion -source $temporaryPackageSource -path $PsRepoLocation -erroraction silentlycontinue
         if ( ! $? ) {
             write-verbose "First package save attempted failed, retrying..."
             # Sometimes save-package fails the first time, so try it again, and then it succeeds.
             # Don't ask.
-            $savedPackage = save-package -name $nestedModuleName -requiredversion $nestedModuleVersion -source $temporaryPackageSource -path $PsRepoLocation | out-null
+            $savedPackages = save-package -name $nestedModuleName -requiredversion $nestedModuleVersion -source $temporaryPackageSource -path $PsRepoLocation
         }
+
+        $savedPackage = $savedPackages | where name -eq $nestedModuleName
 
         $savedPackageFullName = "$($savedPackage.name).$($savedPackage.version).nupkg"
         $targetPackageFullName = "$nestedModuleName.$($savedPackage.version).nupkg"
@@ -790,9 +792,7 @@ function Normalize-LibraryDirectory($packageConfigPath, $libraryRoot) {
             $libraryDirectories = get-childitem $libraryRoot
             $normalizedName = ($_.id, $_.version -join '.')
             $normalizedPathActualCase = $libraryDirectories | where name -eq $normalizedName | select -expandproperty fullname
-            write-host -fore cyan libsat, $libraryRoot
-            write-host -fore cyan "**** try1: $normalizedName = '$normalizedPathActualCase'"
-            ls $libraryRoot | out-host
+
             if ( ! $normalizedPathActualCase ) {
                 $librarySubdir = $libraryDirectories | where name -eq $_.id
                 $alternatePathActualCase = if ( $librarySubDir ) {
@@ -804,7 +804,6 @@ function Normalize-LibraryDirectory($packageConfigPath, $libraryRoot) {
                     test-path $alternatePathActualCase
                 }
 
-                write-host -fore cyan "**** try2: '$alternatePathActualCase'"
                 if ( ! $alternatePathExists ) {
                     throw "Unable to find directory for assembly '$($_.id)' with version '$($_.version)' at either '$normalizedPathActualCase' or '$alternatePathActualCase'"
                 }
@@ -834,18 +833,40 @@ function InitDirectTestRun {
 
 function Get-ModulePSMPath($moduleName) {
     $moduleParent = Get-DevModuleDirectory
-    $moduleDir = join-path $moduleParent $moduleName
-    if ( ! ( test-path $moduleDir ) ) {
-        throw "Cannot load psm file for module '$moduleName' because path '$moduleDir' does not exist"
+    # Rather than use test-path which is subject to case-sensitive comparisons on Linux,
+    # read the file names and do a normal PowerShell case-insensitive compare (i.e.
+    # use '-eq' rather than 'ceq' on strings) so we can find the module name regardless
+    # of how it is cased. This is ok because it is not possible to have two modules with
+    # the same case-insensitive name but different case-insensitive name in module repo --
+    # module names must be unique from a case-insensitive standpoint.
+    $moduleDir = get-childItem $moduleParent | where name -eq $moduleName
+    if ( ! $moduleDir ) {
+        write-verbose "Cannot find a directory for '$moduleName' under '$moduleParent'"
+        write-verbose "***Begin listing contents of directory '$moduleParent'"
+        (get-childitem $moduleParent) | write-verbose
+        write-verbose '***End listing contents'
+        throw "Cannot load psm file for module '$moduleName' because path '$moduleName' does not exist under directory '$moduleParent'"
     }
+
+    $moduleDirPath = $moduleDir.fullname
+
+    write-verbose "Found '$moduleName' directory at '$moduleDirPath'"
 
     $psmFileName = $moduleName + '.psm1'
 
-    $psmFiles = get-childitem -r $moduleDir -filter $psmFileName
+    $psmFiles = get-childitem -r $moduleDirPath -filter $psmFileName
 
     if ( ! $psmFiles ) {
-        throw "Cannot find file '$psmFileName' under module directory '$moduleDir'"
+        throw "Cannot find file '$psmFileName' under module directory '$moduleDirPath'"
     }
 
-    $psmFiles[0].fullname
+    # Now that we have found the module via a query of the file system,
+    # we can get the name according to what the query returned from the
+    # the file system -- now callers can safely access the file on either
+    # Linux or Windows because the case will match the file system.
+    $targetPsmFile = $psmFiles[0].fullname
+
+    write-verbose "Found psm1 file for module '$moduleName' at '$targetPsmFile'"
+
+    $targetPsmFile
 }
