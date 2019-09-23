@@ -17,6 +17,8 @@ param($packagePath = $null, $targetFeedUri = $null)
 set-strictmode -version 2
 $erroractionpreference = 'stop'
 
+$packageName = 'adamedx.autograph-sdk'
+
 $basepath = (get-item (split-path -parent $psscriptroot)).fullname
 
 $feedUri = if ( $targetFeedUri -ne $null ) {
@@ -29,9 +31,9 @@ $packageLocation = if ( $packagePath -ne $null ) {
     $packagePath
 } else {
     $packageDirectory = join-path  $basepath 'pkg'
-    $packages = ls $packageDirectory -filter adamedx.stdposh.*.nupkg
+    $packages = get-childitem $packageDirectory -filter "$($packageName)*.nupkg"
     if ( $packages -isnot [System.IO.FileSystemInfo] ) {
-        throw "Found more than one .nupkg file matching stdposh.*.nupkg in directory '$packageDirectory'. Delete the directory, rebuild, and retry this script."
+        throw "Found more than one .nupkg file matching $($packageName)*.nupkg in directory '$packageDirectory'. Delete the directory, rebuild, and retry this script."
     }
     $packages[0].fullname
 }
@@ -50,6 +52,6 @@ if ( $pushresult -ne 0 ) {
     throw "Command '$nugetpushcmd' failed with exit status '$pushresult'"
 }
 
-write-host -f green "Publish succeeded."
+write-host -foregroundcolor green "Publish NuGet package succeeded."
 
 

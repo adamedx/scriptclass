@@ -818,3 +818,34 @@ function Normalize-LibraryDirectory($packageConfigPath, $libraryRoot) {
     }
 }
 
+function InitDirectTestRun {
+    $testDir = join-path (Get-SourceRootDirectory) test/CI
+    $testInitPath = join-path $testDir PesterDirectRunInit.ps1
+    if ( test-path $testInitPath ) {
+        write-verbose "Found init script '$testInitPath', will execute it"
+        $devDirectory = Get-DevModuleDirectory
+        $newpsmodulepath = $devDirectory + $OSPathSeparator + (gi env:PSModulePath).value
+        write-verbose "Updated PSModulePath environment variable to '$newpsmodulepath'"
+        . $testInitPath
+    } else {
+        write-verbose "No init script found at '$testInitPath', skipping direct test run init"
+    }
+}
+
+function Get-ModulePSMPath($moduleName) {
+    $moduleParent = Get-DevModuleDirectory
+    $moduleDir = join-path $moduleParent $moduleName
+    if ( ! ( test-path $moduleDir ) ) {
+        throw "Cannot load psm file for module '$moduleName' because path '$moduleDir' does not exist"
+    }
+
+    $psmFileName = $moduleName + '.psm1'
+
+    $psmFiles = get-childitem -r $moduleDir -filter $psmFileName
+
+    if ( ! $psmFiles ) {
+        throw "Cannot find file '$psmFileName' under module directory '$moduleDir'"
+    }
+
+    $psmFiles[0].fullname
+}
