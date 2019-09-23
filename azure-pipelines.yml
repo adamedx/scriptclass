@@ -104,7 +104,6 @@ jobs:
     condition: eq(variables.OS_PLATFORM, 'ubuntu') # Only needed on Linux to avoid hangs
     inputs:
       targetType: inline
-      # Manually include '/devmodule' directory to point to module path
       script: './build/Init-DirectTestRun.ps1 -verbose; Invoke-Pester -OutputFile "$($env:TEST_OUTPUT_DIRECTORY)/$($env:TEST_OUTPUT_FILE)" -OutputFormat NUnitXml'
       pwsh: $(USE_POWERSHELL_CORE)
   - task: PublishTestResults@2
