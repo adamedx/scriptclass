@@ -43,7 +43,6 @@ $functions += @(
     'Enable-ScriptClassVerbosePreference'
     'Import-Assembly'
     'Import-Script'
-    'Initialize-ScriptClassTest'
     'New-ScriptObjectMock'
     'Remove-ScriptClassMock')
 
