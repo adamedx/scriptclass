@@ -34,7 +34,6 @@ Describe "ScriptClass module manifest" {
                 'Get-ScriptClass'
                 'Import-Assembly'
                 'Import-Script'
-                'Initialize-ScriptClassTest'
                 'Invoke-Method'
                 'New-ScriptClass'
                 'New-ScriptObject'
