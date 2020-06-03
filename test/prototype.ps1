@@ -249,7 +249,6 @@ class {0} : BaseModule {{
 
     {0}($classModule, [object[]] $constructorArgs) {{
        foreach ( $property in [BaseModule]::Properties ) {{
-$global:mythis = $this
            $this.$($property.name) = $property.value.value
        }}
         __initialize @constructorArgs
