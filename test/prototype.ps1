@@ -187,7 +187,9 @@ function New-ScriptObject2 {
 
     $classInfo = Get-ScriptClass2 $ClassName
 
-    $classInfo.class::new($classInfo.module, $args)
+    $nativeObject = $classInfo.class::new($classInfo.module, $args)
+
+    [PSObject]::new($nativeObject)
 }
 
 $classModuleBlock = {
@@ -247,6 +249,7 @@ class {0} : BaseModule {{
 
     {0}($classModule, [object[]] $constructorArgs) {{
        foreach ( $property in [BaseModule]::Properties ) {{
+$global:mythis = $this
            $this.$($property.name) = $property.value.value
        }}
         __initialize @constructorArgs
