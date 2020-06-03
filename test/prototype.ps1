@@ -12,7 +12,7 @@ function New-ScriptClass2 {
 
     $classBlock = GetClassBlock $Name $properties $methods
 
-    $newClass = $classObject.InvokeScript($classBlock)
+    $newClass = $classObject.InvokeScript($classBlock, $classObject.__module, $properties)
 
     AddClassType $Name $newClass $classObject
 }
@@ -120,14 +120,6 @@ function GetMethodParameterList($parameters) {
     }
 }
 
-function GetMethodFunctionInvocationArguments($parameters) {
-    if ( $parameters ) {
-        ( $parameters | foreach { $_.name.tostring() } )  -join ' '
-    } else {
-        @()
-    }
-}
-
 function NewClassInfo($className, $class, $classObject, $classModule) {
     [PSCustomObject] @{
         Name = $className
@@ -139,9 +131,7 @@ function NewClassInfo($className, $class, $classObject, $classModule) {
 
 function NewMethodDefinition($methodName, $scriptblock) {
     $parameterList = GetMethodParameterList $scriptblock.ast.parameters
-    $argumentList = GetMethodFunctionInvocationArguments $scriptblock.ast.parameters
 
-#    $methodTemplate -f $methodname, $parameterList, $argumentList
     $methodTemplate -f $methodname, $parameterList, $parameterList
 }
 
@@ -210,7 +200,7 @@ $classModuleBlock = {
     . $__classDefinitionBlock
 
     function InvokeScript([ScriptBlock] $scriptBlock) {
-        . {}.module.NewBoundScriptBlock($scriptBlock)
+        . {}.module.NewBoundScriptBlock($scriptBlock) @args
     }
 
     $__module = {}.module
@@ -225,20 +215,10 @@ $internalProperties = '__module', '__classDefinitionBlock'
 $propertyTemplate = @'
     {2} {1} ${0} = $null
 '@
-<#
-$methodTemplate = @'
-    [object] {0}({1}) {{
-        $__result = ({0} {2})
-        return $__result
-    }}
-'@
-#>
 
 $methodTemplate = @'
     [object] {0}({1}) {{
         $thisVariable = [PSVariable]::new('this', $this)
-#        $thisList = [System.Collections.Generic.List[psvariable]]::new()
-#        $thisList.Add($thisVariable)
         $methodBlock = (get-item function:{0}).scriptblock
         $__result = $methodBlock.InvokeWithContext(@{{}}, $thisVariable, @({2}))
         return $__result
@@ -247,10 +227,28 @@ $methodTemplate = @'
 
 
 $classTemplate = @'
-class {0} {{
+param($module, $properties)
+
+Class BaseModule {{
+    static $Properties = $null
+    static $StaticProperties = $null
+    static $Module = $null
+}}
+
+[BaseModule]::Properties = $properties.values | where PropertyType -eq 'InstanceProperty'
+[BaseModule]::StaticProperties = $properties.values | where PropertyType -eq 'StaticProperty'
+[BaseModule]::Module = $module
+
+class {0} : BaseModule {{
+
+    static {0}() {{
+        [BaseModule]::Module | import-module
+    }}
 
     {0}($classModule, [object[]] $constructorArgs) {{
-       $classModule | import-module
+       foreach ( $property in [BaseModule]::Properties ) {{
+           $this.$($property.name) = $property.value.value
+       }}
         __initialize @constructorArgs
     }}
 
