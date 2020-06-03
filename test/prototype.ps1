@@ -130,7 +130,13 @@ function NewClassInfo($className, $class, $classObject, $classModule) {
 }
 
 function NewMethodDefinition($methodName, $scriptblock) {
-    $parameterList = GetMethodParameterList $scriptblock.ast.parameters
+    $parameters = if ( $scriptblock.ast.body.paramblock ) {
+        $scriptblock.ast.body.paramblock.parameters
+    } else {
+        $scriptblock.ast.parameters
+    }
+
+    $parameterList = GetMethodParameterList $parameters
 
     $methodTemplate -f $methodname, $parameterList, $parameterList
 }
