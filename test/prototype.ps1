@@ -1,3 +1,5 @@
+set-strictmode -version 2
+
 function New-ScriptClass2 {
     param(
         $Name,
@@ -8,9 +10,9 @@ function New-ScriptClass2 {
 
     $properties = GetProperties $classObject.__module
 
-    $methods = GetMethods $classObject.__module
+    $methods = GetMethods $classObject.__module $Name
 
-    $classBlock = GetClassBlock $Name $properties $methods
+    $classBlock = GetClassBlock $Name $classObject.__module.name $properties $methods
 
     $newClass = $classObject.InvokeScript($classBlock, $classObject.__module, $properties)
 
@@ -33,12 +35,14 @@ function GetClassObject($classDefinitionBlock) {
     new-module -ascustomobject $classModuleBlock -argumentlist $classDefinitionBlock
 }
 
-function GetClassBlock($className, $properties, $methods) {
+function GetClassBlock($className, $classModuleName, $properties, $methods) {
     $propertyDeclaration = ( GetPropertyDefinitions $properties ) -join "`n"
 
     $methodDeclaration = ( GetMethodDefinitions $methods ) -join "`n"
 
-    $classFragment = $classTemplate -f $className, $propertyDeclaration, $methodDeclaration
+    $classInstanceId = $classModuleName -replace '-', '_'
+
+    $classFragment = $classTemplate -f $className, $propertyDeclaration, $methodDeclaration, $classInstanceId
 
     $global:myfrag = $classFragment
     [ScriptBlock]::Create($classFragment)
@@ -61,7 +65,7 @@ function NewProperty($propertyName, $type, $value, [PropertyType] $propertyType)
     }
 }
 
-function GetMethods($classModule) {
+function GetMethods($classModule, $className) {
     $methods = @{}
 
     foreach ( $functionName in $classModule.ExportedFunctions.Keys ) {
@@ -72,8 +76,6 @@ function GetMethods($classModule) {
         $method = NewMethod $functionName $classModule.ExportedFunctions[$functionName].scriptblock InstanceMethod
         $methods.Add($method.Name, $method)
     }
-
-    $className = $classModule.Class.Name
 
     $constructor = $methods[(GetConstructorMethodName $className)]
 
@@ -121,6 +123,10 @@ function GetMethodParameterList($parameters) {
 }
 
 function NewClassInfo($className, $class, $classObject, $classModule) {
+    if ( $classObject -eq $null ) {
+        throw 'anger3'
+    }
+
     [PSCustomObject] @{
         Name = $className
         Class = $class
@@ -171,7 +177,10 @@ function GetPropertyDefinitions($properties) {
 }
 
 function AddClassType($className, $classType, $classObject) {
-    $classTable[$className] = NewClassInfo $className $classType $classOject $classObject.__module
+    if ( $classObject -eq $null ) {
+        throw 'anger2'
+    }
+    $classTable[$className] = NewClassInfo $className $classType $classObject $classObject.__module
 }
 
 function Get-ScriptClass2 {
@@ -198,6 +207,17 @@ function New-ScriptObject2 {
     [PSObject]::new($nativeObject)
 }
 
+# Even though there is no cmdletbinding, this works with -verbose!
+function ==> {
+    param(
+        [string] $methodName
+    )
+
+    foreach ( $object in $input ) {
+        $object.InvokeMethod($methodName, $args)
+    }
+}
+
 $classModuleBlock = {
     param($__classDefinitionBlock)
 
@@ -209,6 +229,14 @@ $classModuleBlock = {
 
     function InvokeScript([ScriptBlock] $scriptBlock) {
         . {}.module.NewBoundScriptBlock($scriptBlock) @args
+    }
+
+    function InvokeMethod($methodName, [object[]] $methodArgs) {
+        if ( ! ( $this | gm -membertype method $methodName -erroraction ignore ) ) {
+            throw "The method '$methodName' is not defined for this object of type $($this.gettype().fullname)"
+        }
+
+        & $methodName @methodArgs
     }
 
     $__module = {}.module
@@ -233,28 +261,27 @@ $methodTemplate = @'
     }}
 '@
 
-
 $classTemplate = @'
 param($module, $properties)
 
-Class BaseModule {{
+Class BaseModule__{3} {{
     static $Properties = $null
     static $StaticProperties = $null
     static $Module = $null
 }}
 
-[BaseModule]::Properties = $properties.values | where PropertyType -eq 'InstanceProperty'
-[BaseModule]::StaticProperties = $properties.values | where PropertyType -eq 'StaticProperty'
-[BaseModule]::Module = $module
+[BaseModule__{3}]::Properties = $properties.values | where PropertyType -eq 'InstanceProperty'
+[BaseModule__{3}]::StaticProperties = $properties.values | where PropertyType -eq 'StaticProperty'
+[BaseModule__{3}]::Module = $module
 
-class {0} : BaseModule {{
+class {0} : BaseModule__{3} {{
 
     static {0}() {{
-        [BaseModule]::Module | import-module
+        [BaseModule__{3}]::Module | import-module
     }}
 
     {0}($classModule, [object[]] $constructorArgs) {{
-       foreach ( $property in [BaseModule]::Properties ) {{
+       foreach ( $property in [BaseModule__{3}]::Properties ) {{
            $this.$($property.name) = $property.value.value
        }}
         __initialize @constructorArgs
