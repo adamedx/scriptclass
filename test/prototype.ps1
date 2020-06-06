@@ -8,13 +8,13 @@ function New-ScriptClass2 {
 
     $classObject = GetClassObject $classDefinitionBlock
 
-    $properties = GetProperties $classObject.__module
+    $properties = GetProperties $classObject.__GetModule()
 
-    $methods = GetMethods $classObject.__module $Name
+    $methods = GetMethods $classObject.__GetModule() $Name
 
-    $classBlock = GetClassBlock $Name $classObject.__module.name $properties $methods
+    $classBlock = GetClassBlock $Name $classObject.__GetModule() $properties $methods
 
-    $newClass = $classObject.InvokeScript($classBlock, $classObject.__module, $properties)
+    $newClass = $classObject.InvokeScript($classBlock, $classObject.__GetModule(), $properties)
 
     AddClassType $Name $newClass $classObject
 }
@@ -180,7 +180,7 @@ function AddClassType($className, $classType, $classObject) {
     if ( $classObject -eq $null ) {
         throw 'anger2'
     }
-    $classTable[$className] = NewClassInfo $className $classType $classObject $classObject.__module
+    $classTable[$className] = NewClassInfo $className $classType $classObject $classObject.__GetModule()
 }
 
 function Get-ScriptClass2 {
@@ -225,7 +225,7 @@ $classModuleBlock = {
 
     function __initialize {}
 
-    . $__classDefinitionBlock
+    . {}.Module.NewBoundScriptBlock($__classDefinitionBlock)
 
     function InvokeScript([ScriptBlock] $scriptBlock) {
         . {}.module.NewBoundScriptBlock($scriptBlock) @args
@@ -239,8 +239,9 @@ $classModuleBlock = {
         & $methodName @methodArgs
     }
 
-    $__module = {}.module
-    . $__module.newboundscriptblock($__classDefinitionBlock)
+    function __GetModule {
+        {}.Module
+    }
 
     export-modulemember -variable * -function *
 }
