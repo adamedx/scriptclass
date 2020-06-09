@@ -14,11 +14,6 @@ function New-ScriptClass2 {
     $methods = GetMethods $classDefinition.Module $Name InstanceMethod
     $methods += GetMethods $classDefinition.StaticModule $Name StaticMethod
 
-    write-host -fore yellow here
-    $methods | out-host
-
-    write-host -fore yellow next
-
     $classBlock = GetClassBlock $Name $classDefinition.Module $properties $methods $staticProperties
 
     $newClass = $classDefinition.classObject.InvokeScript($classBlock, $classDefinition.Module, $classDefinition.StaticModule, $properties, $staticProperties)
@@ -90,7 +85,7 @@ function GetMethods($classModule, $className, $methodType) {
         }
 
         $method = NewMethod $functionName $classModule.ExportedFunctions[$functionName].scriptblock $methodType
-        write-host gotmethod, $method.name
+
         $methods.Add($method.Name, $method)
     }
 
@@ -109,19 +104,16 @@ function GetConstructorMethodName($className) {
 
 function GetProperties($classmodule, [PropertyType] $propertyType) {
     $properties = @{}
-    write-host type, $propertyType, $classModule.name
+
     foreach ( $propertyName in $classModule.ExportedVariables.Keys ) {
         if ( $propertyName -in $internalProperties ) {
             continue
         }
+
         $propertyValue = $classModule.ExportedVariables[$propertyName]
         $type = if ( $propertyValue -ne $null -and $propertyValue.value -ne $null ) {
             $propertyValue.value.GetType()
-        } else {
-            $global:mypropval = $propertyValue
         }
-
-        write-host name, $propertyName, $propertyValue.value
 
         $property = NewProperty $propertyName $type $propertyValue $propertyType
         $properties.Add($propertyName, $property)
@@ -166,7 +158,6 @@ function NewMethodDefinition($methodName, $scriptblock, $isStatic, $staticMethod
     $parameterList = GetMethodParameterList $parameters
 
     if ( $isStatic ) {
-        write-host GOTSTAT
         $staticMethodTemplate -f $methodname, $parameterList, $parameterList, $staticMethodClassName
     } else {
         $methodTemplate -f $methodname, $parameterList, $parameterList
@@ -198,7 +189,6 @@ function NewPropertyDefinition($propertyName, $type, $value, [PropertyType] $pro
 function GetPropertyDefinitions($properties) {
     $global:myprops = $properties
     foreach ( $property in $properties.values ) {
-        write-host propdef, $property.name, $property.value.value
         NewPropertyDefinition $property.name $property.type $property.value $property.propertyType
     }
 }
@@ -268,10 +258,6 @@ $classModuleBlock = {
 
         $staticObject = new-module -ascustomobject $readerBlock -argumentlist $staticDefinition
 
-        write-host -fore magenta instatic
-        write-host -fore cyan $staticDefinition
-        $staticObject | out-host
-
         $methods = $staticObject | gm -MemberType ScriptMethod
         $properties = $staticObject | gm -MemberType NoteProperty
         $staticModule = $__moduleInfo['StaticModule']
@@ -299,12 +285,6 @@ $classModuleBlock = {
         }
 
         . $staticModule.newboundscriptblock($methodSetTranslatorBlock) $methods $properties $staticObject
-
-        $staticModule.Invoke({hey | out-host;write-host whoa2})
-
-        write-host -fore magenta before
-        $staticModule.exportedfunctions | out-host
-        write-host -fore magenta after
 
         $__moduleInfo['Statics'] += [PSCustomObject] @{StaticMethods=$methods;StaticProperties=$Properties}
     }
@@ -371,10 +351,8 @@ Class BaseModule__{3} {{
 class {0} : BaseModule__{3} {{
 
     static {0}() {{
-        write-host -fore cyan inconst
         [BaseModule__{3}]::Module | import-module
         foreach ( $property in [BaseModule__{3}]::StaticProperties ) {{
-            write-host staticprop, $property.name, $property.value.value
             [{0}]::$($property.name) = $property.value.value
         }}
     }}
