@@ -6,17 +6,24 @@ function New-ScriptClass2 {
         $ClassDefinitionBlock
     )
 
-    $classObject = GetClassObject $classDefinitionBlock
+    $classDefinition = GetClassDefinition $classDefinitionBlock
 
-    $properties = GetProperties $classObject.__GetModule()
+    $properties = GetProperties $classDefinition.Module InstanceProperty
+    $staticProperties = GetProperties $classDefinition.StaticModule StaticProperty
 
-    $methods = GetMethods $classObject.__GetModule() $Name
+    $methods = GetMethods $classDefinition.Module $Name InstanceMethod
+    $methods += GetMethods $classDefinition.StaticModule $Name StaticMethod
 
-    $classBlock = GetClassBlock $Name $classObject.__GetModule() $properties $methods
+    write-host -fore yellow here
+    $methods | out-host
 
-    $newClass = $classObject.InvokeScript($classBlock, $classObject.__GetModule(), $properties)
+    write-host -fore yellow next
 
-    AddClassType $Name $newClass $classObject
+    $classBlock = GetClassBlock $Name $classDefinition.Module $properties $methods $staticProperties
+
+    $newClass = $classDefinition.classObject.InvokeScript($classBlock, $classDefinition.Module, $classDefinition.StaticModule, $properties, $staticProperties)
+
+    AddClassType $Name $newClass $classDefinition
 }
 
 enum MethodType {
@@ -31,14 +38,23 @@ enum PropertyType {
     StaticProperty
 }
 
-function GetClassObject($classDefinitionBlock) {
-    new-module -ascustomobject $classModuleBlock -argumentlist $classDefinitionBlock
+function GetClassDefinition($classDefinitionBlock) {
+    $classModuleInfo = @{}
+
+    $classObject = new-module -ascustomobject $classModuleBlock -argumentlist $classDefinitionBlock, $classModuleInfo
+
+    [PSCustomObject] @{
+        ClassObject = $classObject
+        Module = $classModuleInfo.Module
+        StaticModule = $classModuleInfo.StaticModule
+    }
 }
 
-function GetClassBlock($className, $classModuleName, $properties, $methods) {
+function GetClassBlock($className, $classModuleName, $properties, $methods, $staticProperties) {
     $propertyDeclaration = ( GetPropertyDefinitions $properties ) -join "`n"
+    $propertyDeclaration += "`n" + ( GetPropertyDefinitions $staticProperties ) -join "`n"
 
-    $methodDeclaration = ( GetMethodDefinitions $methods ) -join "`n"
+    $methodDeclaration = ( GetMethodDefinitions $methods $className ) -join "`n"
 
     $classInstanceId = $classModuleName -replace '-', '_'
 
@@ -56,7 +72,7 @@ function NewMethod($methodName, $scriptBlock, [MethodType] $methodType) {
     }
 }
 
-function NewProperty($propertyName, $type, $value, [PropertyType] $propertyType) {
+function NewProperty($propertyName, $type, $value, [PropertyType] $propertyType = 'InstanceProperty' ) {
     [PSCustomObject] @{
         Name = $propertyName
         Type = $type
@@ -65,7 +81,7 @@ function NewProperty($propertyName, $type, $value, [PropertyType] $propertyType)
     }
 }
 
-function GetMethods($classModule, $className) {
+function GetMethods($classModule, $className, $methodType) {
     $methods = @{}
 
     foreach ( $functionName in $classModule.ExportedFunctions.Keys ) {
@@ -73,7 +89,8 @@ function GetMethods($classModule, $className) {
             continue
         }
 
-        $method = NewMethod $functionName $classModule.ExportedFunctions[$functionName].scriptblock InstanceMethod
+        $method = NewMethod $functionName $classModule.ExportedFunctions[$functionName].scriptblock $methodType
+        write-host gotmethod, $method.name
         $methods.Add($method.Name, $method)
     }
 
@@ -90,20 +107,23 @@ function GetConstructorMethodName($className) {
     '__initialize'
 }
 
-function GetProperties($classmodule) {
+function GetProperties($classmodule, [PropertyType] $propertyType) {
     $properties = @{}
-
+    write-host type, $propertyType, $classModule.name
     foreach ( $propertyName in $classModule.ExportedVariables.Keys ) {
         if ( $propertyName -in $internalProperties ) {
             continue
         }
-
         $propertyValue = $classModule.ExportedVariables[$propertyName]
-        $type = if ( $propertyValue -ne $null ) {
+        $type = if ( $propertyValue -ne $null -and $propertyValue.value -ne $null ) {
             $propertyValue.value.GetType()
+        } else {
+            $global:mypropval = $propertyValue
         }
 
-        $property = NewProperty $propertyName $type $propertyValue InstanceProperty
+        write-host name, $propertyName, $propertyValue.value
+
+        $property = NewProperty $propertyName $type $propertyValue $propertyType
         $properties.Add($propertyName, $property)
     }
 
@@ -116,13 +136,13 @@ function GetMethodParameters($scriptBlock) {
 
 function GetMethodParameterList($parameters) {
     if ( $parameters ) {
-        ( $parameters | foreach { $_.name.tostring() } )  -join ','
+        ( $parameters | foreach { $_.name.tostring() } ) -join ','
     } else {
         @()
     }
 }
 
-function NewClassInfo($className, $class, $classObject, $classModule) {
+function NewClassInfo($className, $class, $classObject, $classModule, $staticModule) {
     if ( $classObject -eq $null ) {
         throw 'anger3'
     }
@@ -132,10 +152,11 @@ function NewClassInfo($className, $class, $classObject, $classModule) {
         Class = $class
         ClassObject = $classObject
         Module = $classModule
+        StaticModule = $staticModule
     }
 }
 
-function NewMethodDefinition($methodName, $scriptblock) {
+function NewMethodDefinition($methodName, $scriptblock, $isStatic, $staticMethodClassName) {
     $parameters = if ( $scriptblock.ast.body.paramblock ) {
         $scriptblock.ast.body.paramblock.parameters
     } else {
@@ -144,12 +165,17 @@ function NewMethodDefinition($methodName, $scriptblock) {
 
     $parameterList = GetMethodParameterList $parameters
 
-    $methodTemplate -f $methodname, $parameterList, $parameterList
+    if ( $isStatic ) {
+        write-host GOTSTAT
+        $staticMethodTemplate -f $methodname, $parameterList, $parameterList, $staticMethodClassName
+    } else {
+        $methodTemplate -f $methodname, $parameterList, $parameterList
+    }
 }
 
-function GetMethodDefinitions($methods) {
+function GetMethodDefinitions($methods, $className) {
     foreach ( $method in $methods.values ) {
-        NewMethodDefinition $method.Name $method.scriptblock
+        NewMethodDefinition $method.Name $method.scriptblock ($method.methodType -eq 'StaticMethod') $className
     }
 }
 
@@ -172,15 +198,13 @@ function NewPropertyDefinition($propertyName, $type, $value, [PropertyType] $pro
 function GetPropertyDefinitions($properties) {
     $global:myprops = $properties
     foreach ( $property in $properties.values ) {
+        write-host propdef, $property.name, $property.value.value
         NewPropertyDefinition $property.name $property.type $property.value $property.propertyType
     }
 }
 
-function AddClassType($className, $classType, $classObject) {
-    if ( $classObject -eq $null ) {
-        throw 'anger2'
-    }
-    $classTable[$className] = NewClassInfo $className $classType $classObject $classObject.__GetModule()
+function AddClassType($className, $classType, $classDefinition) {
+    $classTable[$className] = NewClassInfo $className $classType $classDefinition.classObject $classDefinition.Module $classDefinition.StaticModule
 }
 
 function Get-ScriptClass2 {
@@ -219,11 +243,71 @@ function ==> {
 }
 
 $classModuleBlock = {
-    param($__classDefinitionBlock)
+    param($__classDefinitionBlock, $__moduleInfo)
 
     set-strictmode -version 2
 
+    $__moduleInfo['Statics'] = @()
+
+    $__moduleInfo['Module'] = {}.module
+    new-module {param([HashTable] $moduleInfo) $moduleInfo['StaticModule'] = {}.module } -ascustomobject -argumentlist $__moduleInfo | out-null
+
     function __initialize {}
+
+    function static([ScriptBlock] $staticDefinition) {
+        set-strictmode -version 2
+
+        $readerBlock = {
+            param($__inputBlock)
+            set-strictmode -version 2
+
+            . {}.module.newboundscriptblock($__inputBlock)
+            get-variable __inputBlock | remove-variable
+            export-modulemember -variable * -function *
+        }
+
+        $staticObject = new-module -ascustomobject $readerBlock -argumentlist $staticDefinition
+
+        write-host -fore magenta instatic
+        write-host -fore cyan $staticDefinition
+        $staticObject | out-host
+
+        $methods = $staticObject | gm -MemberType ScriptMethod
+        $properties = $staticObject | gm -MemberType NoteProperty
+        $staticModule = $__moduleInfo['StaticModule']
+
+        $methodSetTranslatorBlock = {
+            param($methods, $properties, $staticObject)
+            set-strictmode -version 2
+
+            $methodTranslatorBlock = {param($methodName, $methodScript) remove-item function:$methodName -erroraction ignore; new-item function:$methodName -value {}.module.newboundscriptblock($methodScript)}
+            $methodNames = @()
+            foreach ( $method in $methods ) {
+                $methodScript = $staticObject.psobject.methods | where name -eq $method.name | select -expandproperty script
+                . $methodTranslatorBlock $method.name $methodScript | out-null
+                $methodNames += $method.name
+            }
+
+            $propertyNames = @()
+            $propertyTranslatorBlock = {param($propertyName, $propertyValue) new-variable $propertyName -value $propertyValue }
+            foreach ( $property in $properties ) {
+                . $propertyTranslatorBlock $property.name $staticObject.$($property.name) | out-null
+                $propertyNames += $property.name
+            }
+
+            export-modulemember -variable $propertyNames -function $methodNames
+        }
+
+        . $staticModule.newboundscriptblock($methodSetTranslatorBlock) $methods $properties $staticObject
+
+        $staticModule.Invoke({hey | out-host;write-host whoa2})
+
+        write-host -fore magenta before
+        $staticModule.exportedfunctions | out-host
+        write-host -fore magenta after
+
+        $__moduleInfo['Statics'] += [PSCustomObject] @{StaticMethods=$methods;StaticProperties=$Properties}
+    }
 
     . {}.Module.NewBoundScriptBlock($__classDefinitionBlock)
 
@@ -239,14 +323,12 @@ $classModuleBlock = {
         & $methodName @methodArgs
     }
 
-    function __GetModule {
-        {}.Module
-    }
+    get-variable __classDefinitionBlock, __moduleInfo | remove-variable
 
     export-modulemember -variable * -function *
 }
 
-$internalFunctions = '__initialize'
+$internalFunctions = '__initialize', 'static'
 $internalProperties = '__module', '__classDefinitionBlock'
 
 $propertyTemplate = @'
@@ -262,23 +344,39 @@ $methodTemplate = @'
     }}
 '@
 
+$staticMethodTemplate = @'
+    static [object] {0}({1}) {{
+        $thisVariable = [PSVariable]::new('this', [{3}])
+        $methodBlock = [{3}]::StaticModule.Invoke({{(get-item function:{0}).scriptblock}})
+        $__result = $methodBlock.InvokeWithContext(@{{}}, $thisVariable, @({2}))
+        return $__result
+    }}
+'@
+
 $classTemplate = @'
-param($module, $properties)
+param($module, $staticModule, $properties, $staticProperties)
 
 Class BaseModule__{3} {{
     static $Properties = $null
     static $StaticProperties = $null
     static $Module = $null
+    static $StaticModule = $null
 }}
 
 [BaseModule__{3}]::Properties = $properties.values | where PropertyType -eq 'InstanceProperty'
-[BaseModule__{3}]::StaticProperties = $properties.values | where PropertyType -eq 'StaticProperty'
+[BaseModule__{3}]::StaticProperties = $staticProperties.values | where PropertyType -eq 'StaticProperty'
 [BaseModule__{3}]::Module = $module
+[BaseModule__{3}]::StaticModule = $staticModule
 
 class {0} : BaseModule__{3} {{
 
     static {0}() {{
+        write-host -fore cyan inconst
         [BaseModule__{3}]::Module | import-module
+        foreach ( $property in [BaseModule__{3}]::StaticProperties ) {{
+            write-host staticprop, $property.name, $property.value.value
+            [{0}]::$($property.name) = $property.value.value
+        }}
     }}
 
     {0}($classModule, [object[]] $constructorArgs) {{
@@ -298,6 +396,9 @@ class {0} : BaseModule__{3} {{
 
 
 $classTable = @{}
+
+set-alias scriptclass2 New-ScriptClass2
+set-alias new-so2 New-ScriptObject2
 
 <#
 # Wow, this works!
