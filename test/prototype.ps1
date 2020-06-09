@@ -9,14 +9,14 @@ function New-ScriptClass2 {
     $classDefinition = GetClassDefinition $classDefinitionBlock
 
     $properties = GetProperties $classDefinition.Module InstanceProperty
-    $staticProperties = GetProperties $classDefinition.StaticModule StaticProperty
+    $properties += GetProperties $classDefinition.StaticModule StaticProperty
 
     $methods = GetMethods $classDefinition.Module $Name InstanceMethod
     $methods += GetMethods $classDefinition.StaticModule $Name StaticMethod
 
-    $classBlock = GetClassBlock $Name $classDefinition.Module $properties $methods $staticProperties
+    $classBlock = GetClassBlock $Name $classDefinition.Module $properties $methods
 
-    $newClass = $classDefinition.classObject.InvokeScript($classBlock, $classDefinition.Module, $classDefinition.StaticModule, $properties, $staticProperties)
+    $newClass = $classDefinition.classObject.InvokeScript($classBlock, $classDefinition.Module, $classDefinition.StaticModule, $properties)
 
     AddClassType $Name $newClass $classDefinition
 }
@@ -45,15 +45,12 @@ function GetClassDefinition($classDefinitionBlock) {
     }
 }
 
-function GetClassBlock($className, $classModuleName, $properties, $methods, $staticProperties) {
+function GetClassBlock($className, $classModuleName, $properties, $methods) {
     $propertyDeclaration = ( GetPropertyDefinitions $properties ) -join "`n"
-    $propertyDeclaration += "`n" + ( GetPropertyDefinitions $staticProperties ) -join "`n"
 
     $methodDeclaration = ( GetMethodDefinitions $methods $className ) -join "`n"
 
-    $classInstanceId = $classModuleName -replace '-', '_'
-
-    $classFragment = $classTemplate -f $className, $propertyDeclaration, $methodDeclaration, $classInstanceId
+    $classFragment = $classTemplate -f $className, $propertyDeclaration, $methodDeclaration
 
     $global:myfrag = $classFragment
     [ScriptBlock]::Create($classFragment)
@@ -237,8 +234,6 @@ $classModuleBlock = {
 
     set-strictmode -version 2
 
-    $__moduleInfo['Statics'] = @()
-
     $__moduleInfo['Module'] = {}.module
     new-module {param([HashTable] $moduleInfo) $moduleInfo['StaticModule'] = {}.module } -ascustomobject -argumentlist $__moduleInfo | out-null
 
@@ -285,8 +280,6 @@ $classModuleBlock = {
         }
 
         . $staticModule.newboundscriptblock($methodSetTranslatorBlock) $methods $properties $staticObject
-
-        $__moduleInfo['Statics'] += [PSCustomObject] @{StaticMethods=$methods;StaticProperties=$Properties}
     }
 
     . {}.Module.NewBoundScriptBlock($__classDefinitionBlock)
@@ -334,31 +327,36 @@ $staticMethodTemplate = @'
 '@
 
 $classTemplate = @'
-param($module, $staticModule, $properties, $staticProperties)
+param($module, $staticModule, $properties)
 
-Class BaseModule__{3} {{
+class __Meta{0} {{
     static $Properties = $null
     static $StaticProperties = $null
     static $Module = $null
     static $StaticModule = $null
 }}
 
-[BaseModule__{3}]::Properties = $properties.values | where PropertyType -eq 'InstanceProperty'
-[BaseModule__{3}]::StaticProperties = $staticProperties.values | where PropertyType -eq 'StaticProperty'
-[BaseModule__{3}]::Module = $module
-[BaseModule__{3}]::StaticModule = $staticModule
+[__Meta{0}]::Properties = $properties.values | where PropertyType -eq 'InstanceProperty'
+[__Meta{0}]::StaticProperties = $properties.values | where PropertyType -eq 'StaticProperty'
+[__Meta{0}]::Module = $module
+[__Meta{0}]::StaticModule = $staticModule
 
-class {0} : BaseModule__{3} {{
+class {0} {{
+
+    static hidden $Properties = [__Meta{0}]::Properties
+    static hidden $StaticProperties = [__Meta{0}]::StaticProperties
+    static hidden $Module = [__Meta{0}]::Module
+    static hidden $StaticModule = [__Meta{0}]::StaticModule
 
     static {0}() {{
-        [BaseModule__{3}]::Module | import-module
-        foreach ( $property in [BaseModule__{3}]::StaticProperties ) {{
+        [{0}]::Module | import-module
+        foreach ( $property in [{0}]::StaticProperties ) {{
             [{0}]::$($property.name) = $property.value.value
         }}
     }}
 
     {0}($classModule, [object[]] $constructorArgs) {{
-       foreach ( $property in [BaseModule__{3}]::Properties ) {{
+       foreach ( $property in [{0}]::Properties ) {{
            $this.$($property.name) = $property.value.value
        }}
         __initialize @constructorArgs
