@@ -359,6 +359,9 @@ $staticMethodTemplate = @'
     }}
 '@
 
+class ScriptClass {
+}
+
 $classTemplate = @'
 param($module, $staticModule, $properties)
 
@@ -374,7 +377,7 @@ class __Meta{0} {{
 [__Meta{0}]::Module = $module
 [__Meta{0}]::StaticModule = $staticModule
 
-class {0} {{
+class {0} : ScriptClass {{
 
     static hidden $Properties = [__Meta{0}]::Properties
     static hidden $StaticProperties = [__Meta{0}]::StaticProperties
