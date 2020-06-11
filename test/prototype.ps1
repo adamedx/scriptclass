@@ -1,5 +1,7 @@
 set-strictmode -version 2
 
+$ScriptClassPreviewCompatibility = 'Enabled'
+
 function New-ScriptClass2 {
     param(
         $Name,
@@ -215,7 +217,11 @@ function New-ScriptObject2 {
 
     $nativeObject = $classInfo.class::new($classInfo.module, $args)
 
-    [PSObject]::new($nativeObject)
+    $newObject = [PSObject]::new($nativeObject)
+
+    AddClassObject $newObject $ClassName $classInfo
+
+    $newObject
 }
 
 # Even though there is no cmdletbinding, this works with -verbose!
@@ -226,6 +232,33 @@ function ==> {
 
     foreach ( $object in $input ) {
         $object.InvokeMethod($methodName, $args)
+    }
+}
+
+function IsCompatibilityEnabled($oldVersion) {
+    if ( get-variable ScriptClassPreviewCompatibility -erroraction ignore ) {
+        $ScriptClassPreviewCompatibility -eq 'Enabled'
+    } else {
+        $false
+    }
+}
+
+function AddClassObject([PSCustomObject] $object, $className, $classInfo) {
+    if ( IsCompatibilityEnabled ) {
+        $classObject = [PSCustomObject] @{}
+
+        $classObject | add-member -membertype scriptproperty Module -value { $classTable[$this.Classname].Module }
+        $classObject | add-member -membertype scriptproperty ClassName -value ([ScriptBlock]::Create("'$ClassName'"))
+        $classObject | add-member -membertype scriptproperty ScriptClass -value {}
+
+        $object | add-member -notepropertyname __ScriptClass -notepropertyvalue $classObject
+        $object | add-member -membertype scriptproperty ScriptClass -value { $this.__ScriptClass } -secondvalue { throw [ArgumentException]::new("'ScriptClass' is a ReadOnly property") }
+
+        $instanceProperties = $classInfo.module.exportedvariables.keys
+
+        if ( $instanceProperties -and $instanceProperties.count ) {
+            update-typedata -typename $className -DefaultDisplayPropertySet $instanceProperties -force
+        }
     }
 }
 
