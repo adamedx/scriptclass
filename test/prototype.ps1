@@ -392,10 +392,10 @@ class {0} : ScriptClass {{
     }}
 
     {0}($classModule, [object[]] $constructorArgs) {{
-       foreach ( $property in [{0}]::Properties ) {{
-           $this.$($property.name) = $property.value.value
-       }}
-        __initialize @constructorArgs
+        foreach ( $property in [{0}]::Properties ) {{
+            $this.$($property.name) = $property.value.value
+        }}
+         __initialize @constructorArgs
     }}
 
     {1}
