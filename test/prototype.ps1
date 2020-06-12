@@ -52,7 +52,7 @@ function GetClassBlock($className, $classModuleName, $properties, $methods) {
 
     $methodDeclaration = ( GetMethodDefinitions $methods $className ) -join "`n"
 
-    $classFragment = $classTemplate -f $className, $propertyDeclaration, $methodDeclaration
+    $classFragment = $classTemplate -f $className, $propertyDeclaration, $methodDeclaration, $ScriptClassModule
 
     $global:myfrag = $classFragment
     [ScriptBlock]::Create($classFragment)
@@ -231,7 +231,30 @@ function ==> {
     )
 
     foreach ( $object in $input ) {
-        $object.InvokeMethod($methodName, $args)
+        if ( $object -is [ScriptClass] ) {
+            $object.InvokeMethod($methodName, $args)
+        } else {
+            $localArgs = $args
+            $isStatic = ( $object | gm ScriptClass -erroraction ignore ) -and ! $object.ScriptClass
+            $operator = if ( $isStatic -and ( IsCompatibilityEnabled ) ) {
+                '::'
+            } else {
+                '.'
+            }
+
+            $argCount = 0
+            $argList = $args | foreach { "`$localargs[$argCount]"; $argCount++ }
+            if ( ! $argCount ) {
+                if ( $isStatic ) {
+                    $object::$methodName()
+                } else {
+                    $object.$methodName()
+                }
+            } else {
+                $params = $argList -join ','
+                "`$object$operator$methodName($params)" | iex
+            }
+        }
     }
 }
 
@@ -245,13 +268,7 @@ function IsCompatibilityEnabled($oldVersion) {
 
 function AddClassObject([PSCustomObject] $object, $className, $classInfo) {
     if ( IsCompatibilityEnabled ) {
-        $classObject = [PSCustomObject] @{}
-
-        $classObject | add-member -membertype scriptproperty Module -value { $classTable[$this.Classname].Module }
-        $classObject | add-member -membertype scriptproperty ClassName -value ([ScriptBlock]::Create("'$ClassName'"))
-        $classObject | add-member -membertype scriptproperty ScriptClass -value {}
-
-        $object | add-member -notepropertyname __ScriptClass -notepropertyvalue $classObject
+        $object | add-member -notepropertyname __ScriptClass -notepropertyvalue $classInfo.Class
         $object | add-member -membertype scriptproperty ScriptClass -value { $this.__ScriptClass } -secondvalue { throw [ArgumentException]::new("'ScriptClass' is a ReadOnly property") }
 
         $instanceProperties = $classInfo.module.exportedvariables.keys
@@ -303,7 +320,7 @@ $classModuleBlock = {
             }
 
             $propertyNames = @()
-            $propertyTranslatorBlock = {param($propertyName, $propertyValue) new-variable $propertyName -value $propertyValue }
+            $propertyTranslatorBlock = { param($propertyName, $propertyValue) new-variable $propertyName -value $propertyValue }
             foreach ( $property in $properties ) {
                 . $propertyTranslatorBlock $property.name $staticObject.$($property.name) | out-null
                 $propertyNames += $property.name
@@ -330,6 +347,7 @@ $classModuleBlock = {
     }
 
     get-variable __classDefinitionBlock, __moduleInfo | remove-variable
+    remove-item function:static
 
     export-modulemember -variable * -function *
 }
@@ -359,11 +377,15 @@ $staticMethodTemplate = @'
     }}
 '@
 
-class ScriptClass {
+$ScriptClassModule = new-module {
+    class ScriptClass {
+    }
 }
 
 $classTemplate = @'
-param($module, $staticModule, $properties)
+param($module, $staticModule, $properties, $commonModule)
+
+$commonModule | import-module
 
 class __Meta{0} {{
     static $Properties = $null
@@ -403,7 +425,12 @@ class {0} : ScriptClass {{
     {2}
 }}
 
-[{0}]
+$classObject = [PSCustomObject]::new([{0}])
+$classObject | add-member -membertype scriptproperty Module -value {{ [__Meta{0}]::Module }}
+$classObject | add-member -membertype scriptproperty ClassName -value ([ScriptBlock]::Create("'{0}'"))
+$classObject | add-member -membertype scriptproperty ScriptClass -value {{}}
+
+$classObject
 '@
 
 
@@ -449,4 +476,11 @@ at level2, C:\Users\adamedx\OneDrive\scripts\classmod3.ps1: line 286
 at level1, C:\Users\adamedx\OneDrive\scripts\classmod3.ps1: line 281
 at level1, <No file>: line 15
 at <ScriptBlock>, <No file>: line 1
+
+# scriptclass compatibility, including static method invocation on scriptclass
+PS> New-ScriptClass2 mystat2 { static { $stuff91 = 10; function hey { 'hey' } function hey2 { $this::stuff91 } function addstat($arg1, $arg2 ) { write-host -fore magenta whoa; $arg1 + $arg2 }  function add2 { write-host 'here' }} }
+PS> $fun2.ScriptClass |==> addstat 5 7
+whoa
+12
+
 #>
