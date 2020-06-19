@@ -50,7 +50,7 @@ PS> $translation |=> Magnitude
 
 ## System requirements
 
-On the Windows operating system, PowerShell 5.1 and higher are supported. On Linux, PowerShell 6.1.2 and higher are at a pre-release support level. MacOS has not been tested, but may work with PowerShell 6.1.2 and higher.
+On the Windows operating system, PowerShell 5.1 and higher are supported. On Linux and MacOS, PowerShell 6.1.2 and higher are supported.
 
 ## Features
 The library features the following enhancements for PowerShell applications and complex libraries:
