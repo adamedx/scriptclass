@@ -13,7 +13,7 @@
 # limitations under the License.
 
 [cmdletbinding()]
-param($InitialCommand = $null, [switch] $NoNewShell, [switch] $Wait, [switch] $ReuseConsole)
+param($InitialCommand = $null, [switch] $NoNewShell, [switch] $Wait, [switch] $ReuseConsole, [switch] $FromSource, $Path)
 
 . "$psscriptroot/common-build-functions.ps1"
 
@@ -21,6 +21,13 @@ $moduleName = Get-ModuleName
 $currentpsmodulepath = gi env:PSModulePath
 $devDirectory = Get-DevModuleDirectory
 $OSPathSeparator = ';'
+$moduleManifestPath = if ( $FromSource.IsPresent ) {
+    (get-item "$psscriptroot/../$moduleName.psd1").fullname
+} elseif ( $Path ) {
+    $Path
+} else {
+    get-childitem -r -path $devDirectory -filter *.psd1 | where basename -eq $moduleName | select -expandproperty fullname
+}
 
 try {
     if ( $PSVersionTable.PSEdition -eq 'Core' ) {
@@ -40,12 +47,18 @@ if (! $NoNewShell.ispresent ) {
 
     write-verbose ("WaitForProcess = {0}, ReuseWindow = {1}" -f $shouldWait, $noNewWindow)
 
+    $moduleArg = if ( $FromSource.IsPresent -or $Path ) {
+        $moduleManifestPath
+    } else {
+        $moduleName
+    }
+
     # Strange things occur when I use -NoNewWindow:$false -- going to just
     # duplicate the command with the additional -NoNewWindow param :(
     if ( ! $NoNewWindow ) {
-        start-process $PowerShellExecutable '-noexit', '-command', "si env:PSModulePath '$newpsmodulepath';import-module '$moduleName'; $InitialCommand" -Wait:$shouldWait | out-null
+        start-process $PowerShellExecutable '-noexit', '-command', "si env:PSModulePath '$newpsmodulepath';import-module '$moduleArg'; $InitialCommand" -Wait:$shouldWait | out-null
     } else {
-        start-process $PowerShellExecutable '-noexit', '-command', "si env:PSModulePath '$newpsmodulepath';import-module '$moduleName'; $InitialCommand" -Wait:$shouldWait -nonewwindow | out-null
+        start-process $PowerShellExecutable '-noexit', '-command', "si env:PSModulePath '$newpsmodulepath';import-module '$moduleArg'; $InitialCommand" -Wait:$shouldWait -nonewwindow | out-null
     }
     write-host "Successfully launched module '$moduleName' in a new PowerShell console."
     return
@@ -53,7 +66,6 @@ if (! $NoNewShell.ispresent ) {
 
 write-host -foregroundcolor yellow "Run the following command to import the module into your current session:"
 write-host -foregroundcolor cyan "`n`t. ($($myinvocation.mycommand.path) -nonewshell)`n"
-$moduleManifestPath = get-childitem -r -path $devDirectory -filter *.psd1 | where basename -eq $moduleName | select -expandproperty fullname
 
 $scriptBlock = @"
     # You can also run these commands directly in your PowerShell session
@@ -68,9 +80,21 @@ $scriptBlock = @"
 
         # Import the dev module
         write-verbose "Using updated module path to import module '$moduleName': '`$(`$env:PSModulePath)'"
-        write-verbose "Will import module directly with module manifest path '$moduleManifestPath'"
-        import-module '$moduleManifestPath' -force -verbose
+        write-verbose "Will import module by name '`$moduleName'"
+        `$moduleExpectedParent = split-path -parent '$moduleManifestPath'
 
+        # Be careful about using '-force' here -- force doesn't just reload
+        # the module you specify it reloads its dependecies as well. If those deps
+        # have state that your target module depends on, you can hit strange falures.
+        # So for now, we assume its not already loaded -- maybe we can add a check
+        # for that and fail in the future to avoid situations where one runs with
+        # pre-existing state rather than the latest version of the module
+        `$moduleInfo = import-module '$moduleName' -verbose -passthru # No '-force' -- see above!
+
+        `$moduleBase = `$moduleInfo.moduleBase
+        if ( `$moduleBase -ne `$moduleExpectedParent ) {
+            throw "Module loaded from '`$moduleBase',  expected location to be '`$moduleExpectedParent'"
+        }
     } finally {
 
         # Restore the original PSModulePath

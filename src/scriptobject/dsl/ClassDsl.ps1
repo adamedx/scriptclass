@@ -208,8 +208,8 @@ class ClassDsl {
             Alias = $null
             Script = {
                 param(
-                    [parameter(mandatory=$true)] $type,
-                    $value = $null
+                    [parameter(mandatory=$true)] $Type,
+                    $Value = $null
                 )
 
                 if (! $type -is [string] -and ! $type -is [Type]) {
@@ -230,7 +230,7 @@ class ClassDsl {
         [ScriptClassSpecification]::Parameters.Language.StaticKeyword = @{
             Alias = $null
             Script = {
-                param($staticBlock)
+                param($StaticBlock)
                 if ( $this.staticScope ) {
                     throw 'Invalid static syntax'
                 }

@@ -17,7 +17,7 @@
 RootModule = 'scriptclass.psm1'
 
 # Version number of this module.
-ModuleVersion = '0.20.1'
+ModuleVersion = '0.21.0'
 
 # Supported PSEditions
 CompatiblePSEditions = @('Desktop', 'Core')
@@ -83,7 +83,6 @@ FunctionsToExport = @(
     'Get-ScriptClass'
     'Import-Assembly'
     'Import-Script'
-    'Initialize-ScriptClassTest'
     'Invoke-Method'
     'New-ScriptClass'
     'New-ScriptObject'
@@ -148,7 +147,7 @@ PrivateData = @{
     PSData = @{
 
         # Tags applied to this module. These help with module discovery in online galleries.
-        Tags = @('class', 'object', 'PSCustomObject', 'netcore', 'PSEdition_Desktop', 'PSEdition_Core')
+        Tags = @('class', 'object', 'PSCustomObject', 'netcore', 'PSEdition_Desktop', 'PSEdition_Core', 'Windows', 'Linux', 'MacOS')
 
         # A URL to the license for this module.
         LicenseUri = 'http://www.apache.org/licenses/LICENSE-2.0'
@@ -161,19 +160,13 @@ PrivateData = @{
 
         # ReleaseNotes of this module
         ReleaseNotes = @'
-# ScriptClass 0.20.1 Release Notes
-
-This minor release changes the case of the module to lowercase to remove complexity on systems
-with case sensitive file systems (i.e. Linux) to eliminate issues with inability to find modules.
+# ScriptClass 0.20.2 Release Notes
 
 ## New features
 
 ## Breaking changes
 
 ## Fixed defects
-
-* Module name is now lowercase for deterministic behavior on Linux or similar systems with
-  case sensitive file systems.
 
 '@
 

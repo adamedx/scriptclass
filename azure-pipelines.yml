@@ -47,7 +47,7 @@ jobs:
     displayName: 'Install Pester test framework required version'
     inputs:
       targetType: inline
-      script: 'Install-Module Pester -RequiredVersion 4.6.0 -scope currentuser -force'
+      script: 'Install-Module Pester -RequiredVersion 4.8.1 -scope currentuser -force'
       pwsh: $(USE_POWERSHELL_CORE)
   - task: powershell@2
     displayName: 'Get updated Pester test framework module version'
@@ -104,11 +104,7 @@ jobs:
     condition: eq(variables.OS_PLATFORM, 'ubuntu') # Only needed on Linux to avoid hangs
     inputs:
       targetType: inline
-      # Include root of the repository as part of module path since it mirrors the layout
-      # of the actual module (with extra files such as test files and build artifacts)
-      # This is done because some tests start processes which need to load the module
-      # through the module path to simulate real world scenarios
-      script: 'si env:PSModulePath ($env:PSModulePath + ":" + (get-item .).fullname); Invoke-Pester -OutputFile "$($env:TEST_OUTPUT_DIRECTORY)/$($env:TEST_OUTPUT_FILE)" -OutputFormat NUnitXml'
+      script: './build/Init-DirectTestRun.ps1 -verbose; Invoke-Pester -OutputFile "$($env:TEST_OUTPUT_DIRECTORY)/$($env:TEST_OUTPUT_FILE)" -OutputFormat NUnitXml'
       pwsh: $(USE_POWERSHELL_CORE)
   - task: PublishTestResults@2
     inputs:
