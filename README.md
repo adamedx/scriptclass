@@ -1,7 +1,7 @@
 ScriptClass Extension for PowerShell
 ====================================
 
-[![Build Status](https://adamedx.visualstudio.com/AutoGraphPS/_apis/build/status/adamedx.scriptclass?branchName=master)](https://adamedx.visualstudio.com/AutoGraphPS/_build/latest?definitionId=2&branchName=master)
+[![Build Status](https://adamedx.visualstudio.com/AutoGraphPS/_apis/build/status/adamedx.scriptclass?branchName=main)](https://adamedx.visualstudio.com/AutoGraphPS/_build/latest?definitionId=2&branchName=main)
 
 The ScriptClass extension module provides code re-use and syntactic affordances for PowerShell similar to comparable dynamic languages such as Python and Ruby. The overall aim is to facilitate the development of PowerShell-based applications and libraries rather than just scripts or utilities that comprise the typical PowerShell use case.
 
