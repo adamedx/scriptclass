@@ -132,7 +132,7 @@ Because the schema above requires that all ScriptClass objects are `[PSCustomObj
 Code consumes and manipulates objects by accessing their methods and properties:
 
 * Because ScriptClass objects are all `[PSCustomObject]` instances, and all properties and methods of ScriptClass objects correspond directly to a particular `[PSCustomObject]` property or method, the same syntax used to access `[PSCustomObject]` methods and properties *MAY* be used on ScriptClass objects. The syntax is similar to that used in many languages including C#, C++, Java , Javscript, Python, etc.
-  * For properties, this approach uses a `.` to denote the refernce of a property. The syntax looks like `$object.property` and `$object.property = expression` to read and write a property respectively.
+  * For properties, this approach uses a `.` to denote the reference of a property. The syntax looks like `$object.property` and `$object.property = expression` to read and write a property respectively.
   * To invoke a method, the `.` is also used, but a pair of matched parentheses are required and the list of arguments to the method, if any, must be contained within the parentheses as a comma-separated list. The syntax again resembles that of other languages based on objects: `$object.method(<argument-expression1>, <argument-expression2>, ..., <argument-expressionN>)`. However, this syntax for method invocation is discouraged as the use of parentheses and commas between arguments diverges from PowerShell's pipeline syntax that omits this punctuation when invoking functions; ScriptClass provides a syntax closer to that of PowerShell command and function invocation.
 * `=>` and `::>` functions: These functions invoke methods on ScriptClass objects and they *SHOULD* be used in place of invoking methods using the standard `[PSCustomObject]` syntax for method invocation.
   * To invoke a method on a given object, the `=>` PowerShell function is provided. To invoke a method on an object's *static* (i.e. class-level) methods, the `::>` function is used.
@@ -167,19 +167,534 @@ ScriptClass provides the following commands below which abstract details about t
 
 #### Examples: Compare with PowerShell class keyword
 
-##### Simple class declaration
+##### Simple class declaration, creation, and usage
 
-##### Accessing members
+<table>
+    <tr><td>PowerShell class</td><td>ScriptClass</td><tr>
+    <tr>
+<td>
 
-##### Invoking methods
+```powershell
+class Person {
+    $Id
+    $Name
+}
+
+$person = [Person]::new()
+
+$person.Id = new-guid
+$person.Name = 'George Carver'
+```
+</td>
+<td>
+
+```powershell
+scriptclass Person {
+    $Id = $null
+    $Name = $null
+}
+
+$person = new-so Person
+
+$person.Id = new-guid
+$person.Name = 'George Carver'
+```
+</td>
+    </tr>
+</table>
+
+##### Creating instances with parameterized constructors
+
+<table>
+    <tr><td>PowerShell class</td><td>ScriptClass</td><tr>
+    <tr>
+<td>
+
+```powershell
+class Person {
+    $Id = $null
+    $Name = $null
+
+    Person([Guid] $id, [String] $name) {
+        $this.Id = $id
+        $this.Name = $name
+    }
+}
+
+$person = [Person]::new('7b03e505-6784-44ef-b314-34fc98809082', 'George Carver')
+
+```
+</td>
+<td>
+
+```powershell
+scriptclass Person {
+    $Id = $null
+    $Name = $null
+
+    function __initialize([Guid] $id, [String] $name) {
+        $this.Id = $id
+        $this.Name = $name
+    }
+}
+
+$person = new-so Person 7b03e505-6784-44ef-b314-34fc98809082 'George Carver'
+```
+</td>
+    </tr>
+</table>
+
+##### Declaring and using instance methods
+
+<table>
+    <tr><td>PowerShell class</td><td>ScriptClass</td><tr>
+    <tr>
+<td>
+
+```powershell
+class Complex {
+    $Real = 0
+    $Imaginary = 0
+
+    Complex($real, $imaginary) {
+        $this.Real = $real
+        $this.Imaginary = $imaginary
+    }
+
+    [double] GetMagnitude() {
+        return [Math]::Sqrt($this.Real * $this.Real + $this.Imaginary * $this.Imaginary)
+    }
+
+    [void] AddTo($other) {
+        $this.Real += $other.Real
+        $this.Imaginary += $other.Imaginary
+    }
+}
+
+$first = [Complex]::new(3,4)
+$first.GetMagnitude()
+
+$second = [Complex]::new(2,8)
+$first.AddTo($second)
+
+$first.GetMagnitude()
+```
+</td>
+<td>
+
+```powershell
+scriptclass Complex {
+    $Real = 0
+    $Imaginary = 0
+
+    function __initialize($real, $imaginary) {
+        $this.Real = $real
+        $this.Imaginary = $imaginary
+    }
+
+    function GetMagnitude {
+        [Math]::Sqrt($this.Real * $this.Real + $this.Imaginary * $this.Imaginary)
+    }
+
+    function AddTo($other) {
+        $this.Real += $other.Real
+        $this.Imaginary += $other.Imaginary
+    }
+}
+
+$first = new-so Complex 3 4
+$first |=> GetMagnitude
+
+$second = new-so Complex 2 8
+$first |=> AddTo $second
+
+$first |=> GetMagnitude
+```
+</td>
+    </tr>
+</table>
+
+##### Referencing methods from within methods
+<table>
+    <tr><td>PowerShell class</td><td>ScriptClass</td><tr>
+    <tr>
+<td>
+
+```powershell
+class Converter {
+    [ValidateRange(2, 36)] $radix
+
+    Converter($radix) {
+        $this.radix = $radix
+    }
+
+    [int] Convert($number) {
+        $placeValue = 1
+        $result = 0
+        for ( $index = $number.length - 1; $index -ge 0; $index-- ) {
+            $value = $this.GetValue($number[$index])
+            $result += $value * $placeValue
+            $placeValue *= $this.radix
+        }
+        return $result
+    }
+
+    [int] GetValue($digit) {
+        $normalized = [char]::ToLowerInvariant($digit)
+
+        $value = if ( $normalized -lt 'a' ) {
+            [int] $normalized - [byte][char]'0'
+        } else {
+            [int] ([byte][char] $normalized - [byte][char]'a' + 10)
+        }
+        return $value
+    }
+}
+
+$converter = [Converter]::new(16)
+$converter.Convert('A1')
+```
+</td>
+<td>
+
+```powershell
+scriptclass Converter {
+    $radix = $null
+
+    function __initialize([ValidateRange(2,36)] $radix) {
+        $this.radix = $radix
+    }
+
+    function Convert($number) {
+        $placeValue = 1
+        $result = 0
+        for ( $index = $number.length - 1; $index -ge 0; $index-- ) {
+            $value = GetValue $number[$index]
+            $result += $value *$placeValue
+            $placeValue *= $this.radix
+        }
+        $result
+    }
+
+    function GetValue($digit) {
+        $normalized = [char]::ToLowerInvariant($digit)
+
+        $value = if ( $normalized -lt 'a' ) {
+            [int] $normalized - [byte][char]'0'
+        } else {
+            [int] ([byte][char] $normalized - [byte][char]'a' + 10)
+        }
+        $value
+    }
+}
+
+$converter = new-so Converter 16
+$converter |=> Convert A1
+```
+</td>
+    </tr>
+</table>
+
+
 
 ##### Static members
+<table>
+    <tr><td>PowerShell class</td><td>ScriptClass</td><tr>
+    <tr>
+<td>
+
+```powershell
+class SchemaManager {
+    static $singleton = $null
+
+    static [SchemaManager] Get() {
+        if ( ! [SchemaManager]::singleton ) {
+            [SchemaManager]::singleton = [SchemaManager]::new()
+        }
+        return [SchemaManager]::singleton
+    }
+
+    $schemas
+
+    SchemaManager() {
+        if ( $this::singleton ) {
+            throw 'Instance already exists'
+        }
+        $this.schemas = @{}
+    }
+
+    [void] AddSchema($schemaName, $schema) {
+        $this.schemas.Add($schemaName, $schema)
+    }
+
+    [object] GetSchema($schemaName) {
+        return $this.schemas[$schemaName]
+    }
+}
+
+$manager = [SchemaManager]::Get()
+
+$manager.AddSchema('v1.0', $v1Schema)
+$manager.AddSchema('beta', $betaSchema)
+$manager.GetSchema('v1.0')
+
+
+
+```
+</td>
+<td>
+
+```powershell
+scriptclass SchemaManager {
+    static {
+        $singleton = $null
+
+        function Get {
+            if ( ! $this.singleton ) {
+                $this.singleton = new-so SchemaManager
+            }
+            $this.singleton
+        }
+    }
+
+    $schemas = $null
+
+    function __initialize {
+        if ( $this.scriptclass.singleton ) {
+            throw 'Instance already exists'
+        }
+        $this.schemas = @{}
+    }
+
+    function AddSchema($schemaName, $schema) {
+        $this.schemas.Add($schemaName, $schema)
+    }
+
+    function GetSchema($schemaName) {
+        $this.schemas[$schemaName]
+    }
+}
+
+$manager = $::.SchemaManager |=> Get
+
+$manager |=> AddSchema v1.0 $v1Schema
+$manager |=> AddSchema beta $betaSchema
+$manager |=> GetSchema v1.0
+```
+</td>
+    </tr>
+</table>
 
 ##### Strong typing
+<table>
+    <tr><td>PowerShell class</td><td>ScriptClass</td><tr>
+    <tr>
+<td>
+
+```powershell
+class Complex {
+    [double] $Real
+    [double] $Imaginary
+
+    Complex([double] $real, [double] $imaginary) {
+        $this.Real = $real
+        $this.Imaginary = $imaginary
+    }
+
+    [double] GetMagnitude() {
+        return [Math]::Sqrt($this.Real * $this.Real + $this.Imaginary * $this.Imaginary)
+    }
+
+    [void] AddTo([Complex] $other) {
+        $this.Real += $other.Real
+        $this.Imaginary += $other.Imaginary
+    }
+}
+
+[Complex]::new(3, 'A')
+
+# Cannot convert argument "imaginary", with value: "A", for ".ctor" to type
+# "System.Double": "Cannot convert value "A" to type "System.Double". Error:
+# "Input string was not in a correct format.""
+
+
+```
+</td>
+<td>
+
+```powershell
+scriptclass Complex {
+    $Real = strict-val [double]
+    $Imaginary = strict-val [double]
+
+    function __initialize([double] $real, [double] $imaginary) {
+        $this.Real = $real
+        $this.Imaginary = $imaginary
+    }
+
+    function GetMagnitude {
+        [Math]::Sqrt($this.Real * $this.Real + $this.Imaginary * $this.Imaginary)
+    }
+
+    function AddTo($other) {
+        $this.Real += $other.Real
+        $this.Imaginary += $other.Imaginary
+    }
+}
+
+new-so Complex 3 A
+
+# new-so : Exception calling "InvokeScript" with "2" argument(s): "Exception
+# calling "InvokeWithContext" with "3" argument(s): "Cannot convert value "A"
+# to type "System.Double". Error: "Input string was not in a correct format."""
+```
+</td>
+    </tr>
+</table>
 
 ##### Constants
+<table>
+    <tr><td>PowerShell class</td><td>ScriptClass</td><tr>
+    <tr>
+<td>
+
+```powershell
+class Logger {
+    static $LOG_TEMPLATE = "{0} PID={1} {2}"
+
+    $entries = @()
+
+    [void] Log($message) {
+        $this.entries += [PSCustomObject] ($this::LOG_TEMPLATE -f [DateTimeOffset]::Now, $global:PID, $message)
+    }
+
+    [PSCustomObject[]] GetEntries() {
+        return $this.entries
+    }
+}
+
+$logger = [Logger]::new()
+
+$logger.Log('First entry')
+$logger.Log('Second entry')
+
+$logger.GetEntries()
+
+
+
+
+
+```
+</td>
+<td>
+
+```powershell
+scriptclass Logger {
+    static {
+        const LOG_TEMPLATE "{0} PID={1} {2}"
+    }
+
+    $entries = $null
+
+    function __initialize() { $this.entries = @() }
+
+    function Log($message) {
+        $this.entries += [PSCustomObject] ($this.scriptclass.LOG_TEMPLATE -f [DateTimeOffset]::Now, $PID, $message)
+    }
+
+    function GetEntries() {
+        $this.entries
+    }
+}
+
+$logger = new-so Logger
+
+$logger |=> Log 'First entry'
+$logger |=> Log 'Second entry'
+
+$logger |=> GetEntries
+
+```
+</td>
+    </tr>
+</table>
 
 ##### Accessing script variables
+<table>
+    <tr><td>PowerShell class</td><td>ScriptClass</td><tr>
+    <tr>
+<td>
+
+```powershell
+class ProcessFormatter {
+    static $PreferenceVariable = $null
+
+    $purpose = $null
+
+    ProcessFormatter($processPurpose) {
+       $this.purpose = $processPurpose
+    }
+    [string] Format() {
+        $format = if ( $this::PreferenceVariable -and $this::PreferenceVariable.Name -eq 'ProcessFormatterPreference') {
+            $this::PreferenceVariable.value
+        } else {
+            '{1}: PID={0:x}'
+        }
+        return $format -f $this.purpose, $global:PID
+    }
+}
+
+$formatter = [ProcessFormatter]::new()
+$formatter.Format()
+
+$ProcessFormatterPreference = '({1}: 0x{0:x}'
+[ProcessFormatter]::PreferenceVariable = Get-Variable ProcessFormatterPreference
+
+$formatter.Format()
+
+
+
+
+
+```
+</td>
+<td>
+
+```powershell
+$ProcessFormatterPreference = '[{1}] 0x{0:x}'
+
+scriptclass ProcessFormatter -ArgumentList (Get-Variable ProcessFormatterPreference) {
+    param($preferenceVariableParameter)
+
+    static {
+        $PreferenceVariable = $preferenceVariableParameter
+    }
+
+    $purpose = $null
+
+    function __initialize($processPurpose) {
+       $this.purpose = $processPurpose
+    }
+
+    function Format {
+        $format = if ( $this.scriptclass.PreferenceVariable -and $this.scriptclass.PreferenceVariable.Name -eq 'ProcessFormatterPreference') {
+            $this.scriptclass.PreferenceVariable.value
+        } else {
+            '{1}: PID={0:x}'
+        }
+        $format -f $PID, $this.purpose
+    }
+}
+
+$formatter = new-so ProcessFormatter Testing2
+$formatter |=> Format
+
+$ProcessFormatterPreference = '{1} - 0x{0:x}'
+$formatter |=> Format
+```
+</td>
+    </tr>
+</table>
 
 ## Implementation
 
@@ -323,7 +838,7 @@ This binding is required because the properties, methods, and other runtime stat
 The functions defined in this file are direct components of the *ScriptClass* UX:
 
 * The `=>` function: This is the function that invokes a method of an object through the syntax `object |=> method`.
-* The `::>` function: This is the function that invokes static methods when supplied with an object or the name of a class, e.g. `object |::> staticmethod`  `'classname' ::> staticmethod`.
+* The `::>` function: This is the function that invokes static methods when supplied with an object or the name of a class, e.g. `object |::> staticmethod`  `'classname' |::> staticmethod`.
 
 #### Type directory
 
@@ -386,15 +901,38 @@ The object-specific mock code for the method is part of this object's state, as 
 
 ### Common data flows
 
+TODO. This section will describe the relationships between the classes described above.
+
 ## Future improvements
 
-* Private methods
-* Single inheritance
-* Interface inheritance
+* Private methods -- *class* supports this via the `hidden` keyword
+* Single inheritance -- supported by *class*
+* Interface inheritance -- also supported by *class*
 * Namespaces
-* Private module visiblity
+* Private module visiblity -- supported by *class* via `using module`
 * Using `.` instead of `=>` and `::>` for method invocation
 
 ### Improving *class* itself
 
+What can be learned from *scriptclass* and its use compared to *class*`? Based on using *scriptclass* in production projects, my assessment is that the value lies in the following:
+
+> *ScriptClass* classes allow you to retain familiar PowerShell syntax when defining and consuming classes.
+
+This is captured by the following features of *scriptclass* that stand in contrast to *class*:
+
+* Ability to define methods using familiar *function* syntax rather than the more rigid C# style syntax: *scriptclass* lets you omit the return statement, declared return type, and parentheses for parameter-less methods
+* Methods can use the pipeline to emit results
+* Method invocation syntax is PowerShell command-style, including both positional and named parametres. You don't need to use parentheses and commas -- standard PowerShell syntax continues to apply at method invocation
+* Intra-class method references do not require the use of `$this` -- the method may simply be treated like any other PowerShell function
+
 ## History
+
+Here is the timeline of key milestones in the development of this module:
+
+* September 2017: First *stdposh* module proof of concept to define types of [PSCustomObject] instances using a functional flavor of the syntax for *class*. This was achieved after experimentation with various features of the PowerShell language that might provide this capability including nested functions and decoration via attributes
+* December 2017: Use of nested modules rather than `ScriptsToProcess` for some module isolation
+* January 2018: Moved instance methods from per-object to per-class for better efficiency
+* February 2018: Renamed *stdposh* to *ScriptClass*!
+* December 2018: Added mocking support built on *Pester*
+* February 2019: PowerShell core and Linux support
+* September 2019: Refactor 2.0 -- significant rewrite from ad-hoc for complete isolation of *ScriptClass* module internals that were previously leaked to module consumers; more intentional and modular factoring of components and source code
