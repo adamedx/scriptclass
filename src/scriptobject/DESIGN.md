@@ -6,20 +6,20 @@ extensions to PowerShell.
 
 ## Motivation
 
-The overall goal for the ScriptClass module as a whole can be stated as follows:
+The overall goal for the ScriptClass module can be stated as follows:
 
 > The ScriptClass module is intended to facilitate the development of PowerShell-based applications rather than just scripts or utilities that comprise the typical PowerShell use case.
 
-Why does PowerShell need ScriptClass to enable serious application development? The [Overview document](https://github.com/adamedx/scriptclass/blob/master/docs/Overview.md) document goes into this in detail: PowerShell, even as of versions 5 and 6 provides at best awkward support for object-based methodologies for code factoring and reuse. Most large-scale application development requires some consistent organizational principle to allow developers to reason over and maintain larger codebases; object-oriented approaches such as those in C++, Java, C#, Python, Ruby, Javascript, and many others have done this successfully enough for developers to work on large codebases and more importantly to deliver complex but reliable systems with the work of hundreds or even thousans of developers.
+Why does PowerShell need ScriptClass to enable serious application development? The [Overview document](https://github.com/adamedx/scriptclass/blob/master/docs/Overview.md) document goes into this in detail: PowerShell, even as of versions 5 and 6 provides at best awkward support for object-based methodologies for code factoring and reuse. Most large-scale application development requires some consistent organizational principle to allow developers to reason over and maintain larger codebases; object-oriented approaches such as those in C++, Java, C#, Python, Ruby, JavaScript, and many others have done this successfully enough for developers to work on large codebases and more importantly to deliver complex but reliable systems with the work of hundreds or even thousands of developers.
 
-ScriptClass attempts to fill this gap in PowerShell by extending owerShell's typical imperative / functional hybrid syntax to support types (i.e. classes) and objects, and to so without the "bolted on" feel of PowerShell's class keyword.
+ScriptClass attempts to fill this gap in PowerShell by extending PowerShell's typical imperative / functional hybrid syntax to support types (i.e. classes) and objects, and to so without the "bolted on" feel of PowerShell's `class` keyword.
 
 ## Design principles
 
 In bringing object orientation to PowerShell, the following principles are a guide:
 
 * Favor the use of existing PowerShell concepts and features over implementing and introducing new concepts and features
-* Derive inspiration for user experience from object-based dynamic languages like Python, Ruby, and Javascript
+* Derive inspiration for user experience from object-based dynamic languages like Python, Ruby, and JavaScript
 * Object-orientation should feel idiomatic and intuitive with respect to PowerShell
 * Prefer building on existing PowerShell concepts and syntax where possible rather than replacing them
 * The initial implementation should be PowerShell-based -- a native implementation in the PowerShell language itself should wait until this approach has wider community feedback and validation
@@ -28,10 +28,10 @@ In bringing object orientation to PowerShell, the following principles are a gui
 
 ScriptClass must provide the following capabilities to developers through PowerShell:
 
-* The functinoality of the library must be exposed as a module to consumers
+* The functionality of the library must be exposed as a module to consumers
 * Ability to define a set of objects by the methods they expose and the structure of their internal state
 * The library must represent and manage the runtime state of the objects
-* The library must provde a way to invoke methods on the objects
+* The library must provide a way to invoke methods on the objects
 * The library's internal state must not be accessible outside the boundary of its module -- users must interact with objects
   and object definitions strictly through public interfaces explicitly exposed by the module
 * Access to objects and sets of objects must be possible across module boundaries within a PowerShell session.
@@ -39,7 +39,7 @@ ScriptClass must provide the following capabilities to developers through PowerS
 
 ## Architecture
 
-ScriptClass employs the following decisions in accordance with the principles:
+ScriptClass employs the following features in accordance with the principles:
 
 * Developers define sets of objects by supplying a PowerShell *[ScriptBlock]* that itself defines variables and functions. These variables and functions will define the state and method interface of the function respectively. A domain-specific language is used within the *[ScriptBlock]* to describe the set.
 * The runtime representation of objects is the PowerShell *[PSCustomObject]* type
@@ -48,33 +48,33 @@ ScriptClass employs the following decisions in accordance with the principles:
 
 ## User interface
 
-ScriptClass surfaces object definition and lifecycle management through a functional-programming style interface that builds on PowerShell's existing notion of "object."
+ScriptClass surfaces object definition and lifecycle management through a functional programming style interface that builds on PowerShell's existing notion of "object."
 
 ### Concepts
 
 The ScriptClass framework revolves around the following concepts:
 
-* ScriptClass: A ScriptClass is a user-supplied definition of a set of objects with common methods and properties. Conceptually ScriptClass conforms to the commonly understood notion of a programming language data type, specifically it is the equivalent of a type defined by the *class* keyword found in multiple languages including *PowerShell*, *C++*, *Java*, *C#*, *JavasScript*, *Ruby*, *Python*, and others. It differs from PowerShell's implementation of *class* primarly in its runtime state implementation and method invocation interface.
+* ScriptClass: A ScriptClass type is a user-supplied definition of a set of objects with common methods and properties. Conceptually ScriptClass conforms to the commonly understood notion of a programming language data type, specifically it is the equivalent of a type defined by the *class* keyword found in multiple languages including *PowerShell*, *C++*, *Java*, *C#*, *JavaScript*, *Ruby*, *Python*, and others. It differs from PowerShell's implementation of *class* primarily in its runtime state implementation and method invocation interface.
 * ScriptObject: An instance of an object defined by a given ScriptClass. ScriptObjects have properties and methods that can be used to represent arbitrary data types and encapsulate them.
-* Methods
-* Properties
-* Static vs. object scope:
+* Methods: ScriptClass methods conform to the standard concept of "method" in the object-oriented paradigm. A method is a parameterized computation specification that has access to the state of ScriptObject.
+* Properties: Properties are the state of a ScriptObject, i.e. the data that represents an object. A property is itself an instance of a data type, and in the case of ScriptClass it can be an object of any data type supported by PowerShell (i.e. any .NET type), including those objects defined as ScriptClass types.
+* Static vs. object (or instance) scope: Both properties and methods can be "bound" to either the entire set of objects of a type, or to a specific instance of a type. The former scope corresponds to the commonly understood concept of *static* in many OO language, and the latter maps to object or instance scope. Static methods are useful for encoding state or computation that is shared across all instances of a type.
 
 ### Language interface
 
 While this design does not technically alter the PowerShell core language in any way, it does introduce new commands and associated data structure conventions that provide the "feel" of language changes such as new keywords, etc. The key interface elements are as follows:
 
-* **Class (type) management:** Class management involves the definition of sets of objects in terms of their state and allowed operations, typically termed properties and members respectively. Introspection on these definitions is also included in this role. Class management is typically considered to be the responsibility of the type system in object-oriented languages like those being emulated with ScriptClass.
+* **Class (type) management:** Class management involves the definition of sets of objects in terms of their state and allowed operations, i.e. their properties and methods. Introspection on these definitions is also included in this role. Class management is typically considered to be the responsibility of the type system in object-oriented languages like those being emulated with ScriptClass.
 * **Object management:** Objects are runtime state with a defined set of operations; the object management interface provides the ability to create (and for many languages to destroy) objects, to serialize and deserialize them, to compare them, etc.
-* **Method and property access:** Objects are not useful without the ablity to inspect them, modify them, and ask them to perform actions against other objects or state. Method and property access enable objects to represent concepts that change over time or according to events such as external input from users, objects, or other systems. Methods allow objects to provide an interface contract for concepts that they abstract, whether the concept is solely represented by the object's state or is actually state external to the object but managed by it.
+* **Method and property access:** Objects are not useful without the ability to inspect them, modify them, and ask them to perform actions against other objects or state. Method and property access enable objects to represent concepts that change over time or according to events such as external input from users, objects, or other systems. Methods allow objects to provide an interface contract for concepts that they abstract, whether the concept is solely represented by the object's state or is actually state external to the object but managed by it.
 * **Code management:** The type and object capabilities exposed by ScriptClass facilitate reuse. Code management enables that reusability to cross organizational artifact and component boundaries so that types may be defined once and reused across those boundaries. Specifically in the case of PowerShell, this means providing the ability to reuse types across script (`.ps1`) files in a PowerShell module and even across modules.
-* **Unit testing support**: ScriptClass provides capabilties to enable unit testing of classes and objects managed by ScriptClass, namely the ability to mock classes and methods.
+* **Unit testing support**: ScriptClass provides capabilities to enable unit testing of classes and objects managed by ScriptClass, namely the ability to mock classes and methods.
 
 #### Class management features
 
 Class management is provided by the following features:
 
-* `New-ScriptClass [-ClassName] <string> [[-ClassBlock] <scriptblock>] [[-ArgumentList] <Object>] [<CommonParameters>]` command: The `New-ScriptClass` command allows developers to define classes (i.e. types) of objects. This class definition models the state (i.e. properties or fields) of an object. This command is the analog of the `class` keyword in PowerShell. The command takes the name of the class as a required parameter, as well as a *[ScriptBlock]* type. The result is a class definition syntax for `ScriptClass` that looks very much like the syntax for `class` in PowerShell. Class definitions defined by `New-SCriptClass` exist in a runtme state available for the entire PowerShell session; classes defined by ScriptClass are visible to the entire session, i.e. they are global in scope.
+* `New-ScriptClass [-ClassName] <string> [[-ClassBlock] <scriptblock>] [[-ArgumentList] <Object>] [<CommonParameters>]` command: The `New-ScriptClass` command allows developers to define classes (i.e. types) of objects. This class definition models the state (i.e. properties or fields) of an object. This command is the analog of the `class` keyword in PowerShell. The command takes the name of the class as a required parameter, as well as a *[ScriptBlock]* type. The result is a class definition syntax for `ScriptClass` that looks very much like the syntax for `class` in PowerShell. Class definitions defined by `New-SriptClass` exist in a runtime state available for the entire PowerShell session; classes defined by ScriptClass are visible to the entire session, i.e. they are global in scope.
   * `scriptclass` alias: Use of the `scriptclass` alias rather than `New-ScriptClass` is preferred as it makes class definitions align stylistically to the `class` keyword in many object-based languages including PowerShell's own `class` keyword.
 * `#::` automatic variable: The `$::` automatic variable that has properties named for each defined class. The latter can be used to accessing methods or properties of defined at the class rather than instance scope (i.e. 'static' methods or properties). This variable is visible to the scope in which the ScriptClass module was imported.
 * `New-ScriptClass [-ClassName] <string> [[-ClassBlock] <scriptblock>] [[-ArgumentList] <Object>] [<CommonParameters>]`: The `Get-ScriptClass` command provides information about classes that have been defined by `New-ScriptClass`.
@@ -87,7 +87,7 @@ Note that just as PowerShell allows for the redefinition of functions, `New-Scri
 
 The latter `ClassBlock` parameter defines the structure of objects in the class, i.e. what it means to be a member of the class beyond just possessing some state with the name of the type. ScriptClass evaluates the block to define the class in the following way:
 
-* Any functions defined within the block usig PowerShell's `function` keyword are treated as methods of the class.
+* Any functions defined within the block using PowerShell's `function` keyword are treated as methods of the class.
 * Any variables defined within the block are treated as properties of the class with the same type and value
   as if they were defined in a function or script.
 * The keywords `strict-val`, `static`, and `const` may appear in the block outside of any of the block's functions
@@ -112,7 +112,7 @@ The core object management features of ScriptClass are provided by the following
 
 Objects returned by `New-ScriptClass` are ScriptClass objects. They **MUST** conform to the schema that follows:
 
-Let *O* be a ScriptClass object returned by `New-ScriptClass` of class *C* that has a set of Methods *M* and set of properties *P* where *M* and *P* correspond to the methods and properties of *C* as described in the earlier section on class defiition syntax. For all *O*, the following are true:
+Let *O* be a ScriptClass object returned by `New-ScriptClass` of class *C* that has a set of Methods *M* and set of properties *P* where *M* and *P* correspond to the methods and properties of *C* as described in the earlier section on class definition syntax. For all *O*, the following are true:
 
   * *O* is of type `[PSCustomObject]`, a [documented core type](https://docs.microsoft.com/en-us/dotnet/api/system.management.automation.pscustomobject?view=pscore-6.2.0) of the PowerShell standard.
   * For each non-static method in *M* there is a `ScriptMethod` member of *O*
@@ -121,7 +121,7 @@ Let *O* be a ScriptClass object returned by `New-ScriptClass` of class *C* that 
     * The property *S* is itself a ScriptClass object with the following configuration:
       * Its `ScriptClass` property is `$null`
       * There is a `ClassName` property that is a `[string]` set to the name of the class to which *O* belongs
-      * It has a `Module` property of type `[PSModuleInfo]` that is the PowerShell module managed by `New-ScirptClass` in which the methods of *O* are bound
+      * It has a `Module` property of type `[PSModuleInfo]` that is the PowerShell module managed by `New-ScriptClass` in which the methods of *O* are bound
       * For each static method in *M* there is a `ScriptMethod` member of *S*
       * For each static property in *P* there is either a `NoteProperty` or `ScriptProperty` member of *S*
 
@@ -131,7 +131,7 @@ Because the schema above requires that all ScriptClass objects are `[PSCustomObj
 
 Code consumes and manipulates objects by accessing their methods and properties:
 
-* Because ScriptClass objects are all `[PSCustomObject]` instances, and all properties and methods of ScriptClass objects correspond directly to a particular `[PSCustomObject]` property or method, the same syntax used to access `[PSCustomObject]` methods and properties *MAY* be used on ScriptClass objects. The syntax is similar to that used in many languages including C#, C++, Java , Javscript, Python, etc.
+* Because ScriptClass objects are all `[PSCustomObject]` instances, and all properties and methods of ScriptClass objects correspond directly to a particular `[PSCustomObject]` property or method, the same syntax used to access `[PSCustomObject]` methods and properties *MAY* be used on ScriptClass objects. The syntax is similar to that used in many languages including C#, C++, Java , JavaScript, Python, etc.
   * For properties, this approach uses a `.` to denote the reference of a property. The syntax looks like `$object.property` and `$object.property = expression` to read and write a property respectively.
   * To invoke a method, the `.` is also used, but a pair of matched parentheses are required and the list of arguments to the method, if any, must be contained within the parentheses as a comma-separated list. The syntax again resembles that of other languages based on objects: `$object.method(<argument-expression1>, <argument-expression2>, ..., <argument-expressionN>)`. However, this syntax for method invocation is discouraged as the use of parentheses and commas between arguments diverges from PowerShell's pipeline syntax that omits this punctuation when invoking functions; ScriptClass provides a syntax closer to that of PowerShell command and function invocation.
 * `=>` and `::>` functions: These functions invoke methods on ScriptClass objects and they *SHOULD* be used in place of invoking methods using the standard `[PSCustomObject]` syntax for method invocation.
@@ -145,27 +145,29 @@ Code consumes and manipulates objects by accessing their methods and properties:
 
 In order to re-use objects packaged by different script files or .NET assemblies, some manner of referencing the packaging is required. ScriptClass provides the following commands to enable this re-use:
 
-* `Import-Assembly [-AssemblyName] <string> [[-AssemblyRelativePath] <string>] [[-AssemblyRoot] <string>]`: This command is not strictly necessary for ScriptClass to fulfill its mission, but it helps generalize the access of types from .NET assemblies by allowing a convenient way to load a .NET assembly into the calling PoewrShell session. To load a given assembly, use the `$AssemblyName` or `$AssemblyRelativePath` parameter to specify either a name or a known path to an assembly.
-* `Import-Script [-Path] <Object> [[-Parent] <Object>] [-AnyExtension]  [<CommonParameters>]`: The `Import-Script` command returns a ScriptBlock that can dot-source the script file referred to in the `$Path` parameter into the current scope. If the file has already been imported, an empty ScriptBlock is returned. This facilitates the commonly accepted model of packaging exactly one definition of the language's *class* consept into a single file. Code in files that must consume a particular class can simply refer to it with this command using this kind of syntax: `. (Import-Script display/Table)`.
+* `Import-Assembly [-AssemblyName] <string> [[-AssemblyRelativePath] <string>] [[-AssemblyRoot] <string>]`: This command is not strictly necessary for ScriptClass to fulfill its mission, but it helps generalize the access of types from .NET assemblies by allowing a convenient way to load a .NET assembly into the calling PowerShell session. To load a given assembly, use the `$AssemblyName` or `$AssemblyRelativePath` parameter to specify either a name or a known path to an assembly.
+* `Import-Script [-Path] <Object> [[-Parent] <Object>] [-AnyExtension]  [<CommonParameters>]`: The `Import-Script` command returns a ScriptBlock that can dot-source the script file referred to in the `$Path` parameter into the current scope. If the file has already been imported, an empty ScriptBlock is returned. This facilitates the commonly accepted model of packaging exactly one definition of the language's *class* concept into a single file. Code in files that must consume a particular class can simply refer to it with this command using this kind of syntax: `. (Import-Script display/Table)`.
   * The `Path` parameter is not truly a path as by default the `.ps1` extension of the file must be omitted.
-* Module visibility: Classes defined by `New-ScriptClass` are visible to all code within and below the scope at which the ScriptClass module was imported. ScriptClass classes share the visiblity of the ScriptClass module. This means ScriptClass classes can be shared across modules.
+* Module visibility: Classes defined by `New-ScriptClass` are visible to all code within and below the scope at which the ScriptClass module was imported. ScriptClass classes share the visibility of the ScriptClass module. This means ScriptClass classes can be shared across modules.
   * A class *X* is *visible* to module *M* if the `$::` operator when accessed by *M* has a member with the name of class *X* and the `New-ScriptObject` command when invoked by *M* successfully returns a ScriptClass object of class *X*
   * If three modules *A*, *B*, and *C* are imported into a session, and class *X* is defined in module *A*, it is *visible* in *B* and *C*.
-  * The previous statement istrue even if *A* is a nested module of *B* or *C*
+  * The previous statement is true even if *A* is a nested module of *B* or *C*
   * It is also true if *A* is a nested module of *B* and *B* is a nested module of *C*
 
 #### Unit testing features
 
-Unit testing capabilities for ScriptClass are based on [Pester](https://github.com/pester/Pester), PowerShell's standard unit testing framework. While Pester provides robust support for mocking PowerShell functions, it does not have support for mocking object methods on .NET or `[PSCustomObject]` types specifically. ScriptClass objects, which are `[PSCustomObjects]` defined as types within ScriptClass's own extended type system, are therefore not mockable strictly using functionality avaialable from Pester.
+Unit testing capabilities for ScriptClass are based on [Pester](https://github.com/pester/Pester), PowerShell's standard unit testing framework. While Pester provides robust support for mocking PowerShell functions, it does not have support for mocking object methods on .NET or `[PSCustomObject]` types specifically. ScriptClass objects, which are `[PSCustomObjects]` defined as types within ScriptClass's own extended type system, are therefore not mockable strictly using functionality available from Pester.
 
 ScriptClass provides the following commands below which abstract details about the implementation of ScriptClass so that a reliable public interface for mocking is available to users. The commands below allow for mocking of methods defined by `New-ScriptClass` so that they may be used within Pester `It` block test cases.
 
-* `Add-ScriptClassMock [-MockTarget] <Object> [-MethodName] <string> [[-MockWith] <scriptblock>] [[-ParameterFilter] <scriptblock>] [-MockContext <Object>] [-Static] [-Verifiable]  [<CommonParameters>]`: This command allows the caller to replace a specified method of a class or object with a caller-defined method implementation. If the `MockTarget` parameter is a string, this target of the mock is interpreted to be the class with the name specified by `MockTarget` and all objects of that class will have the method mocked. If `MockTarget` is a ScriptClass object, then only the method on that specific object will be mocked. The command supports both static and non-static methods via the `Static` parameter. The `ParameterFilter` and `Verifiable` parameters have the same semantics as in pester's [`Mock` function](https://github.com/pester/Pester/wiki/Mock).
+* `Add-ScriptClassMock [-MockTarget] <Object> [-MethodName] <string> [[-MockWith] <scriptblock>] [[-ParameterFilter] <scriptblock>] [-MockContext <Object>] [-Static] [-Verifiable]  [<CommonParameters>]`: This command allows the caller to replace a specified method of a class or object with a caller-defined method implementation. If the `MockTarget` parameter is a string, this target of the mock is interpreted to be the class with the name specified by `MockTarget` and all objects of that class will have the method mocked. If `MockTarget` is a ScriptClass object, then only the method on that specific object will be mocked. The command supports both static and non-static methods via the `Static` parameter. The `ParameterFilter` and `Verifiable` parameters have the same semantics as in Pester's [`Mock` function](https://github.com/pester/Pester/wiki/Mock).
 * `Add-MockInScriptClassScope [-ClassName] <string> [-CommandName] <string> [-MockWith] <scriptblock> [-MockContext <Object>] [-ParameterFilter <scriptblock>] [-Verifiable]  [<CommonParameters>]`: This command allows PowerShell functions to be mocked when invoked from ScriptClass methods. Pester's `Mock` function is not able to affect ScriptClass methods. This command enables the functionality of `Mock` within the context of the specific class specified by the `ClassName` parameter.
 * `New-ScriptObjectMock [-ClassName] <Object> [-MethodMocks <hashtable>] [-PropertyValues <hashtable>] [-ModuleName <string>] [<CommonParameters>]`: This command creates a mock object of the given class; this object has the same set of properties and methods as an object of that class created by `New-ScriptObject`. The key difference is that the class's constructor is not invoked for this object, and the command allows the object's property values be specified arbitrarily rather than limited by the original implementation's dictates. An array of mocked methods may also be supplied. This is useful for creating synthetic objects with custom implementations rather than creating a real version of the object and individually overriding each method with mock functions.
 * `Remove-ScriptClassMock [-MockTarget] <Object> [[-MethodName] <string>] [[-Static]]  [<CommonParameters>]`: The `Remove-ScriptClassMock` command undoes the effect of `Add-ScriptClassMock`. It is generally not required for normal testing, but could be useful for building more advanced ScriptClass unit-testing capabilities.
 
-#### Examples: Compare with PowerShell class keyword
+#### Examples: Compare ScriptClass with the PowerShell class keyword
+
+Below is a set of examples that gives a side-by-side view of comparable object-oriented scenarios. In most cases, the differences between the two are minimal, and in general the mapping between them in either direction is deterministic.
 
 ##### Simple class declaration, creation, and usage
 
@@ -711,20 +713,18 @@ ScriptClass has few dependencies and thus may be used for just about any applica
 
 Functionality in ScriptClass is expressed using two main styles of organization:
 
-* PowerShell classes: Most of the code in ScriptClass is componentized as PowerShell classes expressed through the `class` keyword. This provides a well-defined, if somewhat awkward, mechanism for organization and reuse. Each class resides in exactly one source file, and the source file hsould have the same name as the class.
-* PowerShell advanced function commands: Advanced functions (i.e. functions that are decorated with attributes such as [cmdletbinding()]) are used in ScriptClass to provide user interface, i.e. for commands. Commands cannot be easily expressed as classes, but can be concisely and intuitiely impleented as advanced functions. In most cases, these advanced functions are simply thin wrappers around the core functionality provided in the class-organized code. Each advanced function / command exists in a file named after the command.
+* PowerShell classes: Most of the code in ScriptClass is componentized as PowerShell classes expressed through the `class` keyword. This provides a well-defined, if somewhat awkward, mechanism for organization and reuse. Each class resides in exactly one source file, and the source file should have the same name as the class.
+* PowerShell advanced function commands: Advanced functions (i.e. functions that are decorated with attributes such as [cmdletbinding()]) are used in ScriptClass to provide user interface, i.e. for commands. Commands cannot be easily expressed as classes, but can be concisely and intuitively implemented as advanced functions. In most cases, these advanced functions are simply thin wrappers around the core functionality provided in the class-organized code. Each advanced function / command exists in a file named after the command.
 
 In general, no code exists outside of the contexts above, e.g. PowerShell functions that are not commands exposed by the ScriptClass module should be exist; such functions should be (possibly static) methods in some PowerShell class instead. An exception would be declarations of variables that are exported from the module, or functions required as part of an interface to PowerShell functionality being used by ScriptClass.
 
-The irony of ScriptClass, the putative replacement for the inadeqaute PowerShell `class` implementation, being built upon `class` is not lost. However, the concerns about `class` were not that it could not be used to build applications, just that it could not be used to do so intuitively. The reality is that with enough persistence and focus, `class` is quite suitable for building a complex application, just as long as one is willing to do this using a PowerShell-like language rather than actual idiomatic PowerShell.
-
-The upside of using `class` in this context is that this is the last time it needs to be used as the basis of an application thanks to the arrival of ScriptClass.
+The irony of ScriptClass, the putative replacement for the inadequate PowerShell `class` implementation, being built upon `class` is not lost. However, the concerns about `class` were not that it could not be used to build applications, just that it could not be used to do so intuitively. The reality is that with enough persistence and focus, `class` is quite suitable for building a complex application, just as long as one is willing to do this using a PowerShell-like language rather than actual idiomatic PowerShell.
 
 ### Components
 
-This section describes the components that implement the ScriptClass class definition, object management, and mock functionality. The code sharing capabilities implemented by `Import-Script` and `Import-Assembly` are sufficiently straightforward and somewhat less central to the primary utility of ScriptClass that tehey are not covered here.
+This section describes the components that implement the ScriptClass class definition, object management, and mock functionality. The code sharing capabilities implemented by `Import-Script` and `Import-Assembly` are sufficiently straightforward and somewhat less central to the primary utility of ScriptClass that they are not covered here.
 
-The diagram below shows the directory structure of the `scriptobject` directory of the ScriptClass source; the files within this directory, shown here without their `.ps1` extensiosn, contains PowerShell classes with the same name as the file:
+The diagram below shows the directory structure of the `scriptobject` directory of the ScriptClass source; the files within this directory, shown here without their `.ps1` extensions, contains PowerShell classes with the same name as the file:
 
     scriptobject
     │   ClassManager
@@ -775,7 +775,7 @@ for `ClassDefinition`.
 * Properties, both static and non-static, of a class of objects, including their types (from initialization)
 * Methods, both static and non-static, of a class of objects (from initialization)
 
-The additional classes used for more detailed modeling classes followw:
+The additional classes used for more detailed modeling classes follow:
 
 * `Property`: This class models static or non-static properties of *ScriptObject*.
 * `Method`: The `Method` class models static or non-static methods of a *ScriptObject*.
@@ -787,7 +787,7 @@ The additional classes used for more detailed modeling classes followw:
 The `NativeObjectBuilder` class models an object that constructs objects with a particular implementation. For
 `NativeObjectBuilder`, the native implementation is simply PowerShell's `PSCustomObject` type. By calling sequences of
 methods to add methods and properties, a `PSCustomObject` object can be built to whatever configuration is required.
-Objects of htis class contain the following methods:
+Objects of this class contain the following methods:
 
 * Constructor: Takes in an optional type name, an optional prototype to start with, and a mode for create or modify actions
 * AddMethod -- adds a method to the target object being built
@@ -800,9 +800,9 @@ Objects of htis class contain the following methods:
 
 Additional behavior notes:
 
-* An instance of this class can be initialized to construct a new object, with or without an associated type that will be included as one of the type names for the resultinng `PSCustomObject`.
-* The prototype argument of the constructorallows construction to start the target result object with a set of properties from an existing object rather than empty sets.
-* The constructor's mode argument allows either modificatino of a pre-existing object, or creation of a completely new object.
+* An instance of this class can be initialized to construct a new object, with or without an associated type that will be included as one of the type names for the resulting `PSCustomObject`.
+* The prototype argument of the constructor allows construction to start the target result object with a set of properties from an existing object rather than empty sets.
+* The constructor's mode argument allows either modification of a pre-existing object, or creation of a completely new object.
 
 #### Common/ScriptClassSpecification
 
@@ -819,7 +819,7 @@ This directory contains classes that interpret and execute the *ScriptClass* dom
 
 #### Dsl/ClassDsl
 
-The `ClassDsl` class interprets a PowerShell `ScriptBlock` suppplied as the definition of a class. Certain code fragments of the `ScriptBlock` define methods on the class, others define properties, and certain keywords augment those properties and methods. `ClassDsl` has the following public interface:
+The `ClassDsl` class interprets a PowerShell `ScriptBlock` supplied as the definition of a class. Certain code fragments of the `ScriptBlock` define methods on the class, others define properties, and certain keywords augment those properties and methods. `ClassDsl` has the following public interface:
 
 ##### ClassDefinitionContext
 An associated class `ClassDefinitionContext` provides objects with a structure used when interacting with `ClassDsl`. This can be thought of as an intermediate representation of the class defined by `ClassDsl` -- it has a `ClassDefinition` that is the abstract definition of the class, but also binds the definition to PowerShell modules represented by `PSModuleInfo` structures.
@@ -852,7 +852,7 @@ The interface of `ClassBuilder` is omitted here as its sole purpose currently is
 
 #### Type/ScriptClassBuilder
 
-The `ScriptClassBuilder` class is used to build a generic class through a series of method calls for adding sytem properties and system methods to the class being built. It contains the following methods:
+The `ScriptClassBuilder` class is used to build a generic class through a series of method calls for adding system properties and system methods to the class being built. It contains the following methods:
 
 * Constructor: Takes in the name of the class to be defined, and a `ScriptBlock` utilizing the ScriptClass DSL to define the class.
 * ToClassInfo: After initialization of an object, this method can be used to obtain a `ClassInfo` object that contains the abstract model of the class along with other class metadata.
@@ -877,7 +877,7 @@ The `MethodMocker` logical class provides the core support for mocking a method.
 
 #### MethodPatcher
 
-The `MethodPatcher` class "patches" a class or object with replacement methods that can invoke the original method or a new replacement method. Patching a method does not change the behavior of that method on an object or class, it merelly makes it "mockable" by Pester. `MethodPatcher` has the following interface:
+The `MethodPatcher` class "patches" a class or object with replacement methods that can invoke the original method or a new replacement method. Patching a method does not change the behavior of that method on an object or class, it merely makes it "mockable" by Pester. `MethodPatcher` has the following interface:
 
 * Get: Gets the singleton instance of `MethodPatcher`
 * PatchMethod: replaces the `ScriptBlock` for the specified method with an intermediate function that calls the original method. This `ScriptBlock` calls into a PowerShell function that itself invokes the original `ScriptBlock` associated with the method. Since the function is just a normal PowerShell function, it can be mocked by Pester like any function.
@@ -909,20 +909,20 @@ TODO. This section will describe the relationships between the classes described
 * Single inheritance -- supported by *class*
 * Interface inheritance -- also supported by *class*
 * Namespaces
-* Private module visiblity -- supported by *class* via `using module`
+* Private module visibility -- supported by *class* via `using module`
 * Using `.` instead of `=>` and `::>` for method invocation
 
 ### Improving *class* itself
 
-What can be learned from *scriptclass* and its use compared to *class*`? Based on using *scriptclass* in production projects, my assessment is that the value lies in the following:
+What can be learned from ScriptClass and its use compared to *class*`? Based on using *scriptclass* in production projects, my assessment is that the value lies in the following:
 
 > *ScriptClass* classes allow you to retain familiar PowerShell syntax when defining and consuming classes.
 
-This is captured by the following features of *scriptclass* that stand in contrast to *class*:
+This is captured by the following features of ScriptClass that stand in contrast to *class*:
 
-* Ability to define methods using familiar *function* syntax rather than the more rigid C# style syntax: *scriptclass* lets you omit the return statement, declared return type, and parentheses for parameter-less methods
+* Ability to define methods using familiar *function* syntax rather than the more rigid C# style syntax: ScriptClass lets you omit the return statement, declared return type, and parentheses for parameter-less methods
 * Methods can use the pipeline to emit results
-* Method invocation syntax is PowerShell command-style, including both positional and named parametres. You don't need to use parentheses and commas -- standard PowerShell syntax continues to apply at method invocation
+* Method invocation syntax is PowerShell command-style, including both positional and named parameters. You don't need to use parentheses and commas -- standard PowerShell syntax continues to apply at method invocation
 * Intra-class method references do not require the use of `$this` -- the method may simply be treated like any other PowerShell function
 
 ## History
