@@ -112,6 +112,10 @@ Import-Module ScriptClass
 ## Contributing / Development
 We're open for contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for policies around contributing code.
 
+### Design documentation
+
+Please review the design documentation in [DESIGN.md](src/scriptobject/DESIGN.md) for detail on the implementation and design philosophy  of `ScriptClass` before submitting contributions.
+
 ### Testing
 
 Tests are implemented using Pester. To ensure you have the latest version of Pester on your developer system, visit the [Pester site](https://github.com/pester/Pester) for instructions on installing Pester.
