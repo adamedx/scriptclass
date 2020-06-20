@@ -156,11 +156,13 @@ PrivateData = @{
         ProjectUri = 'https://github.com/adamedx/scriptclass'
 
         # A URL to an icon representing this module.
-        IconUri = 'https://raw.githubusercontent.com/adamedx/scriptclass/master/assets/ScriptClassIco.png'
+        IconUri = 'https://raw.githubusercontent.com/adamedx/scriptclass/main/assets/ScriptClassIco.png'
 
         # ReleaseNotes of this module
         ReleaseNotes = @'
 # ScriptClass 0.20.2 Release Notes
+
+Minor update for module icon due to change in default branch name to main.
 
 ## New features
 
