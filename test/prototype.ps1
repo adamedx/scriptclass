@@ -52,7 +52,7 @@ function GetClassBlock($className, $classModuleName, $properties, $methods) {
 
     $methodDeclaration = ( GetMethodDefinitions $methods $className ) -join "`n"
 
-    $classFragment = $classTemplate -f $className, $propertyDeclaration, $methodDeclaration, $ScriptClassModule
+    $classFragment = $classTemplate -f $className, $propertyDeclaration, $methodDeclaration, $ScriptClassModule, $ScriptClassModule.Name
 
     $global:myfrag = $classFragment
     [ScriptBlock]::Create($classFragment)
@@ -66,12 +66,13 @@ function NewMethod($methodName, $scriptBlock, [MethodType] $methodType) {
     }
 }
 
-function NewProperty($propertyName, $type, $value, [PropertyType] $propertyType = 'InstanceProperty' ) {
+function NewProperty($propertyName, $type, $value, [PropertyType] $propertyType = 'InstanceProperty', $isConstant ) {
     [PSCustomObject] @{
         Name = $propertyName
         Type = $type
         Value = $value
         PropertyType = $propertyType
+        IsConstant = $isConstant
     }
 }
 
@@ -114,7 +115,11 @@ function GetProperties($classmodule, [PropertyType] $propertyType) {
             $propertyValue.value.GetType()
         }
 
-        $property = NewProperty $propertyName $type $propertyValue $propertyType
+        $isConstant = ( $propertyValue.options -band [System.Management.Automation.ScopedItemOptions]::Constant
+                      ) -eq [System.Management.Automation.ScopedItemOptions]::Constant
+        write-host const, $isConstant
+        $propertyValue | fl * | out-host
+        $property = NewProperty $propertyName $type $propertyValue $propertyType $isConstant
         $properties.Add($propertyName, $property)
     }
 
@@ -169,7 +174,7 @@ function GetMethodDefinitions($methods, $className) {
     }
 }
 
-function NewPropertyDefinition($propertyName, $type, $value, [PropertyType] $propertyType) {
+function NewPropertyDefinition($propertyName, $type, $value, [PropertyType] $propertyType, $isConstant) {
     $staticElement = if ( $propertyType -eq [PropertyType]::StaticProperty ) {
         'static'
     } else {
@@ -182,13 +187,31 @@ function NewPropertyDefinition($propertyName, $type, $value, [PropertyType] $pro
         ''
     }
 
-    $propertyTemplate -f $propertyName, $typeElement, $staticElement
+    $initialValue = ' = $null'
+
+    $constantElement = if ( $isConstant ) {
+        if ( $value.value -eq $null ) {
+            throw [ArgumentException]::new("Invalid value for constant '$propertyName': constant values may not be `$null")
+        }
+        if ( $value.value -is [string] ) {
+            "[ValidateSet('$($value.value)')]"
+        } else {
+            "[ValidateSet($($value.value))]"
+        }
+        $initialValue = ''
+    } else {
+        ''
+    }
+
+
+
+    $propertyTemplate -f $propertyName, $typeElement, $staticElement, $constantElement, $initialValue
 }
 
 function GetPropertyDefinitions($properties) {
     $global:myprops = $properties
     foreach ( $property in $properties.values ) {
-        NewPropertyDefinition $property.name $property.type $property.value $property.propertyType
+        NewPropertyDefinition $property.name $property.type $property.value $property.propertyType $property.isConstant
     }
 }
 
@@ -289,6 +312,21 @@ $classModuleBlock = {
 
     function __initialize {}
 
+    function const {
+        param(
+            [parameter(mandatory=$true)] $name,
+            [parameter(mandatory=$true)] $value
+        )
+
+        $existingVariable = . {}.module.NewBoundScriptBlock({param($___variableName) get-variable -name $___variableName -scope 1 -erroraction ignore}) $name $value
+
+        if ( $existingVariable -eq $null ) {
+            . {}.module.NewBoundScriptBlock({param($___variableName, $___variableValue) new-variable -name $___variableName -scope 1 -value $___variableValue -option constant; remove-variable ___variableName, ___variableValue}) $name $value
+        } elseif ($existingVariable.value -ne $value) {
+            throw "Attempt to redefine constant '$name' from value '$($existingVariable.value) to '$value'"
+        }
+    }
+
     function static([ScriptBlock] $staticDefinition) {
         set-strictmode -version 2
 
@@ -347,7 +385,7 @@ $classModuleBlock = {
     }
 
     get-variable __classDefinitionBlock, __moduleInfo | remove-variable
-    remove-item function:static
+    remove-item function:static, function:const
 
     export-modulemember -variable * -function *
 }
@@ -356,7 +394,7 @@ $internalFunctions = '__initialize', 'static'
 $internalProperties = '__module', '__classDefinitionBlock'
 
 $propertyTemplate = @'
-    {2} {1} ${0} = $null
+    {2} {3} {1} ${0} {4}
 '@
 
 $methodTemplate = @'
@@ -381,6 +419,7 @@ $ScriptClassModule = new-module {
     class ScriptClass {
     }
 }
+$ScriptClassModule | import-module
 
 $classTemplate = @'
 param($module, $staticModule, $properties, $commonModule)
@@ -399,8 +438,8 @@ class __Meta{0} {{
 [__Meta{0}]::Module = $module
 [__Meta{0}]::StaticModule = $staticModule
 
-class {0} : ScriptClass {{
-
+# class {0} : ScriptClass {{
+class {0} {{
     static hidden $Properties = [__Meta{0}]::Properties
     static hidden $StaticProperties = [__Meta{0}]::StaticProperties
     static hidden $Module = [__Meta{0}]::Module
