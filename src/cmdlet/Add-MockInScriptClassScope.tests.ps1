@@ -41,8 +41,8 @@ Describe "AddMockInScriptClassScope cmdlet" {
                 Get-Event
             }
 
-            function GetDscData {
-                Get-DscResource
+            function GetHostData {
+                Get-Host
             }
         }
 
@@ -92,11 +92,11 @@ Describe "AddMockInScriptClassScope cmdlet" {
         }
 
         It 'Should throw an exception if the mock scriptblock attempts to access a variable defined in the scope that called the cmdlet' {
-            $dscData = 9
-            Add-MockInScriptClassScope CommandClass get-dscresource { $dscData }
+            $hostData = 9
+            Add-MockInScriptClassScope CommandClass get-host { $hostData }
             $instance = new-so CommandClass
 
-            { $instance |=> GetDscData } | Should Throw
+            { $instance |=> GetHostData } | Should Throw
         }
     }
 }
