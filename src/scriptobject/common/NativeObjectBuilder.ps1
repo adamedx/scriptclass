@@ -86,7 +86,12 @@ class NativeObjectBuilder {
 
         if ( $type -or $isConstant ) {
             $typeCoercion = if ( $type ) {
-                "[$type]"
+                # We *MUST* use the FullName property here to avoid short type name collisions or other
+                # non-determinism stemming from the fact that ToString() for a given type is not required to
+                # return any valid type name (short, full, or anything else) -- FullName is required to do so however.
+                # An example is the type for [ordered]@{} which for an unknown reason resolves to the string "ordered"
+                # in some versions of PowerShell which is not a type.
+                "[$($type.FullName)]"
             } else {
                 ''
             }

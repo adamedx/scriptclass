@@ -17,7 +17,7 @@
 RootModule = 'scriptclass.psm1'
 
 # Version number of this module.
-ModuleVersion = '0.20.2'
+ModuleVersion = '0.20.3'
 
 # Supported PSEditions
 CompatiblePSEditions = @('Desktop', 'Core')
@@ -32,7 +32,7 @@ Author = 'Adam Edwards'
 CompanyName = 'Modulus Group'
 
 # Copyright statement for this module
-Copyright = '(c) 2020 Adam Edwards.'
+Copyright = '(c) 2023 Adam Edwards.'
 
 # Description of the functionality provided by this module
 Description = "Class definition extensions for PowerShell's object-based type system"
@@ -160,15 +160,22 @@ PrivateData = @{
 
         # ReleaseNotes of this module
         ReleaseNotes = @'
-# ScriptClass 0.20.2 Release Notes
+# ScriptClass 0.20.3 Release Notes
 
-Minor update for module icon due to change in default branch name to main.
+Minor update to fix blocking regression on PowerShell 7.3.1
 
 ## New features
 
+None.
+
 ## Breaking changes
 
+None.
+
 ## Fixed defects
+
+    * Regression on PowerShell 7.3.1 due to ambiguous type name string representation for types such as [ordered]@{} used with strict-val: https://github.com/adamedx/scriptclass/issues/36
+    * Minor issue with undefined variable accessed by error message when strict-val is used incorrectly: https://github.com/adamedx/scriptclass/issues/37
 
 '@
 
