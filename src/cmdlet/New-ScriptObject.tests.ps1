@@ -146,6 +146,36 @@ Context "when creating an object from a class declared with ScriptClass" {
             $newInstance.$prop2 | Should BeExactly $value2
         }
 
+        It "can create a new object that uses a type with an ambiguous short name like the ordered hashtable type in some PowerShell versions such as 7.3.1" {
+            # Added this test because strict-val [ordered] @{} was causing problems on PowerShell 7.3.1 but not other versions. Issue was that
+            # within scriptclass we made use of evaluating the string "[$type]" where the variable $type was actually a type, not a string, and for
+            # the ordered hash table this evaluated as "ordered" which is not the actual name of the type. Relying on an implied ToString() of the type is
+            # not a good idea in general, so the ultimate fix was to use the FullName property of the type which is fully qualified and already a string, giving
+            # the unambiguous type required for deterministic behavior across PowerShell versions and other environmental influences.
+            $className = 'ClassClass49'
+            $prop1 = 'property1'
+            $prop2 = 'property2'
+            $value1 = @{}
+            $value2 = [ordered] @{}
+
+            ScriptClass $className {
+                $property1 = strict-val @{}.GetType()
+                $property2 = strict-val ([ordered] @{}).GetType()
+
+                function __initialize($arg1, $arg2) {
+                    $this.property1 = $arg1
+                    $this.property2 = $arg2
+                }
+            }
+
+            $newInstance = new-scriptobject $className $value1 $value2
+            $newInstance.$prop1 | Should BeExactly $value1
+            $newInstance.$prop2 | Should BeExactly $value2
+
+            { $newInstance.$prop1 = $prop2 } | Should Throw '"Cannot convert'
+            { $newInstance.$prop2 = $prop1 } | Should Throw '"Cannot convert'
+        }
+
         It "can define methods on the class" {
             $className = 'ClassClass15'
             $function1 = "testFunc"

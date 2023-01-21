@@ -10,7 +10,7 @@
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <description>Usability enhancements for core PowerShell capabilities</description>
     <releaseNotes>Initial development</releaseNotes>
-    <copyright>Copyright 2019</copyright>
+    <copyright>Copyright 2023</copyright>
     <tags>class object ScriptClass PSModule</tags>
   </metadata>
   <files>
