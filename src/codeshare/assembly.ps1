@@ -44,7 +44,7 @@ function LoadAssemblyFromRoot($assemblyRoot, $assemblyName, $platformSpec) {
     } elseif ( IsDesktopEdition ) {
         , @('net45')
     } else {
-        @('netstandard1.3', 'netstandard1.1', 'netcoreapp1.0')
+        @('netstandard1.3', 'netstandard1.1', 'netcoreapp2.0')
     }
 
     $assemblyPath = $null
